@@ -1,50 +1,177 @@
-const tools = [
-  {id:'velociraptor',name:'Velociraptor',letter:'V',color:'gold',maker:'Velocidex',cost:'Free & open source',platform:'Windows, Linux, macOS',task:'Collect and investigate evidence across one or many computers.',plain:'Useful when you need to ask targeted questions of a live computer, collect specific files, or investigate many endpoints consistently.',inputs:'Live computers, disk images',outputs:'Collected files, tables, reports',tags:['collect','search','windows','timeline','free'],version:'0.73.4'},
-  {id:'kape',name:'KAPE',letter:'K',color:'silver',maker:'Kroll',cost:'Free for qualifying use',platform:'Windows',task:'Quickly collect high-value Windows evidence and run parsers.',plain:'Useful for fast triage. Instead of copying an entire drive, KAPE can gather the smaller set of files most likely to answer common investigative questions.',inputs:'Windows drives, folders',outputs:'Collected artifacts, parsed data',tags:['collect','parse','windows'],version:'1.3.0.2'},
-  {id:'zimmerman',name:'Zimmerman Tools',letter:'Z',color:'navy',maker:'Eric Zimmerman',cost:'Free',platform:'Windows',task:'Read many common Windows evidence files.',plain:'A collection of focused tools for event data, Registry files, shortcuts, file-system records, browser activity, and more.',inputs:'Windows artifacts',outputs:'CSV, JSON, timelines',tags:['parse','windows','registry','browser','timeline','free'],version:'2025.07.14'},
-  {id:'volatility',name:'Volatility 3',letter:'V3',color:'gold',maker:'Volatility Foundation',cost:'Free & open source',platform:'Windows, Linux, macOS',task:'Inspect what was happening in a computer’s memory.',plain:'Use it with a memory capture to find running processes, network connections, loaded code, command history, and other signs of activity.',inputs:'Memory captures',outputs:'Tables, extracted files',tags:['parse','search','memory','free'],version:'2.26.0'},
-  {id:'yara',name:'YARA',letter:'Y',color:'silver',maker:'VirusTotal',cost:'Free & open source',platform:'Windows, Linux, macOS',task:'Find files or memory that match known patterns.',plain:'Investigators write rules describing suspicious strings and byte patterns. YARA checks files or memory and reports what matches.',inputs:'Files, folders, memory',outputs:'Pattern matches',tags:['search','memory','disk','free'],version:'4.5.4'},
-  {id:'chainsaw',name:'Chainsaw',letter:'C',color:'navy',maker:'WithSecure Labs',cost:'Free & open source',platform:'Windows, Linux, macOS',task:'Search Windows event logs quickly.',plain:'Useful for finding suspicious Windows activity with built-in detection logic or Sigma rules, without loading logs into a larger platform.',inputs:'Windows event logs',outputs:'Matches, CSV, JSON',tags:['search','parse','windows','event logs','timeline','free'],version:'2.12.0'},
-  {id:'hayabusa',name:'Hayabusa',letter:'H',color:'gold',maker:'Yamato Security',cost:'Free & open source',platform:'Windows, Linux, macOS',task:'Turn Windows event logs into a threat-hunting timeline.',plain:'Scores and summarizes event-log activity so analysts can move quickly from a large set of logs to notable events and a readable timeline.',inputs:'Windows event logs',outputs:'Timelines, CSV, JSON',tags:['search','parse','windows','event logs','timeline','visualize','free'],version:'3.3.0'},
-  {id:'regRipper',name:'RegRipper',letter:'R',color:'silver',maker:'Keydet89',cost:'Free & open source',platform:'Windows, Linux, macOS',task:'Extract useful facts from Windows Registry files.',plain:'Runs small, focused plugins against offline Registry hives to reveal system configuration, user activity, connected devices, and more.',inputs:'Windows Registry hives',outputs:'Text reports',tags:['parse','windows','registry','free'],version:'3.0'},
-  {id:'autopsy',name:'Autopsy',letter:'A',color:'navy',maker:'Basis Technology',cost:'Free & open source',platform:'Windows, Linux, macOS',task:'Examine disks and files through a graphical interface.',plain:'A broad desktop forensics tool for disk images, deleted files, keyword searches, web activity, and reporting. A common place for newer examiners to begin.',inputs:'Disk images, local disks',outputs:'Recovered files, reports',tags:['parse','search','disk','browser','visualize','free'],version:'4.22.1'}
+"use strict";
+
+/* Landing site for dfpm. Everything shown here is real: the catalog mirrors
+   catalog/*.json in the repository, and the commands mirror `dfpm --help`. */
+
+const CATALOG = [
+  {
+    id: "yara",
+    name: "YARA",
+    version: "4.5.5",
+    kind: "tool",
+    letter: "Y",
+    tone: "gold",
+    plain: "Investigators write rules describing suspicious strings and byte patterns. YARA checks files or memory and reports what matches.",
+    platform: "windows/x64",
+    license: "BSD-3-Clause",
+    project: "https://github.com/VirusTotal/yara",
+    commands: ["yara", "yarac"],
+  },
 ];
 
-const kits=[
-  {label:'Good first kit',name:'Windows quick triage',desc:'Collect the most useful Windows artifacts and turn them into a readable timeline.',items:['KAPE for targeted collection','Zimmerman Tools for parsing','Hayabusa for event-log timelines'],count:'3 tools'},
-  {label:'Live response',name:'Endpoint investigation',desc:'Ask focused questions of running computers and scan collected files for known patterns.',items:['Velociraptor for collection','YARA for pattern matching','Chainsaw for event logs'],count:'3 tools'},
-  {label:'Offline examination',name:'Disk & file review',desc:'Open a disk image, recover files, and inspect Windows activity without touching the source.',items:['Autopsy for disk examination','Zimmerman Tools for artifacts','RegRipper for Registry files'],count:'3 tools'}
+const COMMANDS = [
+  ["dfpm paths", "Show where dfpm stores files."],
+  ["dfpm catalog", "List available packages."],
+  ["dfpm install <package>", "Install a package, replacing any version already installed."],
+  ["dfpm uninstall <package>", "Remove installed files dfpm recorded."],
+  ["dfpm cache", "Inspect and clean the verified download cache."],
+  ["dfpm run <command>", "Run a command from an installed package."],
+  ["dfpm which <command>", "Show which file a command runs."],
+  ["dfpm gui", "Open a local interface for managing installed packages."],
+  ["dfpm list", "List installed packages."],
+  ["dfpm doctor", "Check managed files without changing them."],
 ];
 
-let activeFilter='all',query='';
-const grid=document.querySelector('#tool-grid');
-function toolCard(t){return `<article class="tool-card"><header><div class="tool-badge ${t.color}">${t.letter}</div><div><h3>${t.name}</h3><small>${t.maker} · ${t.platform}</small></div></header><p>${t.task}</p><div class="tags">${t.tags.slice(0,3).map(x=>`<span>${x}</span>`).join('')}</div><footer><span>${t.cost}</span><button data-tool="${t.id}">Plain-English details →</button></footer></article>`}
-function render(){let list=tools.filter(t=>(activeFilter==='all'||t.tags.includes(activeFilter))&&(!query||Object.values(t).join(' ').toLowerCase().includes(query)));grid.innerHTML=list.map(toolCard).join('')||`<div class="empty"><h3>No exact matches</h3><p>Try a broader term such as “Windows,” “memory,” or “files.”</p></div>`;document.querySelector('#result-count').textContent=`${list.length} tool${list.length===1?'':'s'}, explained without the jargon`}
-render();
-document.querySelector('#kit-grid').innerHTML=kits.map(k=>`<article class="kit-card"><span>${k.label}</span><h2>${k.name}</h2><p>${k.desc}</p><ul>${k.items.map(i=>`<li>${i}</li>`).join('')}</ul><button class="pixel-button cream" data-kit="${k.name}">See this kit · ${k.count}</button></article>`).join('');
-document.querySelector('#installed-rows').innerHTML=tools.slice(0,4).map(t=>`<div class="installed-row"><div><strong>${t.name}</strong><small>Version ${t.version}</small></div><code>...\tools\${t.id}\${t.version}</code><code>dfpm run ${t.id}</code><span>✓ Working</span></div>`).join('');
+const $ = (selector) => document.querySelector(selector);
 
-function navigate(page){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===`${page}-page`));document.querySelectorAll('.nav-link').forEach(n=>n.classList.toggle('active',n.dataset.page===page));window.scrollTo(0,0)}
-document.addEventListener('click',e=>{const nav=e.target.closest('[data-page]');if(nav){e.preventDefault();navigate(nav.dataset.page)}const tool=e.target.closest('[data-tool]');if(tool)openTool(tool.dataset.tool);const toastButton=e.target.closest('[data-toast]');if(toastButton)showToast(toastButton.dataset.toast);const queryButton=e.target.closest('[data-query]');if(queryButton){navigate('discover');document.querySelector('#tool-search').value=queryButton.dataset.query;query=queryButton.dataset.query.toLowerCase();render()}const kit=e.target.closest('[data-kit]');if(kit)showToast(`${kit.dataset.kit} opened for comparison`)});
-document.querySelector('#filters').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;activeFilter=b.dataset.filter;document.querySelectorAll('#filters button').forEach(x=>x.classList.toggle('active',x===b));render()});
-document.querySelector('#tool-search').addEventListener('input',e=>{query=e.target.value.trim().toLowerCase();render()});
-document.querySelectorAll('[data-layout]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-layout]').forEach(x=>x.classList.toggle('active',x===b));grid.classList.toggle('list',b.dataset.layout==='list')});
+function el(tag, options = {}, children = []) {
+  const node = document.createElement(tag);
+  if (options.className) node.className = options.className;
+  if (options.text !== undefined) node.textContent = options.text;
+  if (options.href) { node.href = options.href; node.target = "_blank"; node.rel = "noopener noreferrer"; }
+  if (options.onClick) node.addEventListener("click", options.onClick);
+  for (const child of children) if (child) node.append(child);
+  return node;
+}
 
-const drawer=document.querySelector('#tool-drawer'),shade=document.querySelector('#drawer-shade');
-function openTool(id){const t=tools.find(x=>x.id===id);document.querySelector('#drawer-content').innerHTML=`<p class="kicker">Tool guide</p><div class="drawer-hero"><div class="tool-badge ${t.color}">${t.letter}</div><div><h2>${t.name}</h2><p>Made by ${t.maker}</p></div></div><section class="plain-section"><h3>What it does</h3><p>${t.plain}</p></section><div class="facts"><div><small>Runs on</small><strong>${t.platform}</strong></div><div><small>Price</small><strong>${t.cost}</strong></div><div><small>Works with</small><strong>${t.inputs}</strong></div><div><small>Gives you</small><strong>${t.outputs}</strong></div></div><div class="install-explain"><strong>Where would dfpm install it?</strong><p>In its own versioned folder inside your dfpm tools folder—not somewhere hidden or chosen by another package manager.</p><code>C:\Users\you\AppData\Local\dfpm\tools\${t.id}\${t.version}</code></div><div class="drawer-actions"><button class="pixel-button primary" onclick="showLocalInfo('${t.name}')">Install with dfpm</button><button class="pixel-button cream" data-toast="Project website would open in a new tab">Visit project site</button></div>`;drawer.classList.add('open');shade.classList.add('open');drawer.setAttribute('aria-hidden','false')}
-function closeDrawer(){drawer.classList.remove('open');shade.classList.remove('open');drawer.setAttribute('aria-hidden','true')}
-document.querySelector('#drawer-close').onclick=closeDrawer;shade.onclick=closeDrawer;
+/* ---------- content ---------- */
 
-const modal=document.querySelector('#modal-shade');
-function openModal(html){document.querySelector('#modal-content').innerHTML=html;modal.classList.add('open')}
-function closeModal(){modal.classList.remove('open')}
-document.querySelector('#modal-close').onclick=closeModal;modal.onclick=e=>{if(e.target===modal)closeModal()};
-function showLocalInfo(name='tools'){openModal(`<p class="kicker">Local app required</p><h2>Install ${name} on this computer</h2><p>The public website helps you find and compare tools. Installing requires dfpm running locally so it can verify downloads, show you the exact destination, test the tool, and keep track of every managed file.</p><pre>.\.venv\Scripts\python.exe -m dfpm --gui</pre><p>This command is illustrative until the native application is implemented.</p><button class="pixel-button primary" onclick="closeModal();showToast('Download instructions opened')">See download instructions</button>`)}
-document.querySelector('#download-side').onclick=()=>showLocalInfo();document.querySelector('#install-tool').onclick=()=>showLocalInfo();
+function renderCatalog() {
+  const container = $("#catalog-list");
+  container.replaceChildren();
+  for (const entry of CATALOG) {
+    container.append(
+      el("article", { className: "tool-card" }, [
+        el("header", {}, [
+          el("div", { className: `tool-badge ${entry.tone}`, text: entry.letter }),
+          el("div", {}, [
+            el("h3", { text: `${entry.name} ${entry.version}` }),
+            el("small", { text: `${entry.id} · ${entry.kind} · ${entry.platform}` }),
+          ]),
+        ]),
+        el("p", { text: entry.plain }),
+        el("div", { className: "tags" }, [
+          el("span", { text: entry.license }),
+          ...entry.commands.map((command) => el("span", { text: command })),
+        ]),
+        el("footer", {}, [
+          el("span", { text: "Digest pinned and verified" }),
+          el("a", { text: "Project site →", href: entry.project }),
+        ]),
+      ])
+    );
+  }
+}
 
-const toast=document.querySelector('#toast');let toastTimer;function showToast(text){toast.querySelector('p').textContent=text;toast.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove('show'),2400)}
-function applyAppearance(appearance){document.documentElement.dataset.appearance=appearance;const dark=appearance==='dark';document.querySelector('#theme-icon').textContent=dark?'☀':'☾';document.querySelector('#theme-label').textContent=dark?'Light mode':'Dark mode';document.querySelector('meta[name="theme-color"]').content=dark?'#000000':'#ffffff';localStorage.setItem('dfpm-appearance',appearance)}
-applyAppearance(localStorage.getItem('dfpm-appearance')||'light');
-document.querySelector('#theme-button').onclick=()=>applyAppearance(document.documentElement.dataset.appearance==='dark'?'light':'dark');
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDrawer();closeModal()}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();navigate('discover');document.querySelector('#tool-search').focus()}});
-window.showLocalInfo=showLocalInfo;window.closeModal=closeModal;window.showToast=showToast;
+function renderCommands() {
+  const table = $("#command-table");
+  table.replaceChildren(
+    el("div", { className: "command-row table-head" }, [el("span", { text: "COMMAND" }), el("span", { text: "WHAT IT DOES" })])
+  );
+  for (const [command, description] of COMMANDS) {
+    table.append(el("div", { className: "command-row" }, [el("code", { text: command }), el("span", { text: description })]));
+  }
+}
+
+/* ---------- pixel assets, which are optional until they exist ---------- */
+
+function loadAssets() {
+  for (const slot of document.querySelectorAll("[data-asset]")) {
+    const source = slot.dataset.asset;
+    const probe = new Image();
+    probe.onload = () => {
+      slot.style.backgroundImage = `url("${source}")`;
+      slot.classList.add("has-asset");
+    };
+    probe.onerror = () => slot.classList.add("asset-pending");
+    probe.src = source;
+  }
+}
+
+function parallax() {
+  const layers = [...document.querySelectorAll(".hero-parallax .layer")];
+  if (!layers.length || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  let ticking = false;
+  const apply = () => {
+    const offset = window.scrollY;
+    for (const layer of layers) layer.style.transform = `translate3d(0, ${offset * Number(layer.dataset.speed)}px, 0)`;
+    ticking = false;
+  };
+  window.addEventListener("scroll", () => {
+    if (!ticking) { ticking = true; window.requestAnimationFrame(apply); }
+  }, { passive: true });
+}
+
+/* ---------- navigation, copying, theme ---------- */
+
+function navigate(page) {
+  document.querySelectorAll(".page").forEach((section) => section.classList.toggle("active", section.id === `${page}-page`));
+  document.querySelectorAll(".nav-link").forEach((link) => link.classList.toggle("active", link.dataset.page === page));
+  window.scrollTo(0, 0);
+}
+
+let toastTimer = null;
+
+function toast(text) {
+  const node = $("#toast");
+  node.querySelector("p").textContent = text;
+  node.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => node.classList.remove("show"), 2400);
+}
+
+function wireCopyButtons() {
+  for (const block of document.querySelectorAll("pre[data-copy]")) {
+    const button = el("button", {
+      className: "copy-button",
+      text: "Copy",
+      onClick: async () => {
+        try {
+          await navigator.clipboard.writeText(block.firstChild.textContent.trim());
+          toast("Copied to your clipboard");
+        } catch {
+          toast("Your browser blocked clipboard access");
+        }
+      },
+    });
+    button.type = "button";
+    block.append(button);
+  }
+}
+
+function applyAppearance(appearance) {
+  document.documentElement.dataset.appearance = appearance;
+  const dark = appearance === "dark";
+  $("#theme-icon").textContent = dark ? "☀" : "☾";
+  $("#theme-label").textContent = dark ? "Light mode" : "Dark mode";
+  $('meta[name="theme-color"]').content = dark ? "#0d0d0d" : "#ffffff";
+  localStorage.setItem("dfpm-appearance", appearance);
+}
+
+document.addEventListener("click", (event) => {
+  const target = event.target.closest("[data-page]");
+  if (!target) return;
+  event.preventDefault();
+  navigate(target.dataset.page);
+});
+
+$("#theme-button").addEventListener("click", () => {
+  applyAppearance(document.documentElement.dataset.appearance === "dark" ? "light" : "dark");
+});
+
+applyAppearance(localStorage.getItem("dfpm-appearance") || "light");
+renderCatalog();
+renderCommands();
+wireCopyButtons();
+loadAssets();
+parallax();

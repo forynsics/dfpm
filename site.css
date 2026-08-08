@@ -1,0 +1,199 @@
+/* Landing-site additions on top of the shared dfpm visual system.
+   styles.css and refinements.css are the shared base and are not edited here.
+   Everything below is either page furniture the local interface has no use for,
+   or the pixel/woodland detail that gives the site its character. */
+
+/* ── pixel asset slots ───────────────────────────────────────────────
+   Every sprite is optional. A slot with no file behind it collapses to a
+   quiet placeholder rather than a broken image, so the page is complete
+   before the art is. */
+
+.mascot,
+.dam-divider,
+.hero-parallax .layer {
+  background-repeat: no-repeat;
+  background-position: center bottom;
+  background-size: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.asset-pending {
+  border: 2px dashed var(--border);
+  background-image:
+    repeating-linear-gradient(45deg, transparent 0 6px, rgba(252, 163, 17, .07) 6px 12px);
+  position: relative;
+}
+.asset-pending::after {
+  content: "sprite";
+  position: absolute;
+  inset: auto 0 8px 0;
+  text-align: center;
+  font: 700 9px var(--mono);
+  letter-spacing: .1em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.mascot-hero { width: 100%; max-width: 208px; aspect-ratio: 614 / 723; margin-inline: auto; }
+.mascot-small { width: 64px; height: 70px; margin-bottom: 10px; }
+.mascot-step { width: 78px; height: 88px; align-self: center; background-position: center; }
+.mascot-inline { width: 64px; height: 72px; flex: 0 0 64px; background-position: center; }
+.mascot-aside { width: 132px; height: 118px; background-position: center; flex: 0 0 132px; }
+
+.note-with-mascot { display: flex; align-items: center; gap: 22px; }
+.note-with-mascot .system-note { flex: 1; margin-top: 0; }
+.local-banner .mascot-inline { margin-left: auto; }
+.mascot-caption { font: 10px var(--mono); color: var(--muted); margin: 0 0 12px; letter-spacing: .02em; }
+.mascot-caption b { color: var(--text); letter-spacing: .04em; }
+
+/* ── hero ─────────────────────────────────────────────────────────── */
+
+/* The scene is a band along the bottom of the hero, never behind the copy.
+   Text over a forest is unreadable, so the parallax gets its own ground. */
+.hero { position: relative; overflow: hidden; padding-bottom: 216px; }
+/* Bleeds past the page gutters and fades at both ends, so the scene reads as a
+   landscape running off the page rather than a sticker dropped onto it. */
+.hero-parallax {
+  position: absolute;
+  left: -52px;
+  right: -52px;
+  bottom: 0;
+  height: 216px;
+  z-index: 0;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 12%, #000 88%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 12%, #000 88%, transparent 100%);
+}
+
+/* Single wide compositions, not tiles, so they are never repeated. Each is
+   anchored to the bottom and scaled a little larger as it comes forward. */
+.hero-parallax .layer {
+  position: absolute;
+  inset: 0;
+  background-position: bottom center;
+  background-repeat: no-repeat;
+  will-change: transform;
+}
+.layer-far { background-size: 92% auto; opacity: .5; }
+.layer-mid { background-size: 106% auto; opacity: .68; }
+.layer-near { background-size: 124% auto; opacity: .9; }
+.hero .intro-grid { position: relative; z-index: 1; align-items: end; }
+
+.hero-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 26px; }
+
+/* Brix stands on the riverbank rather than floating beside the headline. */
+.hero-mascot { display: grid; place-items: end center; position: relative; z-index: 2; margin-bottom: -104px; }
+
+/* ── woodland divider ─────────────────────────────────────────────── */
+
+.dam-divider {
+  height: 74px;
+  margin: 56px 0;
+  background-position: center;
+  background-size: auto 100%;
+  background-repeat: no-repeat;
+}
+.dam-divider:not(.has-asset) {
+  height: 3px;
+  margin: 54px 0;
+  border: 0;
+  background: repeating-linear-gradient(90deg, var(--text) 0 14px, transparent 14px 22px);
+  opacity: .35;
+}
+.dam-divider.asset-pending { border: 0; }
+.dam-divider.asset-pending::after { content: none; }
+
+/* ── lifecycle steps ──────────────────────────────────────────────── */
+
+.lifecycle { display: grid; gap: 14px; }
+.lifecycle article {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: start;
+  border: 1px solid var(--text);
+  background: var(--panel);
+  padding: 20px;
+  box-shadow: 3px 3px 0 var(--accent);
+}
+.lifecycle article:nth-child(even) { box-shadow: 3px 3px 0 var(--blue); }
+.lifecycle b {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  background: var(--accent);
+  border: 2px solid var(--text);
+  color: #000;
+  font: 800 18px var(--mono);
+}
+.lifecycle h3 { font-size: 16px; margin: 0 0 6px; }
+.lifecycle p { font-size: 14px; line-height: 1.6; color: var(--muted); margin: 0; }
+
+/* ── get started ──────────────────────────────────────────────────── */
+
+.steps { display: grid; gap: 20px; }
+.steps article { border: 1px solid var(--text); background: var(--panel); padding: 22px; box-shadow: 4px 4px 0 var(--blue); }
+.steps h3 { font-size: 15px; margin: 0 0 14px; }
+.steps p { font-size: 13px; line-height: 1.6; color: var(--muted); margin: 12px 0 0; }
+.steps pre {
+  position: relative;
+  margin: 0;
+  padding: 16px 74px 16px 16px;
+  background: #14213d;
+  color: #f4f2ed;
+  font: 13px/1.7 var(--mono);
+  overflow-x: auto;
+  white-space: pre;
+}
+.copy-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  border: 1px solid #f4f2ed;
+  background: transparent;
+  color: #f4f2ed;
+  font: 700 10px var(--mono);
+  letter-spacing: .06em;
+  padding: 5px 9px;
+  cursor: pointer;
+}
+.copy-button:hover { background: var(--accent); border-color: var(--accent); color: #000; }
+
+/* ── command reference ────────────────────────────────────────────── */
+
+.command-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 2fr;
+  gap: 18px;
+  align-items: center;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.command-row:last-child { border-bottom: 0; }
+.command-row.table-head { background: #f6f7f9; font: 800 9px var(--mono); letter-spacing: .08em; color: var(--muted); }
+.command-row span:last-child { color: var(--muted); }
+html[data-appearance="dark"] .command-row.table-head { background: #242424; }
+
+/* ── catalog card footer link ─────────────────────────────────────── */
+
+.tool-card footer a { color: var(--blue); font: 600 11px inherit; text-decoration: none; }
+.tool-card footer a:hover { text-decoration: underline; }
+html[data-appearance="dark"] .tool-card > p { color: var(--muted); }
+
+/* ── responsive ───────────────────────────────────────────────────── */
+
+@media (max-width: 1000px) {
+  .hero .intro-grid { grid-template-columns: 1fr; }
+  .hero-mascot { order: -1; }
+  .mascot-hero { max-width: 200px; }
+}
+@media (max-width: 760px) {
+  .lifecycle article { grid-template-columns: 1fr; gap: 12px; }
+  .mascot-step, .mascot-aside { display: none; }
+  .note-with-mascot { flex-direction: column; }
+  .command-row { grid-template-columns: 1fr; gap: 6px; }
+  .steps pre { padding-right: 16px; padding-top: 44px; }
+}

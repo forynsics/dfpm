@@ -5,107 +5,216 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#ffffff">
   <title>dfpm — A package manager for digital forensics tools</title>
-  <meta name="description" content="Explore digital forensics tools by evidence type and task. Run dfpm locally to install and manage them on your computer.">
+  <meta name="description" content="dfpm installs digital forensics tools straight from the releases their projects publish, pinning and verifying the exact artifact and digest, showing you the plan before it acts, and keeping everything in folders it tells you about.">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="refinements.css">
+  <link rel="stylesheet" href="site.css">
 </head>
 <body>
   <div class="app-shell">
     <aside class="sidebar">
-      <a class="wordmark" href="#" data-page="discover"><span class="logo-mark">d</span><span><b>dfpm</b><small>Forensics tool guide</small></span></a>
+      <a class="wordmark" href="#" data-page="overview"><span class="logo-mark">d</span><span><b>dfpm</b><small>Package manager</small></span></a>
       <nav aria-label="Main navigation">
-        <p class="nav-heading">Explore</p>
-        <button class="nav-link active" data-page="discover"><span>⌕</span>Find tools</button>
-        <button class="nav-link" data-page="collections"><span>▦</span>Starter kits</button>
-        <button class="nav-link" data-page="learn"><span>?</span>New to DFIR?</button>
-        <p class="nav-heading">On this computer</p>
-        <button class="nav-link local-link" data-page="installed"><span>▣</span>Installed tools <i>LOCAL</i></button>
-        <button class="nav-link local-link" data-page="updates"><span>↟</span>Updates <i>LOCAL</i></button>
-        <button class="nav-link local-link" data-page="settings"><span>⚙</span>Install settings <i>LOCAL</i></button>
+        <p class="nav-heading">The project</p>
+        <button class="nav-link active" data-page="overview" type="button"><span>▰</span>Overview</button>
+        <button class="nav-link" data-page="how" type="button"><span>⚙</span>How it works</button>
+        <p class="nav-heading">Packages</p>
+        <button class="nav-link" data-page="catalog" type="button"><span>⌕</span>Catalog</button>
+        <button class="nav-link" data-page="start" type="button"><span>▣</span>Get started</button>
       </nav>
 
-      <button class="theme-button" id="theme-button"><span id="theme-icon">☾</span><span><b id="theme-label">Dark mode</b><small>Display preference</small></span></button>
+      <button class="theme-button" id="theme-button" type="button"><span id="theme-icon">☾</span><span><b id="theme-label">Dark mode</b><small>Display preference</small></span></button>
 
       <div class="local-card">
-        <div class="tiny-computer"><i></i><b></b></div>
-        <strong>Want to manage tools?</strong>
-        <p>Download dfpm and run it on your computer to unlock installs, updates, and health checks.</p>
-        <button class="pixel-button primary" id="download-side">Download dfpm</button>
+        <div class="mascot mascot-small" data-asset="assets/brix-clipboard.png" role="img" aria-label="Brix, the dfpm mascot"></div>
+        <strong>Runs on your computer</strong>
+        <p>dfpm is a local command-line tool. This site explains what it does; it never installs anything itself.</p>
+        <p class="mascot-caption"><b>Brix</b> · Chief Package Builder</p>
+        <button class="pixel-button primary" data-page="start" type="button">Get started</button>
       </div>
 
-      <footer><span class="catalog-light"></span><div><b>Tool list is up to date</b><small>Last checked Aug 7, 2026</small></div></footer>
+      <footer><span class="catalog-light"></span><div><b>1 package available</b><small>Early development</small></div></footer>
     </aside>
 
     <main>
-      <section class="page active" id="discover-page">
-        <div class="intro-grid">
-          <div>
-            <p class="kicker">The DFIR tool directory</p>
-            <h1>Find the right tool<br>for the evidence.</h1>
-            <p class="lead">You shouldn't need years of institutional knowledge to know what tools exist. Start with what you have—or what you need to do.</p>
+      <!-- ───────────────────────── Overview ───────────────────────── -->
+      <section class="page active" id="overview-page">
+        <div class="hero">
+          <div class="hero-parallax" aria-hidden="true">
+            <div class="layer layer-far" data-asset="assets/parallax-far.png" data-speed="0.15"></div>
+            <div class="layer layer-mid" data-asset="assets/parallax-mid.png" data-speed="0.3"></div>
+            <div class="layer layer-near" data-asset="assets/parallax-near.png" data-speed="0.5"></div>
           </div>
-          <div class="how-card">
-            <span class="step-no">How it works</span>
-            <ol><li><b>1</b><span><strong>Describe your task</strong><small>Example: “read Windows event logs”</small></span></li><li><b>2</b><span><strong>Compare useful tools</strong><small>See cost, platform, inputs, and outputs</small></span></li><li><b>3</b><span><strong>Install when ready</strong><small>Use the local app to manage files safely</small></span></li></ol>
+          <div class="intro-grid">
+            <div>
+              <p class="kicker">A package manager for digital forensics tools</p>
+              <h1>Know exactly<br>what you're running.</h1>
+              <p class="lead">Forensic work is only as defensible as the tools behind it. dfpm installs tools straight from the releases their projects publish, pins the exact artifact and its digest, shows you the plan before it touches anything, and keeps every file in a folder it has told you about.</p>
+              <div class="hero-actions">
+                <button class="pixel-button primary" data-page="start" type="button">Get started</button>
+                <button class="pixel-button" data-page="how" type="button">See how it works</button>
+              </div>
+            </div>
+            <div class="hero-mascot">
+              <div class="mascot mascot-hero" data-asset="assets/brix-hero.png" role="img" aria-label="Brix, the dfpm mascot, holding a wrench"></div>
+            </div>
           </div>
         </div>
 
-        <div class="search-wrap">
-          <label for="tool-search">What evidence are you working with?</label>
-          <div class="search-box"><span>⌕</span><input id="tool-search" autocomplete="off" placeholder="Try: event logs, memory, browser history, or YARA"><kbd>CTRL K</kbd></div>
-          <div class="quick-searches"><span>Popular</span><button data-query="event logs">Event logs</button><button data-query="memory">Memory</button><button data-query="registry">Windows Registry</button><button data-query="timeline">Timelines</button></div>
+        <div class="dam-divider" data-asset="assets/divider-dam.png" aria-hidden="true"></div>
+
+        <div class="page-title">
+          <p class="kicker">Why it exists</p>
+          <h1>Three things it refuses to do.</h1>
+          <p>A toolchain manager earns trust by what it declines to touch, not by how much it automates.</p>
         </div>
 
-        <div class="browse-head"><div><h2>Browse all tools</h2><p id="result-count">9 tools, explained without the jargon</p></div><div class="view-buttons"><button class="active" data-layout="grid" aria-label="Grid view">▦</button><button data-layout="list" aria-label="List view">☷</button></div></div>
-        <div class="filter-bar" id="filters"><button class="active" data-filter="all">Everything</button><button data-filter="collect">Collect evidence</button><button data-filter="parse">Read &amp; extract</button><button data-filter="search">Search &amp; detect</button><button data-filter="visualize">Build timelines</button><button data-filter="free">Free &amp; open source</button></div>
-        <div class="tool-grid" id="tool-grid"></div>
-      </section>
-
-      <section class="page" id="collections-page">
-        <div class="page-title"><p class="kicker">Curated starting points</p><h1>Starter kits</h1><p>Small, understandable toolsets for common jobs. These are recommendations, not automatic installs.</p></div>
-        <div class="kit-grid" id="kit-grid"></div>
-      </section>
-
-      <section class="page" id="learn-page">
-        <div class="page-title"><p class="kicker">A plain-language field guide</p><h1>New to digital forensics?</h1><p>Start with the evidence you have. dfpm connects common evidence sources to the tools that can work with them.</p></div>
         <div class="learn-grid">
-          <article><span>01</span><h2>Disk &amp; files</h2><p>Recover deleted files, inspect file systems, and identify unusual content without changing the original evidence.</p><button data-query="disk">Show disk tools →</button></article>
-          <article><span>02</span><h2>Memory</h2><p>Inspect a memory capture for processes, network connections, injected code, and other traces of system activity.</p><button data-query="memory">Show memory tools →</button></article>
-          <article><span>03</span><h2>Windows activity</h2><p>Read event logs, Registry files, shortcuts, and other artifacts that describe what happened on a Windows machine.</p><button data-query="windows">Show Windows tools →</button></article>
-          <article><span>04</span><h2>Web activity</h2><p>Extract browsing history, downloads, cookies, and cached data from common browsers.</p><button data-query="browser">Show browser tools →</button></article>
+          <article>
+            <span>◈</span>
+            <h2>Install anything it can't verify</h2>
+            <p>Every package pins a SHA-256. The download is refused unless the bytes match exactly, and refused again if an HTTPS source quietly redirects to plain HTTP. A digest you cannot check is not provenance.</p>
+          </article>
+          <article>
+            <span>▦</span>
+            <h2>Leave you guessing which version ran</h2>
+            <p>One version of a package is installed at a time. Installing replaces what was there, and the old version is removed only once the new one is in place and working. No stack of folders to reason about mid-case.</p>
+          </article>
+          <article>
+            <span>✎</span>
+            <h2>Change your system behind your back</h2>
+            <p>dfpm never edits your PATH, never writes outside the folders it shows you, and deletes only files it installed and can still recognise. Anything it did not put there is preserved and reported.</p>
+          </article>
+          <article>
+            <span>◷</span>
+            <h2>And one thing it always does</h2>
+            <p>Prints the plan first. Package, version, platform, licence, source, digest, destination, and what will be replaced — every time, before anything changes.</p>
+          </article>
+        </div>
+
+        <div class="note-with-mascot">
+          <div class="system-note">
+            <b>What dfpm is not.</b>
+            <p>It does not acquire or interpret evidence, manage cases, or run investigation workflows. It manages the tools you use to do those things, and nothing more.</p>
+          </div>
+          <div class="mascot mascot-aside" data-asset="assets/brix-sleeping.png" role="img" aria-label="Brix asleep on a toolbox"></div>
         </div>
       </section>
 
-      <section class="page local-page" id="installed-page">
-        <div class="local-banner"><span>◆</span><div><b>Local app preview</b><p>This page only becomes live when dfpm is running on your computer.</p></div><button class="pixel-button cream">How to run locally</button></div>
-        <div class="page-title row"><div><p class="kicker">Files managed by dfpm</p><h1>Installed tools</h1><p>See exactly where every version and command lives.</p></div><button class="pixel-button primary" id="install-tool">Install a tool</button></div>
-        <div class="location-card"><div><span class="folder-icon">▰</span><div><small>Your dfpm tools folder</small><code>C:\Users\you\AppData\Local\dfpm\tools</code><p>dfpm keeps each version in its own folder. Portable tools do not change system folders.</p></div></div><button class="pixel-button cream" data-toast="This would open the folder in the local app">Open folder</button></div>
-        <div class="plain-table"><div class="table-head"><span>Tool</span><span>Where it lives</span><span>How you run it</span><span>Status</span></div><div id="installed-rows"></div></div>
-      </section>
-
-      <section class="page local-page" id="updates-page">
-        <div class="local-banner"><span>◆</span><div><b>Local app preview</b><p>Updates are checked only when dfpm is running locally.</p></div></div>
-        <div class="page-title"><p class="kicker">You stay in control</p><h1>Tool updates</h1><p>dfpm downloads and verifies a new version without touching the one you have. Only once it is installed and working does it take over and the old version get removed. If a check fails, your working version stays.</p></div>
-        <div class="update-list"><article><div class="tool-badge gold">V</div><div><h3>Velociraptor</h3><p>0.73.4 → 0.74.1 · 142 MB download</p></div><span>Old version kept</span><button class="pixel-button cream" data-toast="Update details opened">Review update</button></article><article><div class="tool-badge silver">Σ</div><div><h3>Sigma rules</h3><p>Aug 5 → Aug 7 · 31 MB download</p></div><span>2,941 rule files</span><button class="pixel-button cream" data-toast="Update details opened">Review update</button></article></div>
-      </section>
-
-      <section class="page local-page" id="settings-page">
-        <div class="local-banner"><span>◆</span><div><b>Local app preview</b><p>These settings apply only to this computer.</p></div></div>
-        <div class="page-title"><p class="kicker">No mystery folders</p><h1>Where dfpm puts things</h1><p>Change storage before installing. Every location is shown in full.</p></div>
-        <div class="settings-list">
-          <article><div><h3>Tools and versions</h3><p>Program files owned and managed by dfpm</p></div><code>C:\Users\you\AppData\Local\dfpm\tools</code><button>Change</button></article>
-          <article><div><h3>Downloaded files</h3><p>Verified downloads that can be reused or cleared</p></div><code>C:\Users\you\AppData\Local\dfpm\cache</code><button>Change</button></article>
-          <article><div><h3>Command shortcuts</h3><p>Small launchers added to your user PATH</p></div><code>C:\Users\you\AppData\Local\dfpm\bin</code><button>Change</button></article>
-          <article><div><h3>Your settings</h3><p>Personal changes kept separate from managed files</p></div><code>C:\Users\you\AppData\Roaming\dfpm\config</code><button>Change</button></article>
+      <!-- ───────────────────────── How it works ───────────────────────── -->
+      <section class="page" id="how-page">
+        <div class="page-title">
+          <p class="kicker">The lifecycle</p>
+          <h1>From published release<br>to a working command.</h1>
+          <p>Every install follows the same five steps. If any of them fails, the step before it is left exactly as it was.</p>
         </div>
-        <div class="system-note"><b>What about system-wide installers?</b><p>Some tools require Windows installers or shared runtimes. dfpm clearly warns you before one writes outside these folders, explains what will change, and asks for permission. Regular tool updates never silently update shared system software.</p></div>
+
+        <div class="lifecycle">
+          <article><b>1</b><div><h3>The package points at an official release</h3><p>An entry names the artifact the project itself published and pins its SHA-256 and size, alongside the licence and the platform it was built for. dfpm never repackages, rebuilds or mirrors anything — what you install is the file the maintainers released.</p></div><div class="mascot mascot-step" data-asset="assets/brix-magnifier.png" role="img" aria-label="Brix inspecting with a magnifying glass"></div></article>
+          <article><b>2</b><div><h3>The artifact is fetched and verified</h3><p>Downloaded over HTTPS into a content-addressed cache and checked against the pinned SHA-256 and size. A redirect that drops out of HTTPS is refused outright.</p></div></article>
+          <article><b>3</b><div><h3>The archive is opened under limits</h3><p>Extraction is bounded by entry count, total size, per-file size and expansion ratio. Path traversal, drive letters, symlinks, encrypted entries, reserved device names and case collisions are all rejected.</p></div></article>
+          <article><b>4</b><div><h3>The result is checked before it counts</h3><p>Files land in a staging directory first. The expected entrypoints and health-check files must be present, or the whole install is discarded and nothing becomes active.</p></div></article>
+          <article><b>5</b><div><h3>Only then does it take over</h3><p>The staged version moves into place atomically, command shortcuts are rewritten, and the version it replaces is removed. A failure at any earlier point leaves your working version untouched.</p></div><div class="mascot mascot-step" data-asset="assets/brix-thumbsup.png" role="img" aria-label="Brix giving a thumbs up"></div></article>
+        </div>
+
+        <div class="dam-divider" data-asset="assets/divider-dam.png" aria-hidden="true"></div>
+
+        <div class="page-title">
+          <p class="kicker">Afterwards</p>
+          <h1>It keeps checking.</h1>
+        </div>
+
+        <div class="learn-grid">
+          <article>
+            <span>✓</span>
+            <h2>Health without side effects</h2>
+            <p><code>dfpm doctor</code> re-hashes every managed file against what was recorded at install time and reports what changed. It reads; it never repairs, moves or deletes.</p>
+          </article>
+          <article>
+            <span>▤</span>
+            <h2>A cache you can reason about</h2>
+            <p>Verified downloads are kept so a package can be reinstalled with no network at all — useful in an isolated lab, and useful years later when an upstream release has vanished. <code>dfpm cache</code> shows what is there and what still needs it.</p>
+          </article>
+        </div>
+      </section>
+
+      <!-- ───────────────────────── Catalog ───────────────────────── -->
+      <section class="page" id="catalog-page">
+        <div class="page-title row">
+          <div>
+            <p class="kicker">Available packages</p>
+            <h1>Catalog</h1>
+            <p>Each entry pins the exact artifact a project released, along with its digest. dfpm checks that digest on every install and refuses anything that does not match.</p>
+          </div>
+        </div>
+
+        <div class="local-banner">
+          <span>▲</span>
+          <div>
+            <b>The catalog is still being built out.</b>
+            <p>dfpm is in early development, so there is not much here yet. More tools are on the way.</p>
+          </div>
+          <div class="mascot mascot-inline" data-asset="assets/brix-box.png" role="img" aria-label="Brix carrying a package"></div>
+        </div>
+
+        <div class="tool-grid list" id="catalog-list"></div>
+
+        <div class="system-note">
+          <b>What an entry guarantees.</b>
+          <p>Every package names the release artifact its project published, pins that artifact's SHA-256 and size, and records the upstream project, its licence and the platform it was built for. On install, dfpm fetches it over HTTPS, refuses the download outright if the source redirects away from HTTPS, and verifies the digest before anything is extracted.</p>
+        </div>
+      </section>
+
+      <!-- ───────────────────────── Get started ───────────────────────── -->
+      <section class="page" id="start-page">
+        <div class="page-title">
+          <p class="kicker">On your computer</p>
+          <h1>Get started</h1>
+          <p>dfpm needs Python 3.11 or newer. It currently targets Windows 11 x64.</p>
+        </div>
+
+        <div class="steps">
+          <article>
+            <h3>1. Install it in its own environment</h3>
+            <pre data-copy>python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --editable .</pre>
+          </article>
+          <article>
+            <h3>2. See where it will put things</h3>
+            <pre data-copy>dfpm paths</pre>
+            <p>Nothing is written until you install a package, and everything lives under <code>%LOCALAPPDATA%\dfpm</code>.</p>
+          </article>
+          <article>
+            <h3>3. Install a package</h3>
+            <pre data-copy>dfpm catalog
+dfpm install yara</pre>
+            <p>The plan is printed first and waits for confirmation. Add <code>--yes</code> once you have reviewed it.</p>
+          </article>
+          <article>
+            <h3>4. Run it</h3>
+            <pre data-copy>dfpm run yara --version
+dfpm which yara</pre>
+            <p>dfpm does not modify your PATH. <code>dfpm run</code> removes any ambiguity about which binary executed; <code>dfpm which</code> shows you the exact file and warns if something else on your PATH would win.</p>
+          </article>
+        </div>
+
+        <div class="dam-divider" data-asset="assets/divider-dam.png" aria-hidden="true"></div>
+
+        <div class="page-title">
+          <p class="kicker">Everything else</p>
+          <h1>The full command set</h1>
+        </div>
+
+        <div class="plain-table" id="command-table"></div>
+
+        <div class="system-note">
+          <b>Honest status.</b>
+          <p>dfpm is in early development and interfaces may still change. Lockfile export, repair, release discovery and interpreter-backed packages are planned but not built — the command line ships only what is actually implemented.</p>
+        </div>
       </section>
     </main>
   </div>
 
-  <div class="drawer-shade" id="drawer-shade"></div>
-  <aside class="tool-drawer" id="tool-drawer" aria-hidden="true"><button class="drawer-close" id="drawer-close">×</button><div id="drawer-content"></div></aside>
-  <div class="modal-shade" id="modal-shade"><div class="modal"><button class="drawer-close" id="modal-close">×</button><div id="modal-content"></div></div></div>
   <div class="toast" id="toast"><span>✓</span><p></p></div>
   <script src="app.js"></script>
 </body>
