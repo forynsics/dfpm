@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import os
 import tempfile
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -14,41 +13,41 @@ def read_package(storage: Storage, package_id: str) -> dict[str, Any] | None:
     path = storage.package_state(package_id)
     if not path.exists():
         return None
-    return json.loads(path.read_text(encoding="utf-8"))
+    return _normalize(json.loads(path.read_text(encoding="utf-8")))
 
 
 def write_package(storage: Storage, package_id: str, state: dict[str, Any]) -> None:
     _atomic_json(storage.package_state(package_id), state)
 
 
+def forget_package(storage: Storage, package_id: str) -> None:
+    storage.package_state(package_id).unlink(missing_ok=True)
+
+
 def list_packages(storage: Storage) -> list[dict[str, Any]]:
     package_dir = storage.state / "packages"
     if not package_dir.exists():
         return []
-    packages = []
-    for path in sorted(package_dir.glob("*.json")):
-        packages.append(json.loads(path.read_text(encoding="utf-8")))
-    return packages
+    return [_normalize(json.loads(path.read_text(encoding="utf-8"))) for path in sorted(package_dir.glob("*.json"))]
 
 
-def export_lock(storage: Storage, destination: Path) -> dict[str, Any]:
-    packages = list_packages(storage)
-    lock = {
-        "schema_version": 1,
-        "generated_at": datetime.now(UTC).isoformat(),
-        "reproducibility": "hermetic",
-        "packages": [
-            {
-                "id": package["id"],
-                "active_version": package["active_version"],
-                "versions": package["versions"],
-            }
-            for package in packages
-        ],
-        "system_prerequisites": [],
-    }
-    _atomic_json(destination, lock)
-    return lock
+def _normalize(record: dict[str, Any]) -> dict[str, Any]:
+    """Read records written before dfpm settled on one installed version per package.
+
+    Those held a map of versions plus an active one. Flattening them here keeps an
+    existing install working, and the record is rewritten in the current shape the next
+    time the package is installed or removed.
+    """
+    if "version" in record or "versions" not in record:
+        return record
+    versions = record.get("versions") or {}
+    chosen = record.get("active_version") or (sorted(versions)[-1] if versions else None)
+    if chosen is None:
+        return record
+    flattened = {key: value for key, value in record.items() if key not in {"versions", "active_version", "activation_history"}}
+    flattened.update(versions.get(chosen, {}))
+    flattened["version"] = chosen
+    return flattened
 
 
 def _atomic_json(path: Path, data: dict[str, Any]) -> None:
@@ -64,4 +63,3 @@ def _atomic_json(path: Path, data: dict[str, Any]) -> None:
     except Exception:
         Path(temporary).unlink(missing_ok=True)
         raise
-

@@ -14,11 +14,13 @@ __pycache__/
 .env.*
 !.env.example
 AGENTS.md
+CLAUDE.md
+CLAUDE.local.md
+.claude/
 .local/
 
 # Editor and operating-system files
-.vscode/*
-!.vscode/settings.json
+.vscode/
 .idea/
 .DS_Store
 Thumbs.db
@@ -27,3 +29,12 @@ Thumbs.db
 dist/
 build/
 coverage/
+
+# dfpm's own data, in case the tool is ever pointed at this repository with --root .
+# Command shims embed absolute paths, so committing these would leak a home directory.
+/tools/
+/cache/
+/state/
+/staging/
+/bin/
+*.lock.json

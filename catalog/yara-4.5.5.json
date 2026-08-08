@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "id": "yara",
+  "name": "YARA",
+  "version": "4.5.5",
+  "kind": "tool",
+  "description": "Scan files and memory for rules that describe textual or binary patterns.",
+  "platform": {
+    "os": "windows",
+    "arch": "x64"
+  },
+  "project": {
+    "homepage": "https://virustotal.github.io/yara/",
+    "source": "https://github.com/VirusTotal/yara",
+    "license": "BSD-3-Clause"
+  },
+  "artifact": {
+    "source": "https://github.com/VirusTotal/yara/releases/download/v4.5.5/yara-4.5.5-2368-win64.zip",
+    "sha256": "352396c8a3d9b31b157a4820abd3b9347fc934a2314cdda8a4f566a5570163e4",
+    "size": 2232629
+  },
+  "install": {
+    "strategy": "portable-zip",
+    "strip_components": 0,
+    "entrypoints": [
+      {
+        "name": "yara",
+        "path": "yara64.exe"
+      },
+      {
+        "name": "yarac",
+        "path": "yarac64.exe"
+      }
+    ]
+  },
+  "health_checks": [
+    {
+      "type": "file",
+      "path": "yara64.exe"
+    },
+    {
+      "type": "file",
+      "path": "yarac64.exe"
+    }
+  ]
+}

@@ -8,8 +8,12 @@ from pathlib import Path
 from typing import Any
 
 from .errors import ManifestError
+from .names import unsafe_reason
+from .platforms import SUPPORTED_ARCHITECTURES, SUPPORTED_SYSTEMS
 
 PACKAGE_ID = re.compile(r"^[a-z0-9]+(?:[._-][a-z0-9]+)*$")
+VERSION = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$")
+ENTRYPOINT_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 SHA256 = re.compile(r"^[a-f0-9]{64}$")
 SUPPORTED_KINDS = {"tool", "runtime", "ruleset", "artifact-pack", "parser-pack", "integration", "config-pack"}
 
@@ -34,6 +38,22 @@ class HealthCheck:
 
 
 @dataclass(frozen=True)
+class Platform:
+    system: str
+    architecture: str
+
+    def __str__(self) -> str:
+        return f"{self.system}/{self.architecture}"
+
+
+@dataclass(frozen=True)
+class Project:
+    homepage: str | None
+    source: str | None
+    license: str | None
+
+
+@dataclass(frozen=True)
 class Manifest:
     schema_version: int
     id: str
@@ -45,6 +65,8 @@ class Manifest:
     strip_components: int
     entrypoints: tuple[Entrypoint, ...]
     health_checks: tuple[HealthCheck, ...]
+    platform: Platform | None
+    project: Project | None
     source_path: Path
     digest: str
 
@@ -93,7 +115,7 @@ class Manifest:
             raise ManifestError("install.strip_components must be a non-negative integer")
 
         entrypoints = tuple(
-            Entrypoint(_text(item.get("name"), "entrypoint.name"), _relative_path(item.get("path"), "entrypoint.path"))
+            Entrypoint(_command_name(item.get("name")), _relative_path(item.get("path"), "entrypoint.path"))
             for item in _object_list(install.get("entrypoints", []), "install.entrypoints")
         )
         names = [item.name for item in entrypoints]
@@ -111,13 +133,15 @@ class Manifest:
             schema_version=1,
             id=package_id,
             name=_text(data["name"], "name"),
-            version=_text(data["version"], "version"),
+            version=_version(data["version"]),
             kind=kind,
             description=_text(data["description"], "description"),
             artifact=Artifact(artifact_source, artifact_hash, size),
             strip_components=strip_components,
             entrypoints=entrypoints,
             health_checks=health_checks,
+            platform=_platform(data.get("platform")),
+            project=_project(data.get("project")),
             source_path=path,
             digest=digest,
         )
@@ -132,6 +156,63 @@ def _text(value: Any, field: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ManifestError(f"{field} must be a non-empty string")
     return value.strip()
+
+
+def _version(value: Any) -> str:
+    """Validate a version string, which also becomes an installation directory name."""
+    text = _text(value, "version")
+    if not VERSION.fullmatch(text):
+        raise ManifestError("version must start with a letter or number and use only letters, numbers, dots, plus, underscores, or hyphens")
+    reason = unsafe_reason(text)
+    if reason is not None:
+        raise ManifestError(f"version {reason}")
+    return text
+
+
+def _command_name(value: Any) -> str:
+    """Validate an entrypoint name, which also becomes a command shim file name."""
+    text = _text(value, "entrypoint.name")
+    if not ENTRYPOINT_NAME.fullmatch(text):
+        raise ManifestError("entrypoint.name must start with a letter or number and use only letters, numbers, dots, underscores, or hyphens")
+    reason = unsafe_reason(text)
+    if reason is not None:
+        raise ManifestError(f"entrypoint.name {reason}")
+    return text
+
+
+def _platform(value: Any) -> Platform | None:
+    """Read the optional platform the package was built for."""
+    if value is None:
+        return None
+    fields = _object(value, "platform")
+    system = _text(fields.get("os"), "platform.os").lower()
+    architecture = _text(fields.get("arch"), "platform.arch").lower()
+    if system not in SUPPORTED_SYSTEMS:
+        raise ManifestError(f"platform.os must be one of: {', '.join(sorted(SUPPORTED_SYSTEMS))}")
+    if architecture not in SUPPORTED_ARCHITECTURES:
+        raise ManifestError(f"platform.arch must be one of: {', '.join(sorted(SUPPORTED_ARCHITECTURES))}")
+    return Platform(system, architecture)
+
+
+def _project(value: Any) -> Project | None:
+    """Read the optional upstream project information recorded for provenance."""
+    if value is None:
+        return None
+    fields = _object(value, "project")
+    return Project(
+        homepage=_optional_url(fields.get("homepage"), "project.homepage"),
+        source=_optional_url(fields.get("source"), "project.source"),
+        license=None if fields.get("license") is None else _text(fields.get("license"), "project.license"),
+    )
+
+
+def _optional_url(value: Any, field: str) -> str | None:
+    if value is None:
+        return None
+    text = _text(value, field)
+    if not text.startswith("https://"):
+        raise ManifestError(f"{field} must be an HTTPS URL")
+    return text
 
 
 def _object(value: Any, field: str) -> dict[str, Any]:

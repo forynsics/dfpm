@@ -28,7 +28,7 @@ def acquire(artifact: Artifact, source: str, storage: Storage) -> Path:
         if source_path.is_absolute():
             shutil.copyfile(source_path, partial)
         elif parsed.scheme == "https":
-            request = urllib.request.Request(source, headers={"User-Agent": "DFPM/0.1"})
+            request = urllib.request.Request(source, headers={"User-Agent": "dfpm/0.1"})
             with urllib.request.urlopen(request, timeout=30) as response, partial.open("wb") as target:
                 if urllib.parse.urlparse(response.geturl()).scheme != "https":
                     raise VerificationError("HTTPS artifact redirected to an insecure source")
@@ -41,10 +41,11 @@ def acquire(artifact: Artifact, source: str, storage: Storage) -> Path:
             raise VerificationError("Artifact sources must use HTTPS, file URLs, or local paths")
         verify(partial, artifact)
         partial.replace(destination)
+    except VerificationError:
+        partial.unlink(missing_ok=True)
+        raise
     except (OSError, ValueError) as exc:
         partial.unlink(missing_ok=True)
-        if isinstance(exc, VerificationError):
-            raise
         raise VerificationError(f"Could not acquire artifact: {exc}") from exc
     except Exception:
         partial.unlink(missing_ok=True)
@@ -53,16 +54,25 @@ def acquire(artifact: Artifact, source: str, storage: Storage) -> Path:
 
 
 def verify(path: Path, artifact: Artifact) -> None:
-    digest = hashlib.sha256()
-    size = 0
     try:
-        with path.open("rb") as source:
-            while chunk := source.read(CHUNK_SIZE):
-                size += len(chunk)
-                digest.update(chunk)
+        digest, size = _digest_and_size(path)
     except OSError as exc:
         raise VerificationError(f"Could not read artifact: {path}") from exc
     if artifact.size is not None and size != artifact.size:
         raise VerificationError(f"Artifact size mismatch: expected {artifact.size}, received {size}")
-    if digest.hexdigest() != artifact.sha256:
+    if digest != artifact.sha256:
         raise VerificationError("Artifact SHA-256 digest does not match the manifest")
+
+
+def file_digest(path: Path) -> str:
+    return _digest_and_size(path)[0]
+
+
+def _digest_and_size(path: Path) -> tuple[str, int]:
+    digest = hashlib.sha256()
+    size = 0
+    with path.open("rb") as source:
+        while chunk := source.read(CHUNK_SIZE):
+            size += len(chunk)
+            digest.update(chunk)
+    return digest.hexdigest(), size

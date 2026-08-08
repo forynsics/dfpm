@@ -13,7 +13,7 @@ class Storage:
     def default(cls) -> "Storage":
         local_app_data = os.environ.get("LOCALAPPDATA")
         base = Path(local_app_data) if local_app_data else Path.home() / ".local" / "share"
-        return cls(base / "DFPM")
+        return cls(base / "dfpm")
 
     @property
     def tools(self) -> Path:

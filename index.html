@@ -4,15 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#ffffff">
-  <title>DFPM — Find and manage digital forensics tools</title>
-  <meta name="description" content="Explore digital forensics tools by evidence type and task. Run DFPM locally to install and manage them on your computer.">
+  <title>dfpm — Find and manage digital forensics tools</title>
+  <meta name="description" content="Explore digital forensics tools by evidence type and task. Run dfpm locally to install and manage them on your computer.">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="refinements.css">
 </head>
 <body>
   <div class="app-shell">
     <aside class="sidebar">
-      <a class="wordmark" href="#" data-page="discover"><span class="logo-mark">D</span><span><b>DFPM</b><small>Forensics tool guide</small></span></a>
+      <a class="wordmark" href="#" data-page="discover"><span class="logo-mark">d</span><span><b>dfpm</b><small>Forensics tool guide</small></span></a>
       <nav aria-label="Main navigation">
         <p class="nav-heading">Explore</p>
         <button class="nav-link active" data-page="discover"><span>⌕</span>Find tools</button>
@@ -29,8 +29,8 @@
       <div class="local-card">
         <div class="tiny-computer"><i></i><b></b></div>
         <strong>Want to manage tools?</strong>
-        <p>Download DFPM and run it on your computer to unlock installs, updates, and health checks.</p>
-        <button class="pixel-button primary" id="download-side">Download DFPM</button>
+        <p>Download dfpm and run it on your computer to unlock installs, updates, and health checks.</p>
+        <button class="pixel-button primary" id="download-side">Download dfpm</button>
       </div>
 
       <footer><span class="catalog-light"></span><div><b>Tool list is up to date</b><small>Last checked Aug 7, 2026</small></div></footer>
@@ -67,7 +67,7 @@
       </section>
 
       <section class="page" id="learn-page">
-        <div class="page-title"><p class="kicker">A plain-language field guide</p><h1>New to digital forensics?</h1><p>Start with the evidence you have. DFPM connects common evidence sources to the tools that can work with them.</p></div>
+        <div class="page-title"><p class="kicker">A plain-language field guide</p><h1>New to digital forensics?</h1><p>Start with the evidence you have. dfpm connects common evidence sources to the tools that can work with them.</p></div>
         <div class="learn-grid">
           <article><span>01</span><h2>Disk &amp; files</h2><p>Recover deleted files, inspect file systems, and identify unusual content without changing the original evidence.</p><button data-query="disk">Show disk tools →</button></article>
           <article><span>02</span><h2>Memory</h2><p>Inspect a memory capture for processes, network connections, injected code, and other traces of system activity.</p><button data-query="memory">Show memory tools →</button></article>
@@ -77,28 +77,28 @@
       </section>
 
       <section class="page local-page" id="installed-page">
-        <div class="local-banner"><span>◆</span><div><b>Local app preview</b><p>This page only becomes live when DFPM is running on your computer.</p></div><button class="pixel-button cream">How to run locally</button></div>
-        <div class="page-title row"><div><p class="kicker">Files managed by DFPM</p><h1>Installed tools</h1><p>See exactly where every version and command lives.</p></div><button class="pixel-button primary" id="install-tool">Install a tool</button></div>
-        <div class="location-card"><div><span class="folder-icon">▰</span><div><small>Your DFPM tools folder</small><code>C:\Users\you\AppData\Local\DFPM\tools</code><p>DFPM keeps each version in its own folder. Portable tools do not change system folders.</p></div></div><button class="pixel-button cream" data-toast="This would open the folder in the local app">Open folder</button></div>
+        <div class="local-banner"><span>◆</span><div><b>Local app preview</b><p>This page only becomes live when dfpm is running on your computer.</p></div><button class="pixel-button cream">How to run locally</button></div>
+        <div class="page-title row"><div><p class="kicker">Files managed by dfpm</p><h1>Installed tools</h1><p>See exactly where every version and command lives.</p></div><button class="pixel-button primary" id="install-tool">Install a tool</button></div>
+        <div class="location-card"><div><span class="folder-icon">▰</span><div><small>Your dfpm tools folder</small><code>C:\Users\you\AppData\Local\dfpm\tools</code><p>dfpm keeps each version in its own folder. Portable tools do not change system folders.</p></div></div><button class="pixel-button cream" data-toast="This would open the folder in the local app">Open folder</button></div>
         <div class="plain-table"><div class="table-head"><span>Tool</span><span>Where it lives</span><span>How you run it</span><span>Status</span></div><div id="installed-rows"></div></div>
       </section>
 
       <section class="page local-page" id="updates-page">
-        <div class="local-banner"><span>◆</span><div><b>Local app preview</b><p>Updates are checked only when DFPM is running locally.</p></div></div>
-        <div class="page-title"><p class="kicker">You stay in control</p><h1>Tool updates</h1><p>DFPM downloads a new version beside the old one, tests it, then switches over. If a check fails, your working version stays active.</p></div>
+        <div class="local-banner"><span>◆</span><div><b>Local app preview</b><p>Updates are checked only when dfpm is running locally.</p></div></div>
+        <div class="page-title"><p class="kicker">You stay in control</p><h1>Tool updates</h1><p>dfpm downloads a new version beside the old one, tests it, then switches over. If a check fails, your working version stays active.</p></div>
         <div class="update-list"><article><div class="tool-badge gold">V</div><div><h3>Velociraptor</h3><p>0.73.4 → 0.74.1 · 142 MB download</p></div><span>Old version kept</span><button class="pixel-button cream" data-toast="Update details opened">Review update</button></article><article><div class="tool-badge silver">Σ</div><div><h3>Sigma rules</h3><p>Aug 5 → Aug 7 · 31 MB download</p></div><span>2,941 rule files</span><button class="pixel-button cream" data-toast="Update details opened">Review update</button></article></div>
       </section>
 
       <section class="page local-page" id="settings-page">
         <div class="local-banner"><span>◆</span><div><b>Local app preview</b><p>These settings apply only to this computer.</p></div></div>
-        <div class="page-title"><p class="kicker">No mystery folders</p><h1>Where DFPM puts things</h1><p>Change storage before installing. Every location is shown in full.</p></div>
+        <div class="page-title"><p class="kicker">No mystery folders</p><h1>Where dfpm puts things</h1><p>Change storage before installing. Every location is shown in full.</p></div>
         <div class="settings-list">
-          <article><div><h3>Tools and versions</h3><p>Program files owned and managed by DFPM</p></div><code>C:\Users\you\AppData\Local\DFPM\tools</code><button>Change</button></article>
-          <article><div><h3>Downloaded files</h3><p>Verified downloads that can be reused or cleared</p></div><code>C:\Users\you\AppData\Local\DFPM\cache</code><button>Change</button></article>
-          <article><div><h3>Command shortcuts</h3><p>Small launchers added to your user PATH</p></div><code>C:\Users\you\AppData\Local\DFPM\bin</code><button>Change</button></article>
-          <article><div><h3>Your settings</h3><p>Personal changes kept separate from managed files</p></div><code>C:\Users\you\AppData\Roaming\DFPM\config</code><button>Change</button></article>
+          <article><div><h3>Tools and versions</h3><p>Program files owned and managed by dfpm</p></div><code>C:\Users\you\AppData\Local\dfpm\tools</code><button>Change</button></article>
+          <article><div><h3>Downloaded files</h3><p>Verified downloads that can be reused or cleared</p></div><code>C:\Users\you\AppData\Local\dfpm\cache</code><button>Change</button></article>
+          <article><div><h3>Command shortcuts</h3><p>Small launchers added to your user PATH</p></div><code>C:\Users\you\AppData\Local\dfpm\bin</code><button>Change</button></article>
+          <article><div><h3>Your settings</h3><p>Personal changes kept separate from managed files</p></div><code>C:\Users\you\AppData\Roaming\dfpm\config</code><button>Change</button></article>
         </div>
-        <div class="system-note"><b>What about system-wide installers?</b><p>Some tools require Windows installers or shared runtimes. DFPM clearly warns you before one writes outside these folders, explains what will change, and asks for permission. Regular tool updates never silently update shared system software.</p></div>
+        <div class="system-note"><b>What about system-wide installers?</b><p>Some tools require Windows installers or shared runtimes. dfpm clearly warns you before one writes outside these folders, explains what will change, and asks for permission. Regular tool updates never silently update shared system software.</p></div>
       </section>
     </main>
   </div>

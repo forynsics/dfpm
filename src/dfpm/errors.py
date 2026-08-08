@@ -1,5 +1,5 @@
 class DfpmError(Exception):
-    """A user-facing DFPM error."""
+    """A user-facing dfpm error."""
 
 
 class ManifestError(DfpmError):

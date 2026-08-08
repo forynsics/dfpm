@@ -9,7 +9,7 @@ description = "A DFIR-native toolchain manager"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "LicenseRef-Proprietary"
-authors = [{ name = "DFPM contributors" }]
+authors = [{ name = "dfpm contributors" }]
 dependencies = []
 
 [project.scripts]
@@ -17,4 +17,7 @@ dfpm = "dfpm.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+dfpm = ["web/*.html", "web/*.js", "web/*.css"]
 

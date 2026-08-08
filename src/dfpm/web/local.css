@@ -1,0 +1,72 @@
+/* Management-only additions layered on the shared dfpm visual system.
+   styles.css and refinements.css are copies of the public site's stylesheets and are
+   never edited here; tests/test_web_assets.py fails if they drift apart. */
+
+:root { --danger: #b42318; --danger-soft: #fdeceb; }
+html[data-appearance="dark"] { --danger: #f2837a; --danger-soft: #2e1917; }
+
+/* Actions sit in the third column of a list row, matching where the site puts card footers. */
+.tool-grid.list .tool-card .card-actions {
+  grid-column: 3;
+  grid-row: 1 / 4;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  min-width: 158px;
+}
+.card-actions .pixel-button { width: 100%; }
+.card-actions select {
+  width: 100%;
+  border: 1px solid var(--text);
+  border-radius: 0;
+  background: var(--white);
+  color: var(--text);
+  font: 600 12px Arial, "Helvetica Neue", Helvetica, sans-serif;
+  padding: 8px 10px;
+}
+
+.pixel-button.danger { color: var(--danger); }
+.pixel-button.danger:hover { background: var(--danger-soft); border-color: var(--danger); }
+.pixel-button:disabled { opacity: .4; cursor: not-allowed; }
+.pixel-button:disabled:hover { background: var(--white); border-color: var(--text); }
+
+.tags span.ok { color: var(--green); border-color: var(--green); }
+.tags span.bad { color: var(--danger); border-color: var(--danger); background: var(--danger-soft); }
+
+.finding-row {
+  display: grid;
+  grid-template-columns: 64px 1fr 3fr;
+  gap: 15px;
+  align-items: baseline;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.finding-row:last-child { border-bottom: 0; }
+.finding-row .mark { font: 800 9px var(--mono); letter-spacing: .08em; }
+.finding-row .mark.ok { color: var(--green); }
+.finding-row .mark.bad { color: var(--danger); }
+.finding-row b { font-size: 13px; }
+.finding-row > span:last-child { color: var(--muted); }
+
+.settings-list article.no-action { grid-template-columns: 1fr 1.4fr; }
+
+/* Square the fact grid so it matches the surrounding retro detail, and drop the doubled base border. */
+.facts { border-radius: 0; border-color: var(--text); }
+.facts div:nth-last-child(-n+2) { border-bottom: 0; }
+.modal .facts { margin-top: 16px; }
+.modal .facts + .facts { margin-top: -1px; }
+.modal .kicker { margin-bottom: 7px; }
+.modal label { display: flex; gap: 9px; align-items: flex-start; font-size: 12px; line-height: 1.5; color: var(--muted); margin-top: 16px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 24px; }
+
+.catalog-light.bad { background: var(--danger); }
+.sidebar footer b { display: block; }
+
+.empty-state { border: 1px dashed var(--text); padding: 36px; text-align: center; color: var(--muted); font-size: 14px; }
+
+/* The shared stylesheet hard-codes a light-mode grey here, which is unreadable on the dark canvas. */
+html[data-appearance="dark"] .tool-card > p { color: var(--muted); }
+html[data-appearance="dark"] .card-actions select { background: var(--panel); }
+html[data-appearance="dark"] .pixel-button:disabled:hover { background: var(--panel); }

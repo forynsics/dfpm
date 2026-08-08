@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="dfpm-token" content="__dfpm_token__">
+  <title>dfpm — Local management</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="refinements.css">
+  <link rel="stylesheet" href="local.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="wordmark"><span class="logo-mark">d</span><span><b>dfpm</b><small>Local management</small></span></div>
+      <nav aria-label="Main navigation">
+        <p class="nav-heading">On this computer</p>
+        <button class="nav-link active" data-page="installed" type="button"><span>▣</span>Installed tools</button>
+        <button class="nav-link" data-page="catalog" type="button"><span>⌕</span>Reviewed catalog</button>
+        <p class="nav-heading">Verify</p>
+        <button class="nav-link" data-page="health" type="button"><span>✓</span>Health</button>
+        <button class="nav-link" data-page="locations" type="button"><span>⚙</span>Locations</button>
+      </nav>
+
+      <button class="theme-button" id="theme-button" type="button"><span id="theme-icon">☾</span><span><b id="theme-label">Dark mode</b><small>Display preference</small></span></button>
+
+      <footer><span class="catalog-light" id="status-light"></span><div><b id="status-text">Connecting</b><small id="status-detail">Local interface</small></div></footer>
+    </aside>
+
+    <main>
+      <section class="page active" id="page-installed">
+        <div class="page-title row">
+          <div>
+            <p class="kicker">On this computer</p>
+            <h1>Installed tools</h1>
+            <p>Packages dfpm manages here. Versions sit side by side, and one is active at a time.</p>
+          </div>
+          <button class="pixel-button" id="refresh" type="button">Refresh</button>
+        </div>
+        <div class="tool-grid list" id="installed-list"></div>
+      </section>
+
+      <section class="page" id="page-catalog">
+        <div class="page-title">
+          <p class="kicker">Reviewed packages</p>
+          <h1>Catalog</h1>
+          <p>Each manifest pins an exact artifact and digest that dfpm verifies before anything is installed.</p>
+        </div>
+        <div class="tool-grid list" id="catalog-list"></div>
+      </section>
+
+      <section class="page" id="page-health">
+        <div class="page-title">
+          <p class="kicker">Read only</p>
+          <h1>Health</h1>
+          <p>Every managed file is hashed again and compared against what dfpm recorded when it was installed. Nothing is changed.</p>
+        </div>
+        <div id="health-list"></div>
+      </section>
+
+      <section class="page" id="page-locations">
+        <div class="page-title">
+          <p class="kicker">On disk</p>
+          <h1>Locations</h1>
+          <p>Where dfpm keeps managed files on this computer.</p>
+        </div>
+        <div class="settings-list" id="locations-list"></div>
+        <div class="system-note"><b>Installing never writes outside these folders.</b><p>Packages are unpacked into their own versioned directory and reached through a small command shortcut. Machine-level prerequisites are handled separately, and would be described and authorized before anything changed.</p></div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal-shade" id="modal-shade">
+    <div class="modal">
+      <button class="drawer-close" id="modal-close" type="button">×</button>
+      <p class="kicker" id="modal-kicker"></p>
+      <h2 id="modal-title"></h2>
+      <div id="modal-body"></div>
+      <div class="modal-actions">
+        <button class="pixel-button" id="modal-cancel" type="button">Cancel</button>
+        <button class="pixel-button primary" id="modal-confirm" type="button">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"><span id="toast-mark">✓</span><p id="toast-text"></p></div>
+  <script src="app.js"></script>
+</body>
+</html>
