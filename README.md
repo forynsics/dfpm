@@ -30,7 +30,7 @@ This distinction supports three honest reproducibility grades:
 
 ## Product preview
 
-This repository currently contains an interactive public catalog and local-app interface prototype. The public experience helps practitioners discover and understand tools without requiring prior knowledge of the DFIR ecosystem. Running DFPM locally will add per-computer installation and management features.
+This repository contains an interactive public catalog and the first working version of the local package-management core. The public experience helps practitioners discover and understand tools without requiring prior knowledge of the DFIR ecosystem.
 
 The current prototype covers:
 
@@ -42,7 +42,7 @@ The current prototype covers:
 - Update planning with validation and rollback safeguards.
 - A compact, accessible interface designed for clear reading on the web.
 
-The preview models reviewed lifecycle operations but does not install software or modify system prerequisites.
+The browser preview models reviewed lifecycle operations but is not connected to the Python core yet. It does not install software or modify system prerequisites.
 
 ## Current scope
 
@@ -52,7 +52,41 @@ Longer-term plans include Linux and macOS support, private and offline registrie
 
 ## Project status
 
-DFPM is in an early product and architecture phase. Interfaces, manifests, and behavior are subject to change while the core lifecycle and trust model are implemented.
+DFPM is in an early implementation phase. The Python core supports manifest validation, verified local and HTTPS artifacts, safe portable ZIP installation, isolated versions, managed-file inventory, command shims, read-only health checks, and environment lockfile export. Interfaces, manifests, and behavior remain subject to change.
+
+## Current command-line interface
+
+DFPM requires Python 3.11 or newer. Install the current development version in an isolated environment:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --editable .
+```
+
+The initial commands are:
+
+```text
+dfpm paths
+dfpm catalog
+dfpm validate <manifest.json>
+dfpm install <package-id>
+dfpm list
+dfpm doctor
+dfpm environment export <lockfile.json>
+```
+
+Installation always displays the package, source, digest, destination, and system-wide impact before making changes. Use `dfpm install <package-id> --yes` only when the plan has already been reviewed.
+
+The default Windows data locations are rooted in `%LOCALAPPDATA%\DFPM`:
+
+```text
+tools\<package-id>\<version>\  Installed package versions
+cache\sha256\                 Verified downloaded artifacts
+bin\                          Stable command shortcuts
+state\packages\               Managed-file and version records
+```
+
+See the [manifest format](docs/manifest-v1.md) for the currently supported package definition.
 
 ## Security and privacy
 
