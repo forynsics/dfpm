@@ -7,13 +7,13 @@ behind it falls back to a quiet placeholder rather than a broken image.
 
 | File | Where it appears |
 | --- | --- |
-| `brix-hero.png` | Overview hero, beside the headline |
-| `brix-clipboard.png` | Sidebar card |
-| `brix-magnifier.png` | How it works, step 1 (review) |
-| `brix-thumbsup.png` | How it works, step 5 (activate) |
+| `brix-hero.png` | Overview hero, beside the headline; README header |
+| `brix-clipboard.png` | Sidebar card, beside his name |
+| `brix-magnifier.png` | How It Works, step 1; README "why it exists" |
+| `brix-thumbsup.png` | How It Works, step 5 (the install takes over) |
 | `brix-box.png` | Catalog banner |
-| `brix-sleeping.png` | Overview, beside "what dfpm is not" |
-| `brix-laptop.png` | Unused, kept for future pages |
+| `brix-sleeping.png` | Overview, beside "what dfpm is not"; README project status |
+| `brix-laptop.png` | Get Started page, and the README |
 | `divider-dam.png` | Section dividers on three pages |
 | `parallax-far.png` | Hero, slowest layer — distant pine line |
 | `parallax-mid.png` | Hero, middle layer — evergreen forest |

@@ -1,73 +1,59 @@
-# dfpm
+<p align="center">
+  <img src="assets/brix-hero.png" alt="Brix, the dfpm mascot, holding a wrench" width="120">
+</p>
 
-dfpm is a package manager for digital forensics tools. It exists to build, freeze, repair, and reproduce known-good forensic environments.
+<h1 align="center">dfpm</h1>
 
-It is designed around one core principle: forensic tools and forensic content should be managed directly, with their exact artifacts, versions, configuration, validation results, and provenance kept under explicit control. General-purpose package managers may satisfy approved machine-level prerequisites, but they are not dfpm package sources.
+<p align="center"><strong>A package manager for digital forensics tools</strong></p>
+
+<p align="center">
+  <img src="assets/divider-dam.png" alt="" width="440">
+</p>
+
+Forensic tooling is scattered across project pages, release feeds, personal sites and word of mouth — and you have to already know a tool exists before you can go looking for it. dfpm gathers them into one catalog you can browse and install from, then keeps track of what you installed, where it went, and exactly which version is running.
+
+It installs tools straight from the releases their projects publish, pins the exact artifact and its digest, shows you the plan before it touches anything, and keeps every file in a folder it has told you about.
 
 > Build a trusted forensic toolchain without surrendering its lifecycle to a general-purpose package manager.
 
-## What dfpm is building
+dfpm does not acquire or interpret evidence, manage cases, or run investigation workflows. It manages the tools you use to do those things, and nothing more.
 
-dfpm brings three connected capabilities together:
+## Why it exists
 
-- A searchable registry organized around forensic evidence, artifacts, formats, and operations.
-- Reproducible environments with profiles, exact lockfiles, side-by-side versions, and stable entrypoints.
-- A trusted distribution layer with digest verification, provenance, health checks, repair, and rollback.
+<img align="right" width="96" src="assets/brix-magnifier.png" alt="">
 
-Packages can represent tools, isolated runtimes, rulesets, parser packs, artifact packs, integrations, and configuration packs. dfpm does not acquire or interpret evidence, manage cases, or execute investigation workflows.
+**It will not install anything it cannot verify.** Every package pins a SHA-256. The download is refused unless the bytes match exactly, and refused again if an HTTPS source quietly redirects to plain HTTP. A digest you cannot check is not provenance.
 
-## Lifecycle ownership
+**It will not leave you guessing which version ran.** One version of a package is installed at a time. Installing replaces what was there, and the old version is removed only once the new one is in place and working. No stack of folders to reason about mid-case.
 
-Forensic packages are downloaded into content-addressed storage, verified, staged in isolated version directories, validated against bounded synthetic fixtures, and only then activated. Previous working versions remain available for rollback.
+**It will not change your system behind your back.** dfpm never edits your PATH, never writes outside the folders it shows you, and deletes only files it installed and can still recognise. Anything it did not put there is preserved and reported.
 
-Machine-level prerequisites such as shared runtimes and Windows features are handled separately. dfpm detects them first, requires an explicit provider and authorization for changes, validates the resulting capability independently, and records the observed state in the environment lockfile.
+**And one thing it always does.** It prints the plan first — package, version, platform, licence, source, digest, destination, and what will be replaced — every time, before anything changes.
 
-This distinction supports three honest reproducibility grades:
+## How it works
 
-- **Hermetic:** all relevant bytes are managed by dfpm.
-- **Pinned external:** external prerequisites are constrained and recorded.
-- **Observed external:** required system state is detected but cannot be reproduced exactly.
+Every install follows the same five steps. If any of them fails, the step before it is left exactly as it was.
 
-## Product preview
+1. **The package points at an official release.** An entry names the artifact the project itself published and pins its SHA-256 and size, alongside the licence and the platform it was built for. dfpm never repackages, rebuilds or mirrors anything.
+2. **The artifact is fetched and verified.** Downloaded over HTTPS into a content-addressed cache and checked against the pinned digest and size. A redirect that drops out of HTTPS is refused outright.
+3. **The archive is opened under limits.** Extraction is bounded by entry count, total size, per-file size and expansion ratio. Path traversal, drive letters, symlinks, encrypted entries, reserved device names and case collisions are all rejected.
+4. **The result is checked before it counts.** Files land in a staging directory first. The expected entrypoints and health-check files must be present, or the whole install is discarded and nothing becomes active.
+5. **Only then does it take over.** The staged version moves into place atomically, command shortcuts are rewritten, and the version it replaces is removed.
 
-This repository contains an interactive public catalog and the first working version of the local package-management core. The public experience helps practitioners discover and understand tools without requiring prior knowledge of the DFIR ecosystem.
+<p align="center">
+  <img src="assets/divider-dam.png" alt="" width="440">
+</p>
 
-The current prototype covers:
+## Get started
 
-- Plain-language, artifact-first tool discovery.
-- Curated starter kits for common investigation tasks.
-- Introductory guides organized by evidence type.
-- Explicit install, cache, command, and configuration locations.
-- Installed versions and health status in local mode.
-- Update planning with validation and rollback safeguards.
-- A compact, accessible interface designed for clear reading on the web.
+<img align="right" width="110" src="assets/brix-laptop.png" alt="">
 
-The browser preview models reviewed lifecycle operations but is not connected to the Python core yet. It does not install software or modify system prerequisites.
-
-## Current scope
-
-The initial target is Windows 11 x64, with portable tools prioritized for strong isolation and rollback. Planned package sources include reviewed GitHub releases, fixed HTTPS and local artifacts, ZIP/7z archives, MSI packages, and conventional EXE installers.
-
-Longer-term plans include Linux and macOS support, private and offline registries, signed repository snapshots, organization policy, validation infrastructure, and stable catalog and inventory APIs.
-
-## Project status
-
-dfpm is in an early implementation phase. The Python core supports manifest validation, verified local and HTTPS artifacts, bounded portable ZIP installation, replacing installs, conservative removal, a manageable download cache, owned command shims, and read-only health checks. Interfaces, manifests, and behavior remain subject to change.
-
-Lockfile export, repair, release discovery, executable health checks, and interpreter-backed packages are planned but not built. The command line ships only what is actually implemented.
-
-The `catalog/` directory holds reviewed manifests. It currently contains one package, YARA 4.5.5 for Windows x64, pinned to its official release artifact and digest. See [catalog/README.md](catalog/README.md) for how a package is reviewed before it is added.
-
-## Current command-line interface
-
-dfpm requires Python 3.11 or newer. Install the current development version in an isolated environment:
+dfpm requires Python 3.11 or newer and currently targets Windows 11 x64.
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --editable .
 ```
-
-The initial commands are:
 
 ```text
 dfpm paths
@@ -86,31 +72,19 @@ dfpm doctor
 
 Going back to an older release is the same command with a version: `dfpm install yara --package-version 4.5.4`. That is usually instant and needs no network, because the artifact is already in the verified cache.
 
-Installation always displays the package, the version being replaced, platform, license, upstream project, source, digest, destination, and system-wide impact before making changes. A package that declares a platform is refused outright on a machine that does not match it. Use `--yes` only when the plan has already been reviewed.
+Installation always displays the package, the version being replaced, platform, licence, upstream project, source, digest, destination, and system-wide impact before making changes. A package that declares a platform is refused outright on a machine that does not match it. Use `--yes` only when the plan has already been reviewed.
 
-Every archive is extracted under fixed size, entry-count, and expansion limits, and unsafe entries are rejected outright. See the [manifest format](docs/manifest-v1.md) for the full list.
+Removal is equally explicit. `dfpm uninstall` previews everything dfpm owns, then deletes only the files it recorded at install time and can still recognise. Files it did not install, and managed files whose contents have changed since installation, are preserved and reported rather than deleted.
 
-Removal is equally explicit. `dfpm uninstall` previews everything dfpm owns, then deletes only the files it recorded at install time and can still recognize. Files it did not install, and managed files whose contents have changed since installation, are preserved and reported rather than deleted.
+## The catalog
 
-## The verified download cache
+<img align="right" width="100" src="assets/brix-box.png" alt="">
 
-Every artifact dfpm downloads is verified and then kept in a content-addressed cache, named by its own SHA-256. Keeping it is not about the uninstall-then-reinstall case, which is rare. It earns its disk for four reasons that matter to forensic work:
+The `catalog/` directory holds the manifests dfpm can install from. Each one names the release artifact its project published, pins that artifact's SHA-256 and size, and records the upstream project, its licence and the platform it was built for.
 
-- **Offline and air-gapped installs.** Populate the cache on a connected machine, copy the directory to an isolated one, and install with no network at all.
-- **Upstream is not permanent.** Release assets get deleted and versions get yanked. A pinned digest is worthless without the bytes, and re-running an analysis years later needs the exact version that was used at the time.
-- **Repair without a download.** A damaged install can be rebuilt from the artifact already proven to match its digest.
-- **Provenance.** The cached file is literally the bytes that were verified and installed.
+It currently contains one package, **YARA 4.5.5 for Windows x64**. dfpm is in early development, so the catalog is still being built out. See [catalog/README.md](catalog/README.md) for what goes into an entry.
 
-`dfpm cache` keeps that from growing without bound:
-
-```powershell
-dfpm cache list      # every artifact, its size, and what still needs it
-dfpm cache verify    # re-hash each one; the name is the digest, so a mismatch means corruption
-dfpm cache prune     # remove everything no installed package needs, and interrupted downloads
-dfpm cache remove <digest>
-```
-
-`prune` clears everything no installed package needs, which is the behaviour `apt clean` gives you and needs no flags for the common case. If you are seeding a cache for offline installs, `--keep-catalog` narrows it to artifacts no manifest lists either, and in that mode a catalog that cannot be read makes `prune` refuse rather than treat everything as unused. `remove` refuses a digest an installed package still depends on unless you pass `--force`, and files dfpm does not recognize are reported and left alone, exactly as they are during uninstall.
+Every archive is extracted under fixed size, entry-count and expansion limits, and unsafe entries are rejected outright. See the [manifest format](docs/manifest-v1.md) for the full list.
 
 ## Running installed tools
 
@@ -123,7 +97,7 @@ dfpm run yara --version
 dfpm run yara rules.yar C:\evidence\collected
 ```
 
-It looks up the command in the active version of each installed package, runs that exact file, and passes your arguments through as a real argument list. Its exit code is the tool's exit code, so it composes normally in scripts. `dfpm which` shows what a command resolves to before you run it:
+It looks up the command among the installed packages, runs that exact file, and passes your arguments through as a real argument list. Its exit code is the tool's exit code, so it composes normally in scripts. `dfpm which` shows what a command resolves to before you run it:
 
 ```text
 yara -> C:\Users\you\AppData\Local\dfpm\tools\yara\4.5.5\yara64.exe
@@ -144,13 +118,31 @@ $new  = if ([string]::IsNullOrEmpty($user)) { $bin } else { "$bin;$user" }
 
 Two cautions if you do. Do not use `setx` for this: it silently truncates PATH at 1024 characters and has destroyed many people's environments. And if your user PATH already contains `%VARIABLE%` references, edit it through the Windows *Environment Variables* dialog instead, because the API above rewrites the value as literal text and those references would stop expanding. Either way the change only affects newly opened terminals.
 
-Putting the directory first, as above, means dfpm's tools win. That is usually what you want from a toolchain manager, but it does mean a `yara` installed by something else is shadowed. Windows resolves a bare command by scanning PATH left to right, and within one directory it tries extensions in `PATHEXT` order — where `.EXE` comes before `.CMD` — so another tool's `yara.exe` earlier on PATH would win over dfpm's `yara.cmd`. `dfpm which` reports when that is happening.
+Putting the directory first means dfpm's tools win. That is usually what you want from a toolchain manager, but it does mean a `yara` installed by something else is shadowed. Windows resolves a bare command by scanning PATH left to right, and within one directory it tries extensions in `PATHEXT` order — where `.EXE` comes before `.CMD` — so another tool's `yara.exe` earlier on PATH would win over dfpm's `yara.cmd`. `dfpm which` reports when that is happening.
 
 The third option is simply to invoke the full path shown by `dfpm which`, which is what the command shortcut does internally.
 
+## The verified download cache
+
+Every artifact dfpm downloads is verified and then kept in a content-addressed cache, named by its own SHA-256. Keeping it is not about the uninstall-then-reinstall case, which is rare. It earns its disk for four reasons that matter to forensic work:
+
+- **Offline and air-gapped installs.** Populate the cache on a connected machine, copy the directory to an isolated one, and install with no network at all.
+- **Upstream is not permanent.** Release assets get deleted and versions get yanked. A pinned digest is worthless without the bytes, and re-running an analysis years later needs the exact version that was used at the time.
+- **Repair without a download.** A damaged install can be rebuilt from the artifact already proven to match its digest.
+- **Provenance.** The cached file is literally the bytes that were verified and installed.
+
+```powershell
+dfpm cache list      # every artifact, its size, and what still needs it
+dfpm cache verify    # re-hash each one; the name is the digest, so a mismatch means corruption
+dfpm cache prune     # remove everything no installed package needs, and interrupted downloads
+dfpm cache remove <digest>
+```
+
+`prune` clears everything no installed package needs, which is the behaviour `apt clean` gives you and needs no flags for the common case. If you are seeding a cache for offline installs, `--keep-catalog` narrows it to artifacts no manifest lists either, and in that mode a catalog that cannot be read makes `prune` refuse rather than treat everything as unused. `remove` refuses a digest an installed package still depends on unless you pass `--force`, and files dfpm does not recognise are reported and left alone, exactly as they are during uninstall.
+
 ## Local interface
 
-`dfpm gui` serves a management interface backed by the same core the command line uses, then opens it in a browser. It lists installed packages, browses the reviewed catalog, shows health results, and performs installs, updates, and removal. Every change shows the same plan the command line prints and waits for confirmation.
+`dfpm gui` serves a management interface backed by the same core the command line uses, then opens it in a browser. It lists installed packages, browses the catalog, shows health results, and performs installs, updates and removal. Every change shows the same plan the command line prints and waits for confirmation.
 
 The interface is built for a single local operator, not for shared or remote use:
 
@@ -164,18 +156,28 @@ dfpm gui --port 8765          # default; use --port 0 to take any free port
 dfpm gui --no-browser         # start the server without opening a browser
 ```
 
-The interface shares the public site's visual system: `src/dfpm/web/styles.css` and `refinements.css` are byte-identical copies of the root stylesheets, and interface-only rules live in `local.css`. A test fails if the copies drift, so the two surfaces cannot quietly diverge. The root `index.html` remains a public catalog preview with illustrative data and is not connected to the Python core.
+There are two web surfaces and they share one visual system. `src/dfpm/web/` is the local interface above; `index.html` at the repository root is the public site, which explains dfpm and browses the catalog but installs nothing. `styles.css` and `refinements.css` are byte-identical in both, and a test fails if the copies drift.
 
 The default Windows data locations are rooted in `%LOCALAPPDATA%\dfpm`:
 
 ```text
-tools\<package-id>\<version>\  Installed package versions
+tools\<package-id>\<version>\  The installed version
 cache\sha256\                 Verified downloaded artifacts
-bin\                          Stable command shortcuts
-state\packages\               Managed-file and version records
+bin\                          Command shortcuts
+state\packages\               Managed-file records
 ```
 
-See the [manifest format](docs/manifest-v1.md) for the currently supported package definition.
+## Project status
+
+<img align="right" width="96" src="assets/brix-sleeping.png" alt="">
+
+dfpm is in early development. Interfaces, manifests and behaviour remain subject to change, and the command line ships only what is actually implemented.
+
+**Working today:** manifest validation, verified local and HTTPS artifacts, bounded portable ZIP installation, replacing installs, conservative removal, a manageable download cache, command shortcuts and `dfpm run`, a loopback management interface, and read-only health checks.
+
+**Not built yet:** lockfile export, repair, release discovery, executable health checks, a `dfpm search` command, and packages that need an interpreter such as Python, Perl or Java. Linux and macOS support, private and offline registries, signed repository snapshots and organisation policy are longer-term.
+
+Packages may eventually represent tools, isolated runtimes, rulesets, parser packs, artifact packs, integrations and configuration packs. Today only portable ZIP tools are supported.
 
 ## Security and privacy
 
@@ -184,3 +186,11 @@ Telemetry is disabled by default. dfpm is not intended to receive evidence, case
 ## License
 
 Licensing terms have not yet been selected. Until a license is added, the repository remains all rights reserved.
+
+<p align="center">
+  <img src="assets/divider-dam.png" alt="" width="440">
+</p>
+
+<p align="center">
+  <sub><strong>Brix</strong> · Chief Package Officer</sub>
+</p>

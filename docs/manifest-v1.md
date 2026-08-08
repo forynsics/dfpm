@@ -77,17 +77,17 @@ Every archive is extracted under fixed bounds, and any entry that breaks one of 
 - No duplicate paths, and no paths that differ only by capitalization, since NTFS would silently merge them.
 - Every extracted file must match the size recorded in its own header.
 
-## Activation behavior
+## Installation behavior
 
-dfpm downloads into a content-addressed cache, verifies the artifact, extracts into a staging directory, validates expected files, and only then moves the version into its final directory and records it as active. An interrupted or invalid staged install does not become active.
+dfpm downloads into a content-addressed cache, verifies the artifact, extracts into a staging directory, validates expected files, and only then moves the version into its final directory and records it. An interrupted or invalid staged install never becomes the installed version.
 
 One version of a package is installed at a time. Installing a different version replaces the current one, and the version being replaced is removed only after the new one is in place and its command shortcuts are working, so a failed install leaves the previous version untouched. Returning to an earlier release is `dfpm install <package> --package-version <version>`, which normally needs no network because the artifact is still in the verified cache.
 
-Command shims are derived from the active version's recorded entrypoints and rewritten atomically on every change. Each shim carries a `@rem dfpm-shim` marker on its first line: dfpm only ever replaces or removes files carrying that marker, and refuses to install when a command name is already claimed by another package or by a file it does not own.
+Command shims are derived from the installed version's recorded entrypoints and rewritten atomically on every change. Each shim carries a `@rem dfpm-shim` marker on its first line: dfpm only ever replaces or removes files carrying that marker, and refuses to install when a command name is already claimed by another package or by a file it does not own.
 
 ## Removal behavior
 
-`dfpm uninstall <package>` removes every installed version, and `--package-version` removes one. Removal always prints what dfpm owns before touching anything, and it deletes only files it recorded at install time and can still recognize:
+`dfpm uninstall <package>` removes the installed version. Removal always prints what dfpm owns before touching anything, and it deletes only files it recorded at install time and can still recognize:
 
 - A recorded file whose digest still matches is removed.
 - A recorded file whose contents changed is kept, because dfpm did not write the bytes that are there now. `--force` removes these as well.
@@ -95,4 +95,4 @@ Command shims are derived from the active version's recorded entrypoints and rew
 - Any file dfpm did not install is kept, and the directories holding it are kept with it.
 - Directories are removed only once they are empty.
 
-Verified downloads stay in the content-addressed cache so a package can be reinstalled without network access. Removing the active version promotes the most recently active surviving version, or the highest remaining one, and re-points its command shims. Because preserved files keep the version directory alive, reinstalling that same version is refused until the leftover directory is reviewed and moved.
+Verified downloads stay in the content-addressed cache so a package can be reinstalled without network access. Because preserved files keep the version directory alive, reinstalling that same version is refused until the leftover directory is reviewed and moved.
