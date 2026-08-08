@@ -35,7 +35,7 @@
   text-transform: uppercase;
 }
 
-.mascot-hero { width: 100%; max-width: 208px; aspect-ratio: 614 / 723; margin-inline: auto; }
+.mascot-hero { width: 100%; max-width: 158px; aspect-ratio: 614 / 723; margin-inline: auto; }
 .mascot-small { width: 64px; height: 70px; margin-bottom: 10px; }
 .mascot-step { width: 78px; height: 88px; align-self: center; background-position: center; }
 .mascot-inline { width: 64px; height: 72px; flex: 0 0 64px; background-position: center; }
@@ -78,12 +78,12 @@
 .layer-far { background-size: 92% auto; opacity: .5; }
 .layer-mid { background-size: 106% auto; opacity: .68; }
 .layer-near { background-size: 124% auto; opacity: .9; }
-.hero .intro-grid { position: relative; z-index: 1; align-items: end; }
+.hero .intro-grid { position: relative; z-index: 1; align-items: center; }
 
 .hero-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 26px; }
 
-/* Brix stands on the riverbank rather than floating beside the headline. */
-.hero-mascot { display: grid; place-items: end center; position: relative; z-index: 2; margin-bottom: -104px; }
+/* Brix sits alongside the paragraph rather than looming over the scene. */
+.hero-mascot { display: grid; place-items: center; position: relative; z-index: 2; }
 
 /* ── woodland divider ─────────────────────────────────────────────── */
 
