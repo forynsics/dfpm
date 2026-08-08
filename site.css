@@ -44,8 +44,24 @@
 .note-with-mascot { display: flex; align-items: center; gap: 22px; }
 .note-with-mascot .system-note { flex: 1; margin-top: 0; }
 .local-banner .mascot-inline { margin-left: auto; }
-.mascot-caption { font: 10px var(--mono); color: var(--muted); margin: 0 0 12px; letter-spacing: .02em; }
-.mascot-caption b { color: var(--text); letter-spacing: .04em; }
+/* Brix speaks for the sidebar card: sprite, line, attribution. */
+.brix-quote {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  margin: 14px 0 16px;
+  padding-top: 13px;
+  border-top: 1px solid var(--border);
+}
+.brix-quote blockquote {
+  margin: 0;
+  font: italic 13px/1.5 Georgia, "Times New Roman", serif;
+  color: var(--text);
+  text-align: center;
+  text-wrap: balance;
+}
+.brix-quote figcaption { font: 9px var(--mono); color: var(--muted); letter-spacing: .05em; }
+.brix-quote figcaption b { color: var(--text); }
 
 /* ── hero ─────────────────────────────────────────────────────────── */
 
@@ -80,6 +96,9 @@
 .layer-near { background-size: 124% auto; opacity: .9; }
 .hero .intro-grid { position: relative; z-index: 1; align-items: center; }
 
+/* Let the headline find its own line breaks rather than forcing one that only
+   works at a single width. */
+.hero h1 { text-wrap: balance; }
 .hero-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 26px; }
 
 /* Brix sits alongside the paragraph rather than looming over the scene. */
