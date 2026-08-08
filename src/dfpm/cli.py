@@ -16,7 +16,7 @@ from .storage import Storage
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="dfpm", description="Find and manage digital forensics tools.")
+    parser = argparse.ArgumentParser(prog="dfpm", description="A package manager for digital forensics tools.")
     parser.add_argument("--version", action="version", version=f"dfpm {__version__}")
     parser.add_argument("--root", type=Path, help="Override the dfpm data directory.")
     parser.add_argument("--catalog", type=Path, default=Path("catalog"), help="Directory containing package manifests.")

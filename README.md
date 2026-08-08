@@ -1,10 +1,10 @@
 # dfpm
 
-dfpm is a DFIR-native toolchain manager for building, freezing, repairing, and reproducing known-good forensic environments.
+dfpm is a package manager for digital forensics tools. It exists to build, freeze, repair, and reproduce known-good forensic environments.
 
-It is designed around one core principle: forensic tools and forensic content should be managed directly, with their exact artifacts, versions, configuration, validation results, and provenance kept under explicit control. Generic package managers may satisfy approved machine-level prerequisites, but they are not dfpm package sources.
+It is designed around one core principle: forensic tools and forensic content should be managed directly, with their exact artifacts, versions, configuration, validation results, and provenance kept under explicit control. General-purpose package managers may satisfy approved machine-level prerequisites, but they are not dfpm package sources.
 
-> Build a trusted forensic toolchain without surrendering its lifecycle to a generic package manager.
+> Build a trusted forensic toolchain without surrendering its lifecycle to a general-purpose package manager.
 
 ## What dfpm is building
 
