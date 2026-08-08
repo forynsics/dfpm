@@ -36,32 +36,21 @@
 }
 
 .mascot-hero { width: 100%; max-width: 158px; aspect-ratio: 614 / 723; margin-inline: auto; }
-.mascot-small { width: 64px; height: 70px; margin-bottom: 10px; }
+.mascot-small { width: 52px; height: 57px; flex: 0 0 52px; background-position: center; }
 .mascot-step { width: 78px; height: 88px; align-self: center; background-position: center; }
+.mascot-page { width: 108px; height: 106px; flex: 0 0 108px; background-position: center; }
+
+/* Brix and his title, as a small badge at the top of the sidebar card. */
+.brix-badge { display: flex; align-items: center; gap: 11px; margin-bottom: 4px; }
+.brix-badge p { display: grid; gap: 2px; margin: 0; }
+.brix-badge b { font: 700 12px var(--mono); letter-spacing: .04em; color: var(--text); }
+.brix-badge span { font: 9px var(--mono); color: var(--muted); letter-spacing: .03em; }
 .mascot-inline { width: 64px; height: 72px; flex: 0 0 64px; background-position: center; }
 .mascot-aside { width: 132px; height: 118px; background-position: center; flex: 0 0 132px; }
 
 .note-with-mascot { display: flex; align-items: center; gap: 22px; }
 .note-with-mascot .system-note { flex: 1; margin-top: 0; }
 .local-banner .mascot-inline { margin-left: auto; }
-/* Brix speaks for the sidebar card: sprite, line, attribution. */
-.brix-quote {
-  display: grid;
-  justify-items: center;
-  gap: 7px;
-  margin: 14px 0 16px;
-  padding-top: 13px;
-  border-top: 1px solid var(--border);
-}
-.brix-quote blockquote {
-  margin: 0;
-  font: italic 13px/1.5 Georgia, "Times New Roman", serif;
-  color: var(--text);
-  text-align: center;
-  text-wrap: balance;
-}
-.brix-quote figcaption { font: 9px var(--mono); color: var(--muted); letter-spacing: .05em; }
-.brix-quote figcaption b { color: var(--text); }
 
 /* ── hero ─────────────────────────────────────────────────────────── */
 
@@ -99,6 +88,10 @@
 /* Let the headline find its own line breaks rather than forcing one that only
    works at a single width. */
 .hero h1 { text-wrap: balance; }
+
+/* The wordmark is lowercase and easily lost mid-sentence; italic lifts it out
+   without shouting. */
+.brand { font-style: italic; font-weight: 600; color: var(--text); }
 .hero-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 26px; }
 
 /* Brix sits alongside the paragraph rather than looming over the scene. */
@@ -211,7 +204,7 @@ html[data-appearance="dark"] .tool-card > p { color: var(--muted); }
 }
 @media (max-width: 760px) {
   .lifecycle article { grid-template-columns: 1fr; gap: 12px; }
-  .mascot-step, .mascot-aside { display: none; }
+  .mascot-step, .mascot-aside, .mascot-page { display: none; }
   .note-with-mascot { flex-direction: column; }
   .command-row { grid-template-columns: 1fr; gap: 6px; }
   .steps pre { padding-right: 16px; padding-top: 44px; }
