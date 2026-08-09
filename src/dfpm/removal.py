@@ -8,7 +8,7 @@ from pathlib import Path
 from . import shims
 from .errors import InstallError
 from .inventory import forget_package, read_package
-from .storage import Storage, remove_tree
+from .storage import Storage, first_unremovable_file, remove_tree
 
 METADATA_NAME = ".dfpm-install.json"
 
@@ -61,13 +61,25 @@ def plan(storage: Storage, package_id: str) -> RemovalPlan:
 
 
 def execute(storage: Storage, removal_plan: RemovalPlan) -> None:
-    """Remove the version directory, then the command shortcuts it owned."""
-    if removal_plan.root.exists() and not remove_tree(removal_plan.root):
-        raise InstallError(
-            f"Could not remove {removal_plan.root}. A file there is still in use by another program. "
-            "Close anything reading from that directory and run the removal again; "
-            "everything already deleted stays deleted, so running it again picks up where it stopped."
-        )
+    """Remove the version directory, then the command shortcuts it owned.
+
+    The order matters. Files go first and the record is forgotten only once they
+    are gone, so a removal that fails half way leaves dfpm still knowing about
+    the package rather than believing it removed something it did not.
+    """
+    if removal_plan.root.exists():
+        if not storage.contains_package(removal_plan.root):
+            raise InstallError(
+                f"Refusing to remove {removal_plan.root}: it is not a package directory inside {storage.tools}"
+            )
+        if not remove_tree(removal_plan.root):
+            stuck = first_unremovable_file(removal_plan.root)
+            detail = f"\n  {stuck}" if stuck else ""
+            raise InstallError(
+                f"Could not remove {removal_plan.root}. A file there is in use by another program:{detail}\n"
+                "Close whatever is reading it and run the removal again. Everything already deleted stays "
+                "deleted, so a second run picks up where this one stopped."
+            )
     forget_package(storage, removal_plan.package)
     shims.reconcile(storage)
     with contextlib.suppress(OSError):

@@ -9,23 +9,52 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
+from .names import checked_package_id, checked_version
+
 TREE_REMOVAL_DELAYS = (0, 0.1, 0.3, 1.0)
 
 
-def _make_writable(action, path: str, _exception) -> None:
+def _make_writable(action, path: str, exception: BaseException) -> None:
     """Clear a read-only flag and try the delete again.
 
-    Read-only files are common inside real packages — git marks its pack files
-    that way because they are immutable, so any tool shipping a checkout brings
-    some along. On Windows a read-only file cannot be deleted at all, and no
-    amount of waiting changes that, so the flag has to be cleared rather than
-    retried around.
+    Read-only files are common inside real packages — version control marks its
+    pack files that way because they are immutable, so any tool shipping a
+    checkout brings some along. On Windows a read-only file cannot be deleted at
+    all, and no amount of waiting changes that, so the flag has to be cleared
+    rather than retried around.
+
+    Only that one condition is handled. Anything else is raised on unchanged: a
+    delete failing for a reason nobody predicted should stop and be reported,
+    not be forced past. A handler that swallows every error is how a package
+    manager ends up deleting something it should not have.
     """
+    if not isinstance(exception, PermissionError):
+        raise exception
     try:
-        os.chmod(path, stat.S_IWRITE)
+        # Add write permission rather than replacing the mode, so nothing else
+        # about the file is changed on the way to removing it.
+        os.chmod(path, os.stat(path).st_mode | stat.S_IWRITE)
     except OSError:
-        return
+        raise exception from None
     action(path)
+
+
+def first_unremovable_file(root: Path) -> Path | None:
+    """Find a file under *root* that cannot be opened for writing.
+
+    Only ever called after a removal has already failed, so walking the whole
+    tree costs nothing that matters, and naming the file saves the user hunting
+    for it.
+    """
+    for directory, _, names in os.walk(root):
+        for name in names:
+            path = Path(directory) / name
+            try:
+                handle = os.open(path, os.O_RDWR)
+            except OSError:
+                return path
+            os.close(handle)
+    return None
 
 
 def _rmtree(path: Path) -> None:
@@ -97,10 +126,27 @@ class Storage:
         return self.root / "bin"
 
     def package_version(self, package_id: str, version: str) -> Path:
-        return self.tools / package_id / version
+        return self.tools / checked_package_id(package_id) / checked_version(version)
 
     def package_state(self, package_id: str) -> Path:
-        return self.state / "packages" / f"{package_id}.json"
+        return self.state / "packages" / f"{checked_package_id(package_id)}.json"
+
+    def contains_package(self, path: Path) -> bool:
+        """Whether *path* is a package directory this store owns.
+
+        The check is the positive one — resolved, strictly beneath the tools
+        directory, and exactly two levels down at <id>/<version>. Listing paths
+        that must not be deleted would be an endless list that still missed the
+        case nobody thought of.
+        """
+        try:
+            target = path.resolve()
+            store = self.tools.resolve()
+        except OSError:
+            return False
+        if target == store or store not in target.parents:
+            return False
+        return len(target.relative_to(store).parts) == 2
 
     def initialize(self) -> None:
         for directory in (self.tools, self.cache, self.state / "packages", self.bin):

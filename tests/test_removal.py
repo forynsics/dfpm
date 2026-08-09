@@ -2,16 +2,17 @@ from __future__ import annotations
 
 import os
 import stat
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
 from dfpm import removal
-from dfpm.errors import InstallError
+from dfpm.errors import DfpmError, InstallError
 from dfpm.installer import install
 from dfpm.inventory import read_package
 from dfpm.manifest import Manifest
-from dfpm.storage import Storage
+from dfpm.storage import Storage, remove_tree
 from tests.helpers import create_package
 
 
@@ -106,7 +107,7 @@ class RemovalTests(unittest.TestCase):
             self.assertRaises(InstallError) as caught,
         ):
             removal.execute(self.storage, plan)
-        self.assertIn("still in use", str(caught.exception))
+        self.assertIn("in use by another program", str(caught.exception))
         # The record survives, so the package is not silently forgotten.
         self.assertIsNotNone(read_package(self.storage, "example.tool"))
 
@@ -138,6 +139,82 @@ class ReadOnlyFileTests(unittest.TestCase):
         _, second = create_package(self.base, version="1.1.0")
         install(Manifest.load(second), self.storage)
         self.assertFalse(old.exists(), "the superseded version is still removed")
+
+
+class RemovalSafetyTests(unittest.TestCase):
+    """Recursive deletion is the one place a bug is unrecoverable."""
+
+    def setUp(self) -> None:
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.storage = Storage(self.base / "dfpm-data")
+        self.storage.initialize()
+
+    def test_a_package_name_that_climbs_out_is_refused(self) -> None:
+        # A removal takes its package name from a command line or an API
+        # request, neither of which has been near a manifest.
+        for attempt in ("../../escape", "..\..\escape", "/etc/passwd", ".."):
+            with self.assertRaises(DfpmError, msg=attempt):
+                self.storage.package_state(attempt)
+            with self.assertRaises(DfpmError, msg=attempt):
+                self.storage.package_version(attempt, "1.0.0")
+
+    def test_a_version_that_climbs_out_is_refused(self) -> None:
+        with self.assertRaises(DfpmError):
+            self.storage.package_version("example.tool", "../../..")
+
+    def test_only_a_package_directory_counts_as_inside_the_store(self) -> None:
+        tools = self.storage.tools
+        self.assertTrue(self.storage.contains_package(tools / "example.tool" / "1.0.0"))
+        # The store itself, a package folder holding versions, and anything
+        # above or beside it are all refused.
+        self.assertFalse(self.storage.contains_package(tools))
+        self.assertFalse(self.storage.contains_package(tools / "example.tool"))
+        self.assertFalse(self.storage.contains_package(tools.parent))
+        self.assertFalse(self.storage.contains_package(self.base / "elsewhere"))
+        self.assertFalse(self.storage.contains_package(tools / "a" / "b" / "c"))
+
+    def test_execute_refuses_a_target_outside_the_store(self) -> None:
+        outside = self.base / "important"
+        outside.mkdir()
+        (outside / "evidence.txt").write_text("keep", encoding="utf-8")
+        plan = removal.RemovalPlan(
+            package="example.tool", name="Example", version="1.0.0", root=outside,
+            file_count=1, total_size=4, installed_count=1, installed_size=4, commands=(),
+        )
+        with self.assertRaises(InstallError) as caught:
+            removal.execute(self.storage, plan)
+        self.assertIn("Refusing to remove", str(caught.exception))
+        self.assertTrue((outside / "evidence.txt").is_file())
+
+    def test_a_junction_is_removed_without_touching_what_it_points_at(self) -> None:
+        # Windows junctions are not symlinks and are easy to get wrong. If a
+        # removal ever followed one it would delete an unrelated directory.
+        if os.name != "nt":
+            self.skipTest("junctions are a Windows construct")
+        outside = self.base / "outside"
+        outside.mkdir()
+        (outside / "evidence.txt").write_text("precious", encoding="utf-8")
+        package = self.storage.package_version("example.tool", "1.0.0")
+        package.mkdir(parents=True)
+        (package / "tool.txt").write_text("package file", encoding="utf-8")
+        created = subprocess.run(
+            ["cmd", "/c", "mklink", "/J", str(package / "linked"), str(outside)],
+            capture_output=True, text=True,
+        )
+        if created.returncode != 0:
+            self.skipTest(f"could not create a junction: {created.stdout}{created.stderr}")
+
+        self.assertTrue(remove_tree(package))
+        self.assertFalse(package.exists())
+        self.assertTrue((outside / "evidence.txt").is_file(), "the junction target survived")
+
+    def test_an_unexpected_error_is_not_forced_past(self) -> None:
+        # The read-only handler must not become a catch-all that deletes
+        # through problems nobody predicted.
+        from dfpm.storage import _make_writable
+
+        with self.assertRaises(OSError):
+            _make_writable(lambda path: None, "somewhere", OSError("disk on fire"))
 
 
 if __name__ == "__main__":
