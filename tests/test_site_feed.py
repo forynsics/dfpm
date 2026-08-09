@@ -8,8 +8,9 @@ from dfpm.catalog import INDEX_NAME, SHIPPED, build_index, describe, load_catalo
 from dfpm.classification import vocabulary
 
 REPOSITORY = Path(__file__).resolve().parents[1]
-FEED = REPOSITORY / "catalog.json"
-REGENERATE = "Regenerate it with: dfpm catalog --json > catalog.json"
+SITE = REPOSITORY / "docs"
+FEED = SITE / "catalog.json"
+REGENERATE = "Regenerate it with: dfpm catalog --json > docs/catalog.json"
 
 
 class SiteFeedTests(unittest.TestCase):
@@ -26,15 +27,15 @@ class SiteFeedTests(unittest.TestCase):
 
     def test_the_feed_matches_the_catalog_it_was_generated_from(self) -> None:
         expected = [describe(tool) for tool in load_catalog(REPOSITORY / "catalog")]
-        self.assertEqual(self.feed.get("packages"), expected, f"catalog.json has drifted. {REGENERATE}")
+        self.assertEqual(self.feed.get("packages"), expected, f"docs/catalog.json has drifted. {REGENERATE}")
 
     def test_the_feed_carries_the_vocabulary(self) -> None:
         # The site offers disciplines a reader can browse by, including ones
         # nothing is catalogued under yet, so it must not keep its own list.
-        self.assertEqual(self.feed.get("vocabulary"), vocabulary(), f"catalog.json has drifted. {REGENERATE}")
+        self.assertEqual(self.feed.get("vocabulary"), vocabulary(), f"docs/catalog.json has drifted. {REGENERATE}")
 
     def test_the_site_reads_the_feed_rather_than_a_copy_of_it(self) -> None:
-        script = (REPOSITORY / "app.js").read_text(encoding="utf-8")
+        script = (SITE / "app.js").read_text(encoding="utf-8")
         self.assertIn("catalog.json", script)
         for tool in load_catalog(REPOSITORY / "catalog"):
             self.assertNotIn(

@@ -6,6 +6,7 @@ from pathlib import Path
 from dfpm.gui import ASSET_DIRECTORY, ASSETS, SHARED_STYLESHEETS
 
 REPOSITORY = Path(__file__).resolve().parents[1]
+SITE = REPOSITORY / "docs"
 
 
 class WebAssetTests(unittest.TestCase):
@@ -13,7 +14,7 @@ class WebAssetTests(unittest.TestCase):
         """The interface reuses the site's visual system, so the copies must not drift."""
         for name in SHARED_STYLESHEETS:
             with self.subTest(stylesheet=name):
-                source = REPOSITORY / name
+                source = SITE / name
                 copy = ASSET_DIRECTORY / name
                 self.assertTrue(source.is_file(), f"{source} is missing")
                 self.assertEqual(

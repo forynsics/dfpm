@@ -1,43 +1,14 @@
 """The controlled vocabularies a package is classified with.
 
-Four questions get asked of a forensic toolbox, and they are genuinely
-different questions:
+Four axes answering four different questions: `disciplines` (which part of the
+field), `capabilities` (what it does), `use_cases` (when you would reach for it)
+and `evidence` (what it reads). Each vocabulary is closed, so a term outside one
+is refused rather than accepted as free text, and each term carries aliases so a
+search matches however it is phrased.
 
-    disciplines   which part of the field is this?
-    capabilities  what does this tool do?
-    use_cases     when would I reach for it?
-    evidence      what does it read?
-
-Keeping them apart is the whole point. An earlier single list mixed "what it
-does" with "when you would use it" and with attacker behaviour a tool might
-happen to detect, which reads fine for one package and turns to noise across
-fifty. Two tools can share a use case with nothing else in common.
-
-The test for a new axis is not a count but whether it answers something the
-others cannot. Disciplines earns it: somebody new to the field browses by
-discipline before they know what to search for, and no combination of the
-other three yields that. A memory acquisition tool and a memory analysis tool
-share a domain and no capability; a tool reading Windows event logs and one
-reading the registry share a domain and no evidence term.
-
-Disciplines is not `platform`. That field says which operating system the binary
-runs on, and every package here is a Windows build. This says whose evidence
-the tool examines, and a macOS forensics tool commonly runs on Windows.
-Filtering one by the other would return nothing forever.
-
-Fields for features, workflows, outputs and techniques would each look
-reasonable alone and collectively produce a taxonomy nobody maintains. Each has
-to clear the same bar.
-
-Every vocabulary is closed, and a term outside one is refused rather than
-accepted as free text. Free tags fragment on the first synonym, and a catalog
-where "evtx", "event log" and "eventlog" are three unrelated tags is worse than
-one with no tags at all.
-
-Terms carry aliases so search matches however someone phrases it. An alias is a
-synonym for the idea, never the name of a tool or a rule format: putting
-"sigma" on a general detection term would make every detection tool answer to a
-search for one rule language. A format worth finding gets its own term.
+Why the axes are kept apart, what has to be true of a new one, and what an alias
+may and may not be are set out in docs/manifest-v1.md. That reasoning belongs
+with the format it constrains, and is deliberately not repeated here.
 """
 
 from __future__ import annotations

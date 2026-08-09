@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/brix-hero.png" alt="Brix, the dfpm mascot, holding a wrench" width="120">
+  <img src="docs/assets/brix-hero.png" alt="Brix, the dfpm mascot, holding a wrench" width="120">
 </p>
 
 <h1 align="center">dfpm</h1>
@@ -7,7 +7,7 @@
 <p align="center"><strong>A package manager for digital forensics tools</strong></p>
 
 <p align="center">
-  <img src="assets/divider-dam.png" alt="" width="440">
+  <img src="docs/assets/divider-dam.png" alt="" width="440">
 </p>
 
 Forensic tooling is scattered across project pages, release feeds, personal sites and word of mouth — and you have to already know a tool exists before you can go looking for it. dfpm gathers them into one catalog you can browse and install from, then keeps track of what you installed, where it went, and exactly which version is running.
@@ -38,7 +38,7 @@ That boundary buys a stronger promise than guaranteeing every dependency on a ma
 
 ## Why it exists
 
-<img align="right" width="96" src="assets/brix-magnifier.png" alt="">
+<img align="right" width="96" src="docs/assets/brix-magnifier.png" alt="">
 
 **It will not install anything it cannot verify.** Every package pins a SHA-256. The download is refused unless the bytes match exactly, and refused again if an HTTPS source quietly redirects to plain HTTP. Cached artifacts are re-hashed every time they are used, not only when first downloaded. A digest you cannot check is not provenance.
 
@@ -59,12 +59,12 @@ Every install follows the same five steps. If any of them fails, the step before
 5. **Only then does it take over.** The staged version moves into place atomically, command shortcuts are rewritten, and the version it replaces is removed.
 
 <p align="center">
-  <img src="assets/divider-dam.png" alt="" width="440">
+  <img src="docs/assets/divider-dam.png" alt="" width="440">
 </p>
 
 ## Get started
 
-<img align="right" width="110" src="assets/brix-laptop.png" alt="">
+<img align="right" width="110" src="docs/assets/brix-laptop.png" alt="">
 
 dfpm requires Python 3.11 or newer and currently targets Windows 11 x64.
 
@@ -134,7 +134,7 @@ Both plans show the path, the file count and the size before anything happens, a
 
 ## The catalog
 
-<img align="right" width="100" src="assets/brix-box.png" alt="">
+<img align="right" width="100" src="docs/assets/brix-box.png" alt="">
 
 The `catalog/` directory holds the manifests dfpm can install from. Each one names the release file its project published, records its SHA-256, and records the upstream project, its license and the platform it was built for. The download size and the size on disk are recorded too — not as a second integrity check, since the digest already settles what the bytes are, but so the plan can tell you the cost before you agree to it.
 
@@ -235,7 +235,7 @@ dfpm gui --port 8765          # default; use --port 0 to take any free port
 dfpm gui --no-browser         # start the server without opening a browser
 ```
 
-There are two web surfaces and they share one visual system. `src/dfpm/web/` is the local interface above; `index.html` at the repository root is the public site, which explains dfpm and browses the catalog but installs nothing. `styles.css` and `refinements.css` are byte-identical in both, and a test fails if the copies drift.
+There are two web surfaces and they share one visual system. `src/dfpm/web/` is the local interface above; `docs/` is the public site, which explains dfpm and browses the catalog but installs nothing. It is plain static files with no build step, which is why it lives in `docs/` — that is a directory GitHub Pages can publish directly. `styles.css` and `refinements.css` are byte-identical in both, and a test fails if the copies drift.
 
 The default Windows data locations are rooted in `%LOCALAPPDATA%\dfpm`:
 
@@ -287,7 +287,7 @@ That comparison runs the same platform selection an install would, so a release 
 
 ## Project status
 
-<img align="right" width="96" src="assets/brix-sleeping.png" alt="">
+<img align="right" width="96" src="docs/assets/brix-sleeping.png" alt="">
 
 dfpm is in early development. Interfaces, manifests and behaviour remain subject to change, and the command line ships only what is actually implemented.
 
@@ -308,7 +308,7 @@ dfpm is released under the [Apache License 2.0](LICENSE). See [NOTICE](NOTICE).
 dfpm distributes no third-party software. Every catalogued package is downloaded from the upstream project's own release URL and stays under its own license, which the manifest records and `dfpm install` prints before anything is fetched. Some tools carry terms restricting who may use them, or for what purpose; reviewing those terms is yours to do.
 
 <p align="center">
-  <img src="assets/divider-dam.png" alt="" width="440">
+  <img src="docs/assets/divider-dam.png" alt="" width="440">
 </p>
 
 <p align="center">
