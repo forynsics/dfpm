@@ -10,10 +10,10 @@ import textwrap
 from collections.abc import Mapping
 from pathlib import Path
 
-from . import __version__, cache, classification, launcher, progress, removal, runtimes
+from . import __version__, cache, classification, launcher, progress, removal, runtimes, sync
 from .archive import human_size
 from . import platforms
-from .catalog import SHIPPED, describe, load_catalog, resolve
+from .catalog import SHIPPED, build_index, describe, load_catalog, resolve
 from .catalog import newer_than_installed as catalog_updates
 from .catalog import newest as catalog_newest
 from .catalog import version_key as catalog_version_key
@@ -24,6 +24,7 @@ from .gui import serve
 from .installer import check_destination, check_platform, install
 from .inventory import list_packages
 from .storage import Storage
+from .sync import DEFAULT_SOURCE
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -42,6 +43,11 @@ def build_parser() -> argparse.ArgumentParser:
     catalog = commands.add_parser("catalog", help="List available packages, or show one in detail.")
     catalog.add_argument("package", nargs="?", help="Show everything known about this package.")
     catalog.add_argument("--json", action="store_true")
+    catalog.add_argument(
+        "--index",
+        action="store_true",
+        help="Print the index that describes this catalog, for publishing it.",
+    )
 
     install_command = commands.add_parser("install", help="Install a package, replacing any version already installed.")
     install_command.add_argument("package")
@@ -93,6 +99,13 @@ def build_parser() -> argparse.ArgumentParser:
     gui.add_argument("--host", default="127.0.0.1", help="Loopback address to bind (127.0.0.1, localhost, or ::1).")
     gui.add_argument("--port", type=int, default=8765, help="Port to listen on. Use 0 to pick any free port.")
     gui.add_argument("--no-browser", action="store_true", help="Do not open a browser window.")
+
+    sync_command = commands.add_parser(
+        "sync",
+        help="Update this machine's catalog from the published one.",
+    )
+    sync_command.add_argument("--source", help=f"Where to read entries from. Defaults to {DEFAULT_SOURCE}")
+    sync_command.add_argument("--yes", action="store_true", help="Confirm the displayed plan.")
 
     list_command = commands.add_parser("list", help="List installed packages.")
     list_command.add_argument("--json", action="store_true")
@@ -153,6 +166,8 @@ def _run(args: argparse.Namespace, storage: Storage) -> int:
         return _catalog(args)
     if args.command == "install":
         return _install(args, storage)
+    if args.command == "sync":
+        return _sync(args, storage)
     if args.command == "download":
         return _download(args)
     if args.command == "uninstall":
@@ -196,6 +211,11 @@ def _other_builds(catalog: Path, manifest) -> int:
 
 
 def _catalog(args: argparse.Namespace) -> int:
+    if args.index:
+        # What a published catalog needs beside its entries, so a machine
+        # syncing it can tell what is there without listing a directory.
+        print(json.dumps(build_index(args.catalog), indent=2))
+        return 0
     tools = load_catalog(args.catalog)
     if args.package:
         matches = [tool for tool in tools if tool.id == args.package]
@@ -390,6 +410,44 @@ def _report_readiness(storage: Storage, manifest) -> None:
         print(f"    {runtimes.describe(requirement.runtime).remediation}")
     print(f"\nThe package is installed but cannot be run yet. Run 'dfpm doctor {manifest.id}' for details.")
 
+
+def _sync(args: argparse.Namespace, storage: Storage) -> int:
+    """Bring this machine's catalog into line with a published one.
+
+    Entries decide what gets installed, so this is a thing somebody asks for
+    rather than something that happens in the background, and it says what it
+    would change before changing it.
+    """
+    source = args.source or DEFAULT_SOURCE
+    current = sync.plan(source, storage.catalog)
+
+    print("Catalog sync plan")
+    print(f"  Source:      {source}")
+    print(f"  Into:        {storage.catalog}")
+    for kind, label in ((sync.ADDED, "Add"), (sync.UPDATED, "Update"), (sync.EDITED, "Replace"), (sync.REMOVED, "Remove")):
+        for change in current.of(kind):
+            version = f"  {change.version}" if change.version else ""
+            print(f"  {label + ':':<12} {change.id}{version}")
+    unchanged = current.of(sync.UNCHANGED)
+    if unchanged:
+        print(f"  Unchanged:   {len(unchanged)}, which will not be downloaded again")
+    if current.of(sync.EDITED):
+        print("  Some entries were changed on this machine since the last sync. Replacing them discards those edits.")
+    if not current.changes_anything:
+        print("Already up to date.")
+        return 0
+    print(f"  Downloads:   {len(current.fetches)} entr{'y' if len(current.fetches) == 1 else 'ies'}")
+    print("  Nothing is installed or removed. This only changes what is available to install.")
+
+    if not args.yes:
+        if input("Continue? [y/N] ").strip().lower() not in {"y", "yes"}:
+            print("No changes made.")
+            return 2
+
+    applied = sync.apply(current)
+    print(f"Catalog updated: {len(applied)} entr{'y' if len(applied) == 1 else 'ies'} changed")
+    print(f"  {storage.catalog}")
+    return 0
 
 def _download(args: argparse.Namespace) -> int:
     """Save a package's release file, for a machine dfpm is not running on.

@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "entries": [
+    {
+      "file": "hayabusa.json",
+      "id": "hayabusa",
+      "version": "4.0.0",
+      "sha256": "2a29d4811964744418ea5e3a2982f1e4a1faa2bfa32f2187c59b40a4beec8714"
+    },
+    {
+      "file": "yara.json",
+      "id": "yara",
+      "version": "4.5.5",
+      "sha256": "bd34c91bb488e828fcd3cb8138296df7b3169db56a68377d696263d95f1338ca"
+    }
+  ]
+}

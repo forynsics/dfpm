@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import re
 from pathlib import Path
 from typing import Any
@@ -16,6 +17,12 @@ from .manifest import Build, Manifest, Platform, Tool
 # entirely once one exists.
 SHIPPED = Path(__file__).resolve().parent / "entries"
 
+# Names a catalog directory reserves for itself. The index lists what the
+# directory holds, so that a published catalog can be read over HTTPS, where
+# there is no way to list a directory.
+INDEX_NAME = "index.json"
+INDEX_SCHEMA_VERSION = 1
+
 
 def load_catalog(directory: Path) -> list[Tool]:
     """Every tool in the catalog, in the order a listing should show them."""
@@ -28,7 +35,18 @@ def load_catalog(directory: Path) -> list[Tool]:
             f"Put reviewed package entries there, or point dfpm at a directory of them "
             f"with --catalog or the DFPM_CATALOG environment variable."
         )
-    return [Tool.load(path) for path in sorted(directory.glob("*.json"))]
+    return [Tool.load(path) for path in entry_files(directory)]
+
+
+def entry_files(directory: Path) -> list[Path]:
+    """The entry files in a catalog directory, in listing order.
+
+    The index is skipped because it describes the directory rather than being
+    a package in it. Keeping it inside the directory is deliberate: a catalog
+    is then one folder that can be published, copied to a machine with no
+    network, or mirrored, and still say what it contains.
+    """
+    return [path for path in sorted(directory.glob("*.json")) if path.name != INDEX_NAME]
 
 
 def resolve(directory: Path, package_id: str, version: str | None = None, platform: str | None = None) -> Manifest:
@@ -72,6 +90,28 @@ def _requested_platform(text: str) -> tuple[str, str]:
     if len(parts) != 2 or not all(part.strip() for part in parts):
         raise ManifestError(f"Platform must be written as os/arch, for example windows/x64: {text!r}")
     return parts[0].strip().lower(), parts[1].strip().lower()
+
+
+def build_index(directory: Path) -> dict[str, Any]:
+    """Describe what a catalog directory holds, so it can be published.
+
+    Each entry carries its digest, which does two jobs. It says whether a copy
+    arrived intact, and it says whether a copy is already current: a machine
+    syncing this catalog compares digests and downloads only what differs, so
+    an unchanged entry is never fetched twice. The newest version travels too,
+    purely so a sync can describe what it is about to do without downloading
+    anything first.
+    """
+    entries = []
+    for path in entry_files(directory):
+        tool = Tool.load(path)
+        entries.append({
+            "file": path.name,
+            "id": tool.id,
+            "version": newest(tool).version,
+            "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        })
+    return {"schema_version": INDEX_SCHEMA_VERSION, "entries": entries}
 
 
 def newer_than_installed(directory: Path, packages: list[dict[str, Any]]) -> dict[str, str]:

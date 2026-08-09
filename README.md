@@ -75,7 +75,8 @@ python -m venv .venv
 
 ```text
 dfpm paths
-dfpm catalog [<package-id>]
+dfpm catalog [<package-id>] [--json] [--index]
+dfpm sync [--source <url-or-dir>]
 dfpm install <package-id> [--package-version <version>]
 dfpm download <package-id> [--platform <os/arch>] [--to <dir>]
 dfpm uninstall <package-id>
@@ -250,7 +251,28 @@ state\packages\               Records of what was installed
 
 dfpm reads entries from `catalog\` rather than from wherever you happen to be standing. `--catalog <dir>` overrides it for one command, and `DFPM_CATALOG` for a session.
 
-**A fresh install is not empty.** dfpm carries the entries that had been reviewed when that version was released, and reads those until `catalog\` has something in it — so installing dfpm is enough to have something to install, and upgrading dfpm brings whatever had been reviewed by then. Nothing is copied into `catalog\` behind your back: put entries there and they take over completely.
+**A fresh install is not empty.** dfpm carries the entries that had been reviewed when that version was released, and reads those until `catalog\` has something in it — so installing dfpm is enough to have something to install. Nothing is copied into `catalog\` behind your back: put entries there and they take over completely.
+
+**`dfpm sync` keeps it current without waiting for a dfpm release.** The catalog is published as a plain directory of entries plus an index describing them, so a reviewed change reaches every machine that syncs, whenever they sync:
+
+```powershell
+dfpm sync                          # from the published catalog
+dfpm sync --source D:\mirror\      # or from a copy you carry
+```
+
+```text
+Catalog sync plan
+  Source:      https://raw.githubusercontent.com/forynsics/dfpm/main/catalog/
+  Into:        C:\Users\you\AppData\Local\dfpm\catalog
+  Update:      yara  4.6.0
+  Unchanged:   1, which will not be downloaded again
+  Downloads:   1 entry
+  Nothing is installed or removed. This only changes what is available to install.
+```
+
+The index records a digest per entry, which does three jobs: it proves an entry arrived intact, it means an unchanged entry is **never downloaded twice**, and it distinguishes a change made by the publisher from one made here — a locally edited entry is reported as such before it is replaced, not overwritten in silence. Entries that vanish upstream are removed, since an entry nobody stands behind should not stay on offer; nothing installed is affected, because a package's record does not depend on the catalog.
+
+Because entries decide what gets installed, syncing never happens on its own. It reads over HTTPS or from a directory, refuses a redirect off HTTPS, requires every entry to parse as a manifest before it lands, and writes nothing at all unless every entry passed.
 
 **When a project publishes a new release,** the entry is updated to describe it and nothing under `state\` changes. `dfpm list` then says so:
 
