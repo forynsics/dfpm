@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "id": "mftecmd",
+  "name": "MFTECmd",
+  "kind": "tool",
+  "description": "Parse NTFS metadata files and export records as CSV, JSON, or a timeline body file.",
+  "about": "MFTECmd reads the metadata files NTFS keeps about itself: $MFT, $J, $Boot, $SDS and $LogFile. For each record it reports the file name, the reconstructed path, the attributes and the timestamps, and writes the result as CSV, JSON, or a body file for building a timeline. Both the $STANDARD_INFORMATION and $FILE_NAME timestamps are reported, so records whose dates disagree can be found rather than taken at face value.",
+  "disciplines": [
+    "windows-forensics"
+  ],
+  "capabilities": [
+    "file-system-parsing",
+    "timeline-generation",
+    "data-export"
+  ],
+  "use_cases": [
+    "forensic-triage",
+    "incident-response",
+    "evidence-review"
+  ],
+  "evidence": [
+    "master-file-table",
+    "usn-journal"
+  ],
+  "project": {
+    "homepage": "https://ericzimmerman.github.io/",
+    "repository": "https://github.com/EricZimmerman/MFTECmd",
+    "license": "MIT"
+  },
+  "builds": [
+    {
+      "version": "2026.5.0.0",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://download.ericzimmermanstools.com/net9/MFTECmd.zip",
+        "sha256": "60ae857a554b830243e38e91fafdfdf6066f31c703282c5c6f40daf3b64d3160",
+        "size": 2841312,
+        "stability": "rolling"
+      },
+      "install": {
+        "strategy": "portable-zip",
+        "strip_components": 0,
+        "extracted_size": 3175988,
+        "entries": 3,
+        "entrypoints": [
+          {
+            "name": "mftecmd",
+            "path": "MFTECmd.exe"
+          }
+        ]
+      },
+      "requires": [
+        {
+          "runtime": "dotnet",
+          "version": ">=9",
+          "flavor": "base"
+        }
+      ]
+    }
+  ]
+}

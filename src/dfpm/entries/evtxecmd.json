@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "id": "evtxecmd",
+  "name": "EvtxECmd",
+  "kind": "tool",
+  "description": "Parse Windows event logs into one consistent set of columns across every provider.",
+  "about": "EvtxECmd reads Windows .evtx logs and normalises them, so that events written by different providers end up in the same shape rather than each carrying its own XML payload. Map files stored beside the executable say which fields are worth pulling out for a given provider and event ID; an event with no map is still reported, with its payload intact. Output is CSV, JSON or XML, and a whole directory of logs can be processed into one file.",
+  "disciplines": [
+    "windows-forensics"
+  ],
+  "capabilities": [
+    "event-log-parsing",
+    "timeline-generation",
+    "data-export"
+  ],
+  "use_cases": [
+    "incident-response",
+    "threat-hunting",
+    "forensic-triage"
+  ],
+  "evidence": [
+    "windows-event-logs"
+  ],
+  "project": {
+    "homepage": "https://ericzimmerman.github.io/",
+    "repository": "https://github.com/EricZimmerman/evtx",
+    "license": "MIT"
+  },
+  "builds": [
+    {
+      "version": "2026.5.0.0",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://download.ericzimmermanstools.com/net9/EvtxECmd.zip",
+        "sha256": "4d740e51c4532c340d080f832c766c2acb0351832dae118d1abe9bb49203faa4",
+        "size": 3943680,
+        "stability": "rolling"
+      },
+      "install": {
+        "strategy": "portable-zip",
+        "strip_components": 1,
+        "extracted_size": 4699609,
+        "entries": 389,
+        "entrypoints": [
+          {
+            "name": "evtxecmd",
+            "path": "EvtxECmd.exe"
+          }
+        ]
+      },
+      "verify": [
+        {
+          "type": "file",
+          "path": "Maps/!!!!README.md"
+        }
+      ],
+      "requires": [
+        {
+          "runtime": "dotnet",
+          "version": ">=9",
+          "flavor": "base"
+        }
+      ]
+    }
+  ]
+}

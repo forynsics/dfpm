@@ -2,8 +2,12 @@
    styles.css and refinements.css are copies of the public site's stylesheets and are
    never edited here; tests/test_web_assets.py fails if they drift apart. */
 
-:root { --danger: #b42318; --danger-soft: #fdeceb; }
-html[data-appearance="dark"] { --danger: #f2837a; --danger-soft: #2e1917; }
+/* --warn carries its own dark value because the shared amber does not. The site
+   only ever uses that amber as text on a pale amber background, which keeps its
+   own contrast; a bare marker on the panel would inherit the light value and go
+   almost unreadable on a dark canvas. */
+:root { --danger: #b42318; --danger-soft: #fdeceb; --warn: #a45c00; }
+html[data-appearance="dark"] { --danger: #f2837a; --danger-soft: #2e1917; --warn: #e8a13c; }
 
 /* Actions sit in the third column of a list row, matching where the site puts card footers. */
 .tool-grid.list .tool-card .card-actions {
@@ -53,7 +57,7 @@ html[data-appearance="dark"] { --danger: #f2837a; --danger-soft: #2e1917; }
 .finding-row .mark { font: 800 9px var(--mono); letter-spacing: .08em; }
 .finding-row .mark.ok { color: var(--green); }
 .finding-row .mark.bad { color: var(--danger); }
-.finding-row .mark.warn { color: var(--accent-dark); }
+.finding-row .mark.warn { color: var(--warn); }
 .finding-row b { font-size: 13px; }
 .finding-row > span:last-child { color: var(--muted); }
 

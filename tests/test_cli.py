@@ -42,10 +42,6 @@ class CliTests(unittest.TestCase):
             self.assertFalse((root / "tools").exists())
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class PlanProvenanceTests(unittest.TestCase):
     """The plan should say which catalog vouched for the entry it is about to install.
 
@@ -55,6 +51,12 @@ class PlanProvenanceTests(unittest.TestCase):
     """
 
     def setUp(self) -> None:
+        # These tests turn on where an entry is read from when nothing says, and
+        # DFPM_CATALOG is one of the answers. The documented way to work against
+        # this repository's catalog sets it for the shell, so a suite that
+        # inherited it would fail for a reason that has nothing to do with dfpm.
+        self.enterContext(mock.patch.dict("os.environ", {}, clear=False))
+        __import__("os").environ.pop("DFPM_CATALOG", None)
         self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
         self.catalog, _ = create_package(self.base)
         self.root = self.base / "data"
@@ -83,3 +85,7 @@ class PlanProvenanceTests(unittest.TestCase):
         printed = self.plan_for()
         self.assertIn("Install plan", printed)
         self.assertNotIn("Entry from:", printed)
+
+
+if __name__ == "__main__":
+    unittest.main()

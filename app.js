@@ -214,12 +214,22 @@ function renderCatalog() {
         ]),
         metaRows(entry),
         el("footer", {}, [
-          el("span", { text: platforms.length > 1 ? `${platforms.length} builds, each digest pinned` : "Digest pinned and verified" }),
+          el("span", { text: pinNote(entry, platforms.length) }),
           project.repository ? el("a", { text: "Project site →", href: project.repository }) : null,
         ]),
       ])
     );
   }
+}
+
+/* Every entry pins an exact artifact, and how long that pin keeps describing
+   what the URL serves is not the same for all of them. Most projects publish a
+   release at an address that never changes again; a few overwrite one address on
+   every build, and saying so is the difference between a claim that holds and one
+   that quietly stops. */
+function pinNote(entry, builds) {
+  if (entry.stability === "rolling") return "Digest pinned, upstream URL rolling";
+  return builds > 1 ? `${builds} builds, each digest pinned` : "Digest pinned and verified";
 }
 
 function renderCommands() {

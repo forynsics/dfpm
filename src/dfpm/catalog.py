@@ -165,6 +165,12 @@ def describe(tool: Tool) -> dict[str, Any]:
         "versions": list(tool.versions()),
         "platforms": [{"os": item.system, "arch": item.architecture} for item in tool.platforms()],
     }
+    # A page saying an entry pins an exact artifact is telling the truth about
+    # every build, and telling only half of it about one whose publisher replaces
+    # the file at that address. The pin is what makes such a change visible, and
+    # it is also what stops holding the day it happens.
+    if any(build.package.rolling for build in tool.builds):
+        entry["stability"] = "rolling"
     if tool.about:
         entry["about"] = tool.about
     for field in ("disciplines", "capabilities", "use_cases", "evidence"):
