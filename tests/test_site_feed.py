@@ -4,7 +4,7 @@ import json
 import unittest
 from pathlib import Path
 
-from dfpm.catalog import SHIPPED, describe, load_catalog
+from dfpm.catalog import INDEX_NAME, SHIPPED, build_index, describe, load_catalog
 from dfpm.classification import vocabulary
 
 REPOSITORY = Path(__file__).resolve().parents[1]
@@ -56,6 +56,24 @@ class SiteFeedTests(unittest.TestCase):
 
 class ShippedEntriesTests(unittest.TestCase):
     """dfpm carries the reviewed entries, so installing it is enough to have something to install."""
+
+    def test_the_published_index_matches_the_entries(self) -> None:
+        """A stale index makes a reviewed entry invisible to everyone syncing.
+
+        The digests are of the entry files exactly as they are stored, which is
+        why line endings are pinned in .gitattributes: an index generated from a
+        CRLF checkout would not match what a static host serves.
+        """
+        for directory in (REPOSITORY / "catalog", SHIPPED):
+            with self.subTest(catalog=directory.name):
+                written = json.loads((directory / INDEX_NAME).read_text(encoding="utf-8"))
+                self.assertEqual(
+                    written,
+                    build_index(directory),
+                    f"{directory / INDEX_NAME} is stale. Regenerate it with: dfpm catalog --index > catalog/index.json",
+                )
+
+
 
     def test_the_shipped_entries_match_the_reviewed_ones(self) -> None:
         reviewed = {path.name: path.read_bytes() for path in (REPOSITORY / "catalog").glob("*.json")}
