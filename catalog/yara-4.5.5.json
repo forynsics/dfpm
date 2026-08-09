@@ -6,12 +6,14 @@
   "kind": "tool",
   "description": "Scan files and memory for rules describing textual or binary patterns.",
   "about": "YARA matches files, directories and running processes against rules that describe the strings and byte sequences a family of software contains. Each match is reported with the rule that fired and where in the file it occurred. Rules are plain text and portable, so detections written by one team can be applied unchanged by another, and the same rule set can be run over collected files or over a memory image.",
+  "disciplines": [
+    "malware-analysis"
+  ],
   "capabilities": [
     "signature-scanning",
     "string-extraction"
   ],
   "use_cases": [
-    "malware-analysis",
     "threat-hunting",
     "incident-response"
   ],

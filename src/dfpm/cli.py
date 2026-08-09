@@ -6,7 +6,7 @@ import shutil
 import sys
 from pathlib import Path
 
-from . import __version__, cache, launcher, progress, removal, runtimes
+from . import __version__, cache, classification, launcher, progress, removal, runtimes
 from .archive import human_size
 from .catalog import describe, load_catalog, resolve
 from .doctor import inspect
@@ -101,7 +101,14 @@ def _run(args: argparse.Namespace, storage: Storage) -> int:
     if args.command == "catalog":
         packages = load_catalog(args.catalog)
         if args.json:
-            print(json.dumps([describe(package) for package in packages], indent=2))
+            # The vocabulary travels with the packages so an interface can offer
+            # every discipline as a filter, including the ones nothing is
+            # catalogued under yet. Hard-coding that list somewhere else is how
+            # the two drift apart.
+            print(json.dumps({
+                "packages": [describe(package) for package in packages],
+                "vocabulary": classification.vocabulary(),
+            }, indent=2))
         else:
             for package in packages:
                 print(f"{package.id:<28} {package.version:<14} {package.name}")

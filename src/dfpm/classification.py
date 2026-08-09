@@ -3,7 +3,7 @@
 Four questions get asked of a forensic toolbox, and they are genuinely
 different questions:
 
-    domains       which part of the field is this?
+    disciplines   which part of the field is this?
     capabilities  what does this tool do?
     use_cases     when would I reach for it?
     evidence      what does it read?
@@ -14,13 +14,13 @@ happen to detect, which reads fine for one package and turns to noise across
 fifty. Two tools can share a use case with nothing else in common.
 
 The test for a new axis is not a count but whether it answers something the
-others cannot. Domains earns it: somebody new to the field browses by
+others cannot. Disciplines earns it: somebody new to the field browses by
 discipline before they know what to search for, and no combination of the
 other three yields that. A memory acquisition tool and a memory analysis tool
 share a domain and no capability; a tool reading Windows event logs and one
 reading the registry share a domain and no evidence term.
 
-Domains is not `platform`. That field says which operating system the binary
+Disciplines is not `platform`. That field says which operating system the binary
 runs on, and every package here is a Windows build. This says whose evidence
 the tool examines, and a macOS forensics tool commonly runs on Windows.
 Filtering one by the other would return nothing forever.
@@ -67,21 +67,23 @@ def _index(*terms: Term) -> dict[str, Term]:
 # Which part of the field the tool belongs to. Mirrors how the discipline is
 # taught and how somebody new to it browses, which is the point: this axis is
 # for people who cannot yet name what they are looking for.
-DOMAINS = _index(
+DISCIPLINES = _index(
     Term("windows-forensics", "Windows forensics",
          ("windows", "win", "microsoft")),
     Term("macos-forensics", "macOS forensics",
          ("mac", "macos", "osx", "os x", "apple", "darwin")),
     Term("linux-forensics", "Linux forensics",
          ("linux", "unix", "ubuntu", "debian style", "posix")),
-    Term("mobile-forensics", "Mobile forensics",
-         ("mobile", "phone", "smartphone", "ios", "android", "iphone")),
+    Term("smartphone-forensics", "Smartphone forensics",
+         ("smartphone", "mobile", "phone", "ios", "android", "iphone", "handset")),
     Term("network-forensics", "Network forensics",
          ("network", "traffic", "packets", "wire")),
     Term("cloud-forensics", "Cloud forensics",
          ("cloud", "saas", "aws", "azure", "gcp", "microsoft 365")),
     Term("memory-forensics", "Memory forensics",
          ("memory", "ram", "volatile")),
+    Term("malware-analysis", "Malware analysis",
+         ("malware", "virus", "reverse engineering", "sample analysis", "rem")),
 )
 
 # What the tool does.
@@ -124,8 +126,6 @@ USE_CASES = _index(
          ("triage", "first response", "quick look")),
     Term("threat-hunting", "Threat hunting",
          ("hunting", "hunt", "proactive")),
-    Term("malware-analysis", "Malware analysis",
-         ("malware", "virus", "reverse engineering", "sample analysis")),
     Term("compromise-assessment", "Compromise assessment",
          ("compromise assessment", "health check", "assessment")),
     Term("evidence-review", "Evidence review and reporting",
@@ -207,7 +207,7 @@ EVIDENCE = _index(
 )
 
 VOCABULARIES = {
-    "domains": DOMAINS,
+    "disciplines": DISCIPLINES,
     "capabilities": CAPABILITIES,
     "use_cases": USE_CASES,
     "evidence": EVIDENCE,
@@ -230,6 +230,20 @@ def checked(values, field: str) -> tuple[str, ...]:
             raise ManifestError(f"{field} lists {item!r} twice")
         chosen.append(key)
     return tuple(chosen)
+
+
+def vocabulary() -> dict[str, list[dict[str, str]]]:
+    """Every term, so an interface can render choices it has no business inventing.
+
+    A page offering "browse by discipline" needs the full list, including the
+    disciplines nothing is catalogued under yet, or its buttons appear and
+    vanish as the catalog grows. Reading it from here rather than hard-coding it
+    is what stops the two drifting apart.
+    """
+    return {
+        field: [{"key": term.key, "label": term.label} for term in terms.values()]
+        for field, terms in VOCABULARIES.items()
+    }
 
 
 def label(field: str, key: str) -> str:

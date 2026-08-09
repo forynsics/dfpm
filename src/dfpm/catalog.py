@@ -41,7 +41,7 @@ def describe(manifest: Manifest) -> dict[str, Any]:
     }
     if manifest.about:
         entry["about"] = manifest.about
-    for field in ("domains", "capabilities", "use_cases", "evidence"):
+    for field in ("disciplines", "capabilities", "use_cases", "evidence"):
         keys = getattr(manifest, field)
         if keys:
             entry[field] = [{"key": key, "label": classification.label(field, key)} for key in keys]

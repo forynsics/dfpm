@@ -88,7 +88,7 @@ class Manifest:
     kind: str
     description: str
     about: str | None
-    domains: tuple[str, ...]
+    disciplines: tuple[str, ...]
     capabilities: tuple[str, ...]
     use_cases: tuple[str, ...]
     evidence: tuple[str, ...]
@@ -179,7 +179,7 @@ class Manifest:
             kind=kind,
             description=_text(data["description"], "description"),
             about=None if data.get("about") is None else _text(data["about"], "about"),
-            domains=classification.checked(data.get("domains"), "domains"),
+            disciplines=classification.checked(data.get("disciplines"), "disciplines"),
             capabilities=classification.checked(data.get("capabilities"), "capabilities"),
             use_cases=classification.checked(data.get("use_cases"), "use_cases"),
             evidence=classification.checked(data.get("evidence"), "evidence"),

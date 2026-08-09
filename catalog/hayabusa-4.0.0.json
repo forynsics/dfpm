@@ -6,7 +6,7 @@
   "kind": "tool",
   "description": "Analyze Windows event logs, build forensic timelines, and apply Sigma-based detections.",
   "about": "Hayabusa reads a directory of Windows .evtx files and produces a single consolidated timeline, applying bundled Sigma detection rules as it goes so that matching activity is labelled with a severity. It supports the Sigma specification including v2 correlation rules, and can output to CSV, JSON and several other formats for review in other tools. The detection rules ship with the release and can be updated separately from the binary.",
-  "domains": [
+  "disciplines": [
     "windows-forensics"
   ],
   "capabilities": [

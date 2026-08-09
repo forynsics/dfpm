@@ -32,12 +32,13 @@ class VocabularyTests(unittest.TestCase):
     def test_a_newcomer_browses_by_discipline(self) -> None:
         # Somebody new to the field picks a discipline before they can name a
         # tool or an artifact, which is the entire reason this axis exists.
-        self.assertIn("macos-forensics", matching_keys("domains", "mac"))
-        self.assertIn("macos-forensics", matching_keys("domains", "apple"))
-        self.assertIn("windows-forensics", matching_keys("domains", "windows"))
-        self.assertIn("memory-forensics", matching_keys("domains", "ram"))
-        self.assertIn("cloud-forensics", matching_keys("domains", "azure"))
-        self.assertIn("mobile-forensics", matching_keys("domains", "iphone"))
+        self.assertIn("macos-forensics", matching_keys("disciplines", "mac"))
+        self.assertIn("macos-forensics", matching_keys("disciplines", "apple"))
+        self.assertIn("windows-forensics", matching_keys("disciplines", "windows"))
+        self.assertIn("memory-forensics", matching_keys("disciplines", "ram"))
+        self.assertIn("cloud-forensics", matching_keys("disciplines", "azure"))
+        self.assertIn("smartphone-forensics", matching_keys("disciplines", "iphone"))
+        self.assertIn("smartphone-forensics", matching_keys("disciplines", "mobile"))
 
     def test_the_evidence_vocabulary_is_not_only_windows(self) -> None:
         # It was, which is how a gap this obvious survived: every catalogued
@@ -53,7 +54,7 @@ class VocabularyTests(unittest.TestCase):
         self.assertIn("master-file-table", matching_keys("evidence", "ntfs"))
         self.assertIn("onedrive-logs", matching_keys("evidence", "sync log"))
         self.assertIn("memory-images", matching_keys("evidence", "ram dump"))
-        self.assertIn("malware-analysis", matching_keys("use_cases", "malware"))
+        self.assertIn("malware-analysis", matching_keys("disciplines", "malware"))
         self.assertIn("incident-response", matching_keys("use_cases", "breach"))
         self.assertIn("file-carving", matching_keys("capabilities", "recover deleted"))
 
@@ -85,42 +86,67 @@ class ManifestClassificationTests(unittest.TestCase):
         manifest_path.write_text(json.dumps(data), encoding="utf-8")
         return Manifest.load(manifest_path)
 
-    def test_a_domain_is_not_the_platform_the_binary_runs_on(self) -> None:
+    def test_a_discipline_is_not_the_platform_the_binary_runs_on(self) -> None:
         # A macOS forensics tool commonly ships as a Windows build. Deriving one
         # from the other would make that package unfindable.
         manifest = self.load(
-            domains=["macos-forensics"],
+            disciplines=["macos-forensics"],
             platform={"os": "windows", "arch": "x64"},
         )
-        self.assertEqual(manifest.domains, ("macos-forensics",))
+        self.assertEqual(manifest.disciplines, ("macos-forensics",))
         self.assertEqual(manifest.platform.system, "windows")
 
-    def test_a_package_may_belong_to_no_single_domain(self) -> None:
+    def test_platform_describes_one_build_and_stays_singular(self) -> None:
+        # One manifest, one reviewed file, one digest. A list of platforms would
+        # claim a single compiled binary runs on several, and could not express
+        # the different entrypoint each would need anyway.
+        with self.assertRaises(ManifestError):
+            self.load(platform=[{"os": "windows", "arch": "x64"}, {"os": "linux", "arch": "x64"}])
+
+    def test_a_portable_package_omits_the_platform_entirely(self) -> None:
+        # Absent means no restriction, which is how something that genuinely
+        # runs anywhere is expressed.
+        _, manifest_path = create_package(self.base)
+        self.assertIsNone(Manifest.load(manifest_path).platform)
+
+    def test_a_package_may_belong_to_no_single_discipline(self) -> None:
         # A cross-cutting tool genuinely belongs to none of them, which is
         # information rather than an omission.
-        self.assertEqual(self.load(capabilities=["signature-scanning"]).domains, ())
+        self.assertEqual(self.load(capabilities=["signature-scanning"]).disciplines, ())
 
     def test_a_classified_package_is_read(self) -> None:
         manifest = self.load(
             about="A longer plain-English explanation of what this is for.",
+            disciplines=["malware-analysis"],
             capabilities=["signature-scanning"],
-            use_cases=["malware-analysis", "threat-hunting"],
+            use_cases=["threat-hunting", "incident-response"],
             evidence=["files"],
         )
+        self.assertEqual(manifest.disciplines, ("malware-analysis",))
         self.assertEqual(manifest.capabilities, ("signature-scanning",))
-        self.assertEqual(manifest.use_cases, ("malware-analysis", "threat-hunting"))
+        self.assertEqual(manifest.use_cases, ("threat-hunting", "incident-response"))
         self.assertEqual(manifest.evidence, ("files",))
         self.assertTrue(manifest.about.startswith("A longer"))
 
     def test_classification_is_optional(self) -> None:
         _, manifest_path = create_package(self.base)
         manifest = Manifest.load(manifest_path)
-        self.assertEqual((manifest.capabilities, manifest.use_cases, manifest.evidence, manifest.about), ((), (), (), None))
+        self.assertEqual(
+            (manifest.disciplines, manifest.capabilities, manifest.use_cases, manifest.evidence, manifest.about),
+            ((), (), (), (), None),
+        )
 
     def test_an_invented_term_is_rejected(self) -> None:
         with self.assertRaises(ManifestError) as caught:
             self.load(capabilities=["vibes"])
         self.assertIn("does not recognise", str(caught.exception))
+
+    def test_a_term_that_moved_axis_is_rejected_on_the_old_one(self) -> None:
+        # malware-analysis is a discipline, not a use case. Keeping the term on
+        # both would let two manifests disagree about which it is.
+        with self.assertRaises(ManifestError):
+            self.load(use_cases=["malware-analysis"])
+        self.assertEqual(self.load(disciplines=["malware-analysis"]).disciplines, ("malware-analysis",))
 
     def test_a_term_from_the_wrong_axis_is_rejected(self) -> None:
         with self.assertRaises(ManifestError):
@@ -130,7 +156,7 @@ class ManifestClassificationTests(unittest.TestCase):
         with self.assertRaises(ManifestError):
             self.load(use_cases=["timeline-generation"])
         with self.assertRaises(ManifestError):
-            self.load(domains=["registry-hives"])
+            self.load(disciplines=["registry-hives"])
 
     def test_a_repeated_term_is_rejected(self) -> None:
         with self.assertRaises(ManifestError) as caught:
@@ -158,6 +184,31 @@ class CataloguedPackageTests(unittest.TestCase):
         packages = load_catalog(Path("catalog"))
         signatures = {(p.capabilities, p.use_cases, p.evidence) for p in packages}
         self.assertEqual(len(signatures), len(packages), "two packages are classified identically")
+
+
+
+
+class VocabularyFeedTests(unittest.TestCase):
+    """An interface must not carry its own copy of the vocabulary."""
+
+    def test_the_feed_carries_every_term(self) -> None:
+        from dfpm.classification import vocabulary
+
+        published = vocabulary()
+        self.assertEqual(set(published), set(VOCABULARIES))
+        for field, terms in published.items():
+            self.assertEqual([t["key"] for t in terms], list(VOCABULARIES[field]))
+            self.assertTrue(all(t["label"] for t in terms))
+
+    def test_disciplines_with_no_packages_are_still_offered(self) -> None:
+        # A filter that appears only once something is catalogued under it means
+        # the buttons on a page change shape as the catalog grows.
+        from dfpm.classification import vocabulary
+
+        offered = {term["key"] for term in vocabulary()["disciplines"]}
+        catalogued = {key for manifest in load_catalog(Path("catalog")) for key in manifest.disciplines}
+        self.assertTrue(offered - catalogued, "every discipline already has a package, so this proves nothing")
+        self.assertTrue(catalogued <= offered)
 
 
 if __name__ == "__main__":
