@@ -66,26 +66,39 @@ Every install follows the same five steps. If any of them fails, the step before
 
 <img align="right" width="110" src="docs/assets/brix-laptop.png" alt="">
 
-dfpm requires Python 3.11 or newer and currently targets Windows 11 x64.
+You need Python 3.11 or newer. dfpm currently runs on Windows.
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install --editable .
+pipx install git+https://github.com/forynsics/dfpm.git
 ```
 
+`pipx` keeps dfpm in its own environment and puts the `dfpm` command on your PATH, which is what you want for a command-line tool. If you would rather manage that yourself, `pip install git+https://github.com/forynsics/dfpm.git` works the same way. dfpm has no dependencies — it is about 400 KB and pulls in nothing else.
+
+Then install something:
+
+```powershell
+dfpm catalog            # what's available
+dfpm install mftecmd    # shows the plan, asks before doing anything
+dfpm run mftecmd -f C:\evidence\$MFT --csv C:\out
+```
+
+That is the whole loop. There is nothing to configure and no repository to clone — dfpm ships with a catalog, so it has something to install from the moment it is installed.
+
+### The commands
+
 ```text
-dfpm paths
-dfpm catalog [<package-id>] [--json] [--index]
-dfpm sync [--source <url-or-dir>]
-dfpm install <package-id> [--package-version <version>]
-dfpm download <package-id> [--platform <os/arch>] [--to <dir>]
-dfpm uninstall <package-id>
-dfpm run <command> [arguments...]
-dfpm which <command>
+dfpm catalog [<package-id>]    what's available, or everything about one package
+dfpm install <package-id>      install it, after showing you the plan
+dfpm list                      what's installed, and what has a newer version
+dfpm run <command> [args...]   run an installed tool
+dfpm which <command>           show exactly which file a command resolves to
+dfpm uninstall <package-id>    remove it
+dfpm doctor                    check installed packages are intact and runnable
+dfpm sync                      update the catalog from where it is published
+dfpm download <package-id>     save a release file without installing it
 dfpm cache list | verify | prune | remove <digest>
-dfpm gui
-dfpm list
-dfpm doctor
+dfpm paths                     where everything lives
+dfpm gui                       manage all of this in a browser instead
 ```
 
 **One version of a package is installed at a time.** Installing replaces whatever was there before, so a tools directory never fills up with old copies you have to think about. The previous version is removed only after the new one is installed and working, so a failed install leaves the old one untouched.
@@ -138,9 +151,9 @@ Both plans show the path, the file count and the size before anything happens, a
 
 The `catalog/` directory holds the manifests dfpm can install from. Each one names the release file its project published, records its SHA-256, and records the upstream project, its license and the platform it was built for. The download size and the size on disk are recorded too — not as a second integrity check, since the digest already settles what the bytes are, but so the plan can tell you the cost before you agree to it.
 
-It currently contains **YARA 4.5.5** for Windows x64 and **Hayabusa 4.0.0** for Windows, Linux and macOS. dfpm is in early development, so the catalog is still being built out. See [catalog/README.md](catalog/README.md) for what goes into an entry, and the review notes recorded for each package.
+It currently holds seven packages: **Hayabusa** and **YARA**, and five of Eric Zimmerman's command-line tools — **MFTECmd**, **PECmd**, **EvtxECmd**, **RECmd** and **SQLECmd**. dfpm is in early development, so the catalog is still small and grows deliberately. Every entry has been reviewed by a person, and the notes from that review are kept in [catalog/README.md](catalog/README.md) alongside what goes into an entry.
 
-Recording a digest per release is a job for a script, not a person — reading a project's release feed, fetching the asset and computing the hash is exactly the work a machine should do. What a person does is approve the change. That tooling does not exist yet, so entries are currently written by hand; until it does, the catalog will grow slowly and deliberately.
+Reading a digest, a size and an unpack depth out of an archive is a job for a script, and `scripts/draft-manifest.py` does it. What it will not do is decide what a tool is for or who would reach for it — that is the review, and it is why entries take a person and not just a build step.
 
 Each entry describes one tool and every build of it dfpm can install, so a tool shipping for several systems is one entry rather than one per platform. `dfpm catalog` lists what is available; `dfpm catalog <package-id>` shows everything known about one of them, including the builds this machine cannot use:
 
@@ -186,20 +199,9 @@ yara -> C:\Users\you\AppData\Local\dfpm\tools\yara\4.5.5\yara64.exe
             or add C:\Users\you\AppData\Local\dfpm\bin to your PATH yourself.
 ```
 
-The second option is to add the command-shortcut directory to your PATH yourself. In PowerShell, for the current user only:
+The second is to add dfpm's `bin` directory to your PATH yourself — `dfpm paths` shows where it is. Use the Windows *Environment Variables* dialog rather than `setx`, which silently truncates PATH at 1024 characters and has wrecked a lot of environments. Putting it first means dfpm's copy of a tool wins over any other copy on the machine, which is usually what you want from a toolchain manager but does mean a `yara` installed by something else is shadowed. `dfpm which` tells you when something else would win instead.
 
-```powershell
-$bin  = "$env:LOCALAPPDATA\dfpm\bin"
-$user = [Environment]::GetEnvironmentVariable("Path", "User")
-$new  = if ([string]::IsNullOrEmpty($user)) { $bin } else { "$bin;$user" }
-[Environment]::SetEnvironmentVariable("Path", $new, "User")
-```
-
-Two cautions if you do. Do not use `setx` for this: it silently truncates PATH at 1024 characters and has destroyed many people's environments. And if your user PATH already contains `%VARIABLE%` references, edit it through the Windows *Environment Variables* dialog instead, because the API above rewrites the value as literal text and those references would stop expanding. Either way the change only affects newly opened terminals.
-
-Putting the directory first means dfpm's tools win. That is usually what you want from a toolchain manager, but it does mean a `yara` installed by something else is shadowed. Windows resolves a bare command by scanning PATH left to right, and within one directory it tries extensions in `PATHEXT` order — where `.EXE` comes before `.CMD` — so another tool's `yara.exe` earlier on PATH would win over dfpm's `yara.cmd`. `dfpm which` reports when that is happening.
-
-The third option is simply to invoke the full path shown by `dfpm which`, which is what the command shortcut does internally.
+The third is to run the full path `dfpm which` prints, which is what the command shortcut does anyway.
 
 ## The verified download cache
 
@@ -264,11 +266,13 @@ dfpm sync --source D:\mirror\      # or from a copy you carry
 Catalog sync plan
   Source:      https://raw.githubusercontent.com/forynsics/dfpm/main/catalog/
   Into:        C:\Users\you\AppData\Local\dfpm\catalog
-  Update:      yara  4.6.0
-  Unchanged:   1, which will not be downloaded again
+  Update:      mftecmd  2026.5.0.0
+  Unchanged:   6, which will not be downloaded again
   Downloads:   1 entry
   Nothing is installed or removed. This only changes what is available to install.
 ```
+
+The version there has not moved, and that is not a mistake. Some projects publish each release at its own URL, and some replace the file at a fixed one whenever they rebuild — so an entry can change without the version changing. dfpm knows which kind a package is, says so in the install plan, and words a digest that stops matching accordingly.
 
 The index records a digest per entry, which does three jobs: it proves an entry arrived intact, it means an unchanged entry is **never downloaded twice**, and it distinguishes a change made by the publisher from one made here — a locally edited entry is reported as such before it is replaced, not overwritten in silence. Entries that vanish upstream are removed, since an entry nobody stands behind should not stay on offer; nothing installed is affected, because a package's record does not depend on the catalog.
 
@@ -277,7 +281,7 @@ Because entries decide what gets installed, syncing never happens on its own. It
 **When a project publishes a new release,** the entry is updated to describe it and nothing under `state\` changes. `dfpm list` then says so:
 
 ```text
-yara                         4.5.5          YARA  (4.6.0 available)
+yara                         4.5.5          YARA  (4.5.6 available)
 
 The catalog has a newer version of: yara
 Installing one replaces the version you have: dfpm install <package-id>
@@ -289,13 +293,15 @@ That comparison runs the same platform selection an install would, so a release 
 
 <img align="right" width="96" src="docs/assets/brix-sleeping.png" alt="">
 
-dfpm is in early development. Interfaces, manifests and behaviour remain subject to change, and the command line ships only what is actually implemented.
+dfpm is in early development. Interfaces, manifests and behaviour may still change, and the command line ships only what is actually implemented — there are no commands that print "not yet supported".
 
-**Working today:** manifest validation, verified local and HTTPS artifacts, contained portable ZIP installation with a free-space check, an install plan that shows what a package costs before it is fetched, replacing installs, directory-scoped removal, a manageable download cache, plain downloads of builds for other machines, command shortcuts and `dfpm run`, a loopback management interface, and read-only health checks.
+**Working today:** installing, replacing and removing packages from verified artifacts; an install plan that shows the cost before anything is fetched; contained extraction with a free-space check; `dfpm run` and `dfpm which`; a verified download cache; catalog sync from a published directory; runtime detection that says why a tool cannot run yet; downloads of builds meant for other machines; a loopback management interface; and read-only health checks.
 
-**Not built yet:** lockfile export, repair, release discovery, executable health checks, a `dfpm search` command, and packages that need an interpreter such as Python, Perl or Java. Linux and macOS support, private and offline registries, signed repository snapshots and organisation policy are longer-term.
+**Not built yet:** a `dfpm search` command, health checks that actually execute a tool rather than checking its files are present, and telling you when a catalogued project has published something newer upstream. Packages are portable ZIPs only, so anything shipped as a tarball or as scripts needing an interpreter cannot be catalogued yet.
 
-Packages may eventually represent tools, isolated runtimes, rulesets, parser packs, artifact packs, integrations and configuration packs. Today only portable ZIP tools are supported.
+**Not planned:** lockfile export, and side-by-side versions with an activate step. Both were built and deliberately removed — going back to an earlier release is `dfpm install <package> --package-version <version>`, served from the cache.
+
+Linux and macOS support, private and offline registries, signed catalogs and organisation policy are longer-term. The manifest format already has room for rulesets, parser packs and configuration packs; only tools exist today.
 
 ## Security and privacy
 

@@ -179,16 +179,16 @@
           <div>
             <p class="kicker">On your computer</p>
             <h1>Get started</h1>
-            <p>dfpm needs Python 3.11 or newer. It currently targets Windows 11 x64.</p>
+            <p>dfpm needs Python 3.11 or newer and currently runs on Windows. It has no dependencies and nothing to configure.</p>
           </div>
           <div class="mascot mascot-page" data-asset="assets/brix-laptop.png" role="img" aria-label="Brix working at a laptop"></div>
         </div>
 
         <div class="steps">
           <article>
-            <h3>1. Install it in its own environment</h3>
-            <pre data-copy>python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install --editable .</pre>
+            <h3>1. Install dfpm</h3>
+            <pre data-copy>pipx install git+https://github.com/forynsics/dfpm.git</pre>
+            <p><code>pipx</code> keeps dfpm in its own environment and puts the command on your PATH. <code>pip install</code> works too if you would rather manage that yourself.</p>
           </article>
           <article>
             <h3>2. See where it will put things</h3>
@@ -199,7 +199,7 @@
             <h3>3. Install a package</h3>
             <pre data-copy>dfpm catalog
 dfpm install yara</pre>
-            <p>The plan is printed first and waits for confirmation. Add <code>--yes</code> once you have reviewed it.</p>
+            <p>The plan is printed first and waits for confirmation. Add <code>--yes</code> once you have reviewed it. dfpm ships with a catalog, so there is nothing to set up first.</p>
           </article>
           <article>
             <h3>4. Run it</h3>
@@ -220,7 +220,7 @@ dfpm which yara</pre>
 
         <div class="system-note">
           <b>Honest status.</b>
-          <p>dfpm is in early development and interfaces may still change. Lockfile export, repair, release discovery and interpreter-backed packages are planned but not built — the command line ships only what is actually implemented.</p>
+          <p>dfpm is in early development and interfaces may still change. A search command, health checks that actually execute a tool, and noticing when a project has published something newer upstream are not built yet. Packages are portable ZIPs only. The command line ships only what is implemented — nothing in it prints "not yet supported".</p>
         </div>
       </section>
     </main>

@@ -384,11 +384,8 @@ def _install(args: argparse.Namespace, storage: Storage) -> int:
             file=sys.stderr,
         )
         return 1
-    if not args.yes:
-        answer = input("Continue? [y/N] ").strip().lower()
-        if answer not in {"y", "yes"}:
-            print("No changes made.")
-            return 2
+    if _declined(args.yes):
+        return 2
     reporter = progress.reporter()
     try:
         destination = install(
@@ -405,6 +402,25 @@ def _install(args: argparse.Namespace, storage: Storage) -> int:
         print(f"Removed the previous version, {previous}.")
     _report_readiness(storage, manifest)
     return 0
+
+
+def _declined(assume_yes: bool) -> bool:
+    """Whether the plan just printed was not agreed to.
+
+    A plan nobody answered is a plan nobody agreed to, so silence is a no. It has
+    to be said rather than raised: a scheduled job or a piped command reaches
+    this with nothing on standard input, and a stack trace would tell whoever
+    finds it nothing about whether dfpm had already changed something.
+    """
+    if assume_yes:
+        return False
+    try:
+        if input("Continue? [y/N] ").strip().lower() in {"y", "yes"}:
+            return False
+        print("No changes made.")
+    except EOFError:
+        print("\nNo answer given, so nothing was changed. Pass --yes to confirm without being asked.")
+    return True
 
 
 def _digest_decision(package, accepted: bool):
@@ -489,10 +505,8 @@ def _sync(args: argparse.Namespace, storage: Storage) -> int:
     print(f"  Downloads:   {len(current.fetches)} entr{'y' if len(current.fetches) == 1 else 'ies'}")
     print("  Nothing is installed or removed. This only changes what is available to install.")
 
-    if not args.yes:
-        if input("Continue? [y/N] ").strip().lower() not in {"y", "yes"}:
-            print("No changes made.")
-            return 2
+    if _declined(args.yes):
+        return 2
 
     applied = sync.apply(current)
     print(f"Catalog updated: {len(applied)} entr{'y' if len(applied) == 1 else 'ies'} changed")
@@ -562,11 +576,8 @@ def _uninstall(args: argparse.Namespace, storage: Storage) -> int:
     if plan.commands:
         print(f"  Commands:    {', '.join(plan.commands)} removed")
     print("  Downloads stay in the cache; 'dfpm cache prune' clears them.")
-    if not args.yes:
-        answer = input("Continue? [y/N] ").strip().lower()
-        if answer not in {"y", "yes"}:
-            print("No changes made.")
-            return 2
+    if _declined(args.yes):
+        return 2
 
     removal.execute(storage, plan)
     print(f"Removed {plan.package} {plan.version}")
@@ -652,11 +663,8 @@ def _cache_prune(args: argparse.Namespace, storage: Storage) -> int:
     print(f"  Keeps:   {len(current.with_status('installed'))} in use by installed packages")
     for entry in doomed:
         print(f"    {cache.short(entry.digest)}  {cache.human(entry.size)}  {', '.join(entry.referenced_by) or 'nothing needs this'}")
-    if not args.yes:
-        answer = input("Continue? [y/N] ").strip().lower()
-        if answer not in {"y", "yes"}:
-            print("No changes made.")
-            return 2
+    if _declined(args.yes):
+        return 2
     print(f"Reclaimed {cache.human(cache.delete(doomed, current.partials))}. "
           "Anything removed is downloaded again when it is next needed.")
     return 0
@@ -672,11 +680,8 @@ def _cache_remove(args: argparse.Namespace, storage: Storage) -> int:
         )
     print(f"Removes {entry.digest}  {cache.human(entry.size)}")
     print(f"  Needed by: {', '.join(entry.referenced_by) or 'nothing'}")
-    if not args.yes:
-        answer = input("Continue? [y/N] ").strip().lower()
-        if answer not in {"y", "yes"}:
-            print("No changes made.")
-            return 2
+    if _declined(args.yes):
+        return 2
     print(f"Reclaimed {cache.human(cache.delete((entry,)))}.")
     return 0
 
