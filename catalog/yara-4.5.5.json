@@ -5,6 +5,15 @@
   "version": "4.5.5",
   "kind": "tool",
   "description": "Scan files and memory for rules that describe textual or binary patterns.",
+  "about": "Investigators write rules describing the strings and byte patterns a family of malware leaves behind. YARA checks files, directories or a running process against those rules and reports every match with the rule that fired and where in the file it hit. It is the standard way to answer \"have I seen this before, anywhere else in the estate\" once one sample is understood, and rules travel between teams, so a detection written by someone else usually just works.",
+  "solves": [
+    "malware-identification",
+    "threat-hunting"
+  ],
+  "artifacts": [
+    "file-contents",
+    "memory-image"
+  ],
   "platform": {
     "os": "windows",
     "arch": "x64"

@@ -51,6 +51,16 @@ The first implemented manifest format is intentionally narrow. It supports porta
 - `id` is a stable lowercase package identity.
 - `version` becomes an installation directory name, so it must begin with a letter or number and use only letters, numbers, dots, plus signs, underscores, and hyphens.
 - `kind` may be `tool`, `runtime`, `ruleset`, `artifact-pack`, `parser-pack`, `integration`, or `config-pack`.
+- `description` is one line, used wherever packages are listed.
+- `about` is optional and longer: a short plain-English paragraph explaining what the tool is for and when an investigator reaches for it. It is what someone reads when deciding whether this is the thing they need, so it should answer that rather than restate the name.
+- `solves` and `artifacts` classify the package on two closed vocabularies, defined in `src/dfpm/classification.py`. They answer different questions and are deliberately kept apart: **`solves`** is what forensic question the package helps answer (`malware-identification`, `timeline-building`, `lateral-movement`), and **`artifacts`** is what data it reads (`windows-event-log`, `registry`, `mft`, `onedrive`). Someone searching for "malware" wants a scanner; someone searching for "onedrive" wants whatever reads a sync log. One list of tags would blur the two.
+
+  ```json
+  "solves": ["log-analysis", "timeline-building"],
+  "artifacts": ["windows-event-log"]
+  ```
+
+  A term outside the vocabulary is refused rather than accepted as free text. Free tags fragment on the first synonym, and a catalog where `evtx`, `event log` and `eventlog` are three unrelated tags is worse than one with no tags at all. Each term carries aliases so a search matches however someone phrases it, and those aliases are synonyms for the idea — never the name of a tool or a rule format, which belong to the package that implements them. Adding a term is a deliberate change, reviewed alongside the package that needs it.
 - `platform` is optional. When present, `platform.os` must be `windows`, `linux`, or `macos`, and `platform.arch` must be `x86`, `x64`, or `arm64`. dfpm refuses to install a package whose platform does not match the machine, which is what keeps a 32-bit or non-Windows build of the same tool from being installed by mistake.
 - `project` is optional and records upstream provenance. `project.homepage`, `project.source` and `project.terms_url` must be HTTPS URLs.
 - `project.license` is a single string holding an SPDX **expression**, so an artifact under more than one license needs no extra field: Hayabusa ships as `AGPL-3.0-only AND LicenseRef-DRL-1.1`, the binary being AGPL and the bundled rules DRL. Terms with no SPDX identifier use a `LicenseRef-` value. dfpm displays this string and does not parse it; validating an expression would mean carrying the SPDX license list to catch typos in a field whose only job is to be read.

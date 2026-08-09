@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from . import runtimes
+from .classification import checked_artifacts, checked_solves
 from .errors import DfpmError, ManifestError
 from .names import unsafe_reason
 from .platforms import SUPPORTED_ARCHITECTURES, SUPPORTED_SYSTEMS
@@ -81,6 +82,9 @@ class Manifest:
     version: str
     kind: str
     description: str
+    about: str | None
+    solves: tuple[str, ...]
+    artifacts: tuple[str, ...]
     artifact: Artifact
     strip_components: int
     extracted_size: int | None
@@ -167,6 +171,9 @@ class Manifest:
             version=_version(data["version"]),
             kind=kind,
             description=_text(data["description"], "description"),
+            about=None if data.get("about") is None else _text(data["about"], "about"),
+            solves=checked_solves(data.get("solves")),
+            artifacts=checked_artifacts(data.get("artifacts")),
             artifact=Artifact(artifact_source, artifact_hash, size),
             strip_components=strip_components,
             extracted_size=extracted_size,

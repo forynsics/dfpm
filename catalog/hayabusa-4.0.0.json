@@ -5,6 +5,17 @@
   "version": "4.0.0",
   "kind": "tool",
   "description": "Generate forensic timelines from Windows event logs and hunt with Sigma detection rules.",
+  "about": "Windows event logs hold the record of what happened on a machine, spread across dozens of channels in a format nobody reads directly. Hayabusa walks a folder of .evtx files and produces a single timeline, applying thousands of bundled Sigma detection rules as it goes so suspicious activity is flagged with a severity rather than left to be spotted by eye. It is normally the first thing pointed at a compromised host, because it turns hours of log triage into one sorted file.",
+  "solves": [
+    "log-analysis",
+    "timeline-building",
+    "threat-hunting",
+    "lateral-movement",
+    "execution-evidence"
+  ],
+  "artifacts": [
+    "windows-event-log"
+  ],
   "platform": {
     "os": "windows",
     "arch": "x64"
