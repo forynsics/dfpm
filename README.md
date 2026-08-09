@@ -121,7 +121,7 @@ Both plans show the path, the file count and the size before anything happens, a
 
 The `catalog/` directory holds the manifests dfpm can install from. Each one names the release artifact its project published, records that artifact's SHA-256, and records the upstream project, its license and the platform it was built for. The download size and the size on disk are recorded too — not as a second integrity check, since the digest already settles what the bytes are, but so the plan can tell you the cost before you agree to it.
 
-It currently contains one package, **YARA 4.5.5 for Windows x64**. dfpm is in early development, so the catalog is still being built out. See [catalog/README.md](catalog/README.md) for what goes into an entry.
+It currently contains **YARA 4.5.5** and **Hayabusa 4.0.0**, both for Windows x64. dfpm is in early development, so the catalog is still being built out. See [catalog/README.md](catalog/README.md) for what goes into an entry, and the review notes recorded for each package.
 
 Recording a digest per release is a job for a script, not a person — reading a project's release feed, fetching the asset and computing the hash is exactly the work a machine should do. What a person does is approve the change. That tooling does not exist yet, so entries are currently written by hand; until it does, the catalog will grow slowly and deliberately.
 

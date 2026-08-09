@@ -18,6 +18,19 @@ The steps below describe doing it by hand, which is how it works until that tool
 
 ## Review notes
 
+### hayabusa 4.0.0
+
+- The digest was computed locally from the downloaded asset and matches the digest GitHub recorded for it.
+- The archive holds `hayabusa-4.0.0-win-x64.exe`, `config/` and `rules/` at its root with no wrapping directory, so `strip_components` is `0`. 5,077 files expanding to 53.5 MiB.
+- **The executable name carries the version and target triple**, so it changes with every release. The entrypoint is still named `hayabusa`, since the command name is stable even when the file it points at is not. Re-check `install.entrypoints[].path` when bumping the version; nothing validates that it matches.
+- **It reads its rules from the working directory.** Run from anywhere else it fails with `[ERROR] The rules directory does not exist.` Verified: the same binary invoked directly from an unrelated folder exits 1, and through `dfpm run` exits 0. No `working_directory` is declared because the executable sits at the package root, so the default — the directory holding the executable — is already correct.
+- The binary is Rust and statically linked, so there is no `requires` entry. Confirmed by running it on a machine with no Java or .NET present.
+- Two licences in one artifact, stated by upstream: AGPLv3 for the binary and DRL 1.1 for the detection rules. Recorded as the SPDX expression `AGPL-3.0-only AND LicenseRef-DRL-1.1`. Upstream says "AGPLv3" without saying whether later versions apply, so `-only` is the conservative reading.
+- **33.5 MiB of the 44 MiB download is `rules/.git`**, a complete git working copy of the rules repository, 69 files. It is installed along with everything else. Its config also references CI runner paths, which is harmless but worth knowing is on disk.
+- `hayabusa update-rules` pulls into `rules/` inside the install. That is fine — the directory belongs to the package — but those updated rules are discarded when the package is replaced, so they need re-fetching after an upgrade.
+- The longest path inside the archive is 171 characters. Under a default Windows root that lands around 223 of the 260 Windows allows, so a deeply nested dfpm root will be refused. That is the path-length check doing its job rather than a fault in the package.
+- Upstream releases v4.5.6 and later were not checked; v4.0.0 was the newest release at review time.
+
 ### yara 4.5.5
 
 - The three releases after v4.5.5 (v4.5.6, v4.5.7, and v4.5.8) publish no Windows assets at all, so v4.5.5 is the newest release that ships a usable win64 build.
