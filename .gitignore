@@ -38,3 +38,8 @@ coverage/
 /staging/
 /bin/
 *.lock.json
+
+# Manufactured from catalog/, never edited by hand.
+# The wheel build stages the entries; the Pages deploy generates the site feed.
+/src/dfpm/entries/*.json
+/docs/catalog.json

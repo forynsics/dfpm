@@ -16,19 +16,19 @@ The steps below describe doing it by hand, which is how it works until that tool
 6. Record the upstream project and its license once, at the tool level. The platform belongs to each build; the platforms a tool supports are read from its builds rather than stated again. `license` takes an SPDX expression, so an artifact under more than one license says so directly (`AGPL-3.0-only AND LicenseRef-DRL-1.1`). If the tool restricts who may use it or for what purpose, record `project.terms_url`; that alone makes dfpm refuse to install it from a script without `--accept-terms`.
 7. If the tool needs particular arguments to work at all — some resolve their own rules or configuration relative to the working directory — record the working invocation in the review notes below. dfpm does not supply arguments on a tool's behalf, so this is documentation for whoever installs it, not configuration.
 8. Run `dfpm catalog`, which loads and validates every manifest in this directory and fails on a malformed one. Then install it and confirm the tool actually runs.
-9. Regenerate the site's feed with `dfpm catalog --json > docs/catalog.json` from the repository root. The public site is a static page and cannot run dfpm, so that file is how a reviewed package reaches it. It carries what a reader needs and this directory does not hold in one place — the description, the classification with its human labels, and the platforms — which is why it is generated rather than the site reading these manifests itself. The test suite fails if the two disagree, which is the reminder rather than the requirement.
-10. Regenerate the index with `dfpm catalog --index > catalog/index.json`. The index is how a published catalog says what it contains, since nothing can list a directory over HTTPS, and its digests are what let a machine sync only what changed. An entry added without regenerating the index is invisible to everyone syncing.
-11. Copy the entries and the index over `src/dfpm/entries/`, which is what dfpm ships with and what a machine reads before anyone has curated a catalog of its own. A reviewed entry that never reaches there is one a new install cannot see. The test suite fails if these drift too.
+9. Regenerate the index with `dfpm catalog --index > catalog\index.json`. The index is how a published catalog says what it contains, since nothing can list a directory over HTTPS, and its digests are what let a machine sync only what changed. An entry added without regenerating the index is invisible to everyone syncing.
 
-Steps 8 to 11 are mechanical and the test suite fails if any is skipped, so run them together:
+So the whole mechanical part is two commands:
 
 ```powershell
 $env:DFPM_CATALOG = "catalog"
 dfpm catalog                              # validates every entry
 dfpm catalog --index > catalog\index.json
-dfpm catalog --json  > docs\catalog.json
-Copy-Item catalog\*.json src\dfpm\entries\ -Force
 ```
+
+**Nothing else needs copying anywhere.** This directory is the only place entries are edited. The entries dfpm ships with are staged into the package when it is built, and the feed the public site reads is generated when the site is deployed — neither is committed, so neither can fall out of step with what is here.
+
+The index is the one exception, because `dfpm sync` fetches it straight from the repository over HTTPS and so it has to exist there. The test suite fails when it is stale.
 
 ## Review notes
 

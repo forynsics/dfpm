@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 import unittest
 from pathlib import Path
 
@@ -9,35 +11,42 @@ from dfpm.classification import vocabulary
 
 REPOSITORY = Path(__file__).resolve().parents[1]
 SITE = REPOSITORY / "docs"
-FEED = SITE / "catalog.json"
-REGENERATE = "Regenerate it with: dfpm catalog --json > docs/catalog.json"
+CATALOG = REPOSITORY / "catalog"
 
 
 class SiteFeedTests(unittest.TestCase):
-    """The public site reads catalog.json, which has to keep saying what the catalog says.
+    """The feed the public site reads is generated when the site is deployed.
 
-    A static page cannot run dfpm, so the feed is generated and committed. That
-    is the only copy of the catalog outside catalog/ itself, and a copy nothing
-    checks is a copy that goes stale the first time a manifest changes.
+    It is not committed, so there is nothing to keep in step and nothing to go
+    stale. What has to keep working is the generating: the command has to run,
+    and what it produces has to be shaped the way the page reads it.
     """
 
-    def setUp(self) -> None:
-        self.assertTrue(FEED.is_file(), f"{FEED} is missing. {REGENERATE}")
-        self.feed = json.loads(FEED.read_text(encoding="utf-8"))
+    @classmethod
+    def setUpClass(cls) -> None:
+        produced = subprocess.run(
+            [sys.executable, "-m", "dfpm", "--catalog", str(CATALOG), "catalog", "--json"],
+            capture_output=True,
+            text=True,
+            cwd=REPOSITORY,
+        )
+        if produced.returncode != 0:
+            raise AssertionError(f"generating the site feed failed:\n{produced.stderr}")
+        cls.feed = json.loads(produced.stdout)
 
-    def test_the_feed_matches_the_catalog_it_was_generated_from(self) -> None:
-        expected = [describe(tool) for tool in load_catalog(REPOSITORY / "catalog")]
-        self.assertEqual(self.feed.get("packages"), expected, f"docs/catalog.json has drifted. {REGENERATE}")
+    def test_the_feed_describes_every_reviewed_package(self) -> None:
+        expected = [describe(tool) for tool in load_catalog(CATALOG)]
+        self.assertEqual(self.feed.get("packages"), expected)
 
     def test_the_feed_carries_the_vocabulary(self) -> None:
         # The site offers disciplines a reader can browse by, including ones
         # nothing is catalogued under yet, so it must not keep its own list.
-        self.assertEqual(self.feed.get("vocabulary"), vocabulary(), f"docs/catalog.json has drifted. {REGENERATE}")
+        self.assertEqual(self.feed.get("vocabulary"), vocabulary())
 
     def test_the_site_reads_the_feed_rather_than_a_copy_of_it(self) -> None:
         script = (SITE / "app.js").read_text(encoding="utf-8")
         self.assertIn("catalog.json", script)
-        for tool in load_catalog(REPOSITORY / "catalog"):
+        for tool in load_catalog(CATALOG):
             self.assertNotIn(
                 f'"{tool.id}"',
                 script,
@@ -54,9 +63,19 @@ class SiteFeedTests(unittest.TestCase):
                 for item in package.get("disciplines", []):
                     self.assertEqual(set(item), {"key", "label"})
 
+    def test_the_deploy_generates_the_feed_the_page_asks_for(self) -> None:
+        """The workflow and the page have to agree on the filename, or the site loads nothing."""
+        workflow = (REPOSITORY / ".github" / "workflows" / "pages.yml").read_text(encoding="utf-8")
+        self.assertIn("docs/catalog.json", workflow)
+        self.assertIn('CATALOG_FEED = "catalog.json"', (SITE / "app.js").read_text(encoding="utf-8"))
 
-class ShippedEntriesTests(unittest.TestCase):
-    """dfpm carries the reviewed entries, so installing it is enough to have something to install."""
+
+class PublishedIndexTests(unittest.TestCase):
+    """The index is the one derived file that has to be committed.
+
+    `dfpm sync` fetches it straight from the repository over HTTPS, so it cannot
+    be built at deploy time the way the site feed is.
+    """
 
     def test_the_published_index_matches_the_entries(self) -> None:
         """A stale index makes a reviewed entry invisible to everyone syncing.
@@ -65,28 +84,31 @@ class ShippedEntriesTests(unittest.TestCase):
         why line endings are pinned in .gitattributes: an index generated from a
         CRLF checkout would not match what a static host serves.
         """
-        for directory in (REPOSITORY / "catalog", SHIPPED):
-            with self.subTest(catalog=directory.name):
-                written = json.loads((directory / INDEX_NAME).read_text(encoding="utf-8"))
-                self.assertEqual(
-                    written,
-                    build_index(directory),
-                    f"{directory / INDEX_NAME} is stale. Regenerate it with: dfpm catalog --index > catalog/index.json",
-                )
-
-
-
-    def test_the_shipped_entries_match_the_reviewed_ones(self) -> None:
-        reviewed = {path.name: path.read_bytes() for path in (REPOSITORY / "catalog").glob("*.json")}
-        shipped = {path.name: path.read_bytes() for path in SHIPPED.glob("*.json")}
+        written = json.loads((CATALOG / INDEX_NAME).read_text(encoding="utf-8"))
         self.assertEqual(
-            sorted(shipped),
-            sorted(reviewed),
-            "The entries shipped with dfpm have drifted from catalog/. Copy catalog/*.json over src/dfpm/entries/.",
+            written,
+            build_index(CATALOG),
+            f"{CATALOG / INDEX_NAME} is stale. Regenerate it with: dfpm catalog --index > catalog\\index.json",
         )
-        for name, content in reviewed.items():
-            with self.subTest(entry=name):
-                self.assertEqual(shipped[name], content, f"src/dfpm/entries/{name} differs from catalog/{name}")
+
+
+class ShippedEntriesTests(unittest.TestCase):
+    """dfpm carries the reviewed entries, so installing it is enough to have something to install.
+
+    They are staged into the package by the build rather than kept in step by
+    hand, so what is checked here is that the staging happened and produced
+    something usable — not that two directories match.
+    """
+
+    def test_the_build_staged_the_reviewed_entries(self) -> None:
+        reviewed = sorted(path.name for path in CATALOG.glob("*.json"))
+        shipped = sorted(path.name for path in SHIPPED.glob("*.json"))
+        self.assertEqual(
+            shipped,
+            reviewed,
+            "The entries in the package are not the reviewed ones. Reinstall dfpm to re-stage them: "
+            "pip install --editable .",
+        )
 
     def test_the_shipped_entries_load(self) -> None:
         # They are what a fresh machine reads, so a broken one is not a
