@@ -16,6 +16,7 @@ from urllib.parse import urlparse
 
 from . import removal
 from .catalog import describe, load_catalog, resolve
+from .classification import vocabulary
 from .doctor import inspect
 from .errors import DfpmError
 from .installer import check_destination, check_platform, install
@@ -209,6 +210,11 @@ class Handler(BaseHTTPRequestHandler):
             "packages": [_summarize(package) for package in list_packages(storage)],
             "catalog": catalog,
             "catalogError": catalog_error,
+            # Sent alongside the packages for the same reason the command line
+            # prints it: an interface offering disciplines to filter by should
+            # read the list rather than keep a copy that drifts, and that
+            # includes the ones nothing is catalogued under yet.
+            "vocabulary": vocabulary(),
             "findings": [vars(finding) for finding in inspect(storage)],
         }
 

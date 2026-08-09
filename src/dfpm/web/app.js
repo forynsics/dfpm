@@ -5,6 +5,10 @@ const $ = (selector) => document.querySelector(selector);
 
 let state = null;
 let busy = false;
+/* Which discipline the catalog is filtered to, or null for all of them. It is
+   kept out of `state` because that is replaced wholesale on every refresh, and
+   a refresh should not throw away what somebody was looking at. */
+let discipline = null;
 
 /* ---------- tiny DOM helper: every value is set as text, never as markup ---------- */
 
@@ -35,6 +39,25 @@ function chip(text, tone) {
 
 function badge(name, tone) {
   return el("div", { className: `tool-badge ${tone}`, text: (name[0] || "?").toUpperCase() });
+}
+
+/* The three classification axes that are not the browsing one, as labelled
+   lists. A dozen more chips would be noise; under a heading saying what the
+   list is, the same terms answer a question. */
+const META_ROWS = [
+  ["capabilities", "Does"],
+  ["evidence", "Reads"],
+  ["use_cases", "Used for"],
+];
+
+function metaRows(entry) {
+  const rows = [];
+  for (const [field, label] of META_ROWS) {
+    const terms = entry[field] || [];
+    if (!terms.length) continue;
+    rows.push(el("dt", { text: label }), el("dd", { text: terms.map((item) => item.label).join(" · ") }));
+  }
+  return rows.length ? el("dl", { className: "meta-rows" }, rows) : null;
 }
 
 /* ---------- server ---------- */
@@ -119,7 +142,39 @@ function renderInstalled() {
   }
 }
 
+function renderDisciplines() {
+  const bar = $("#catalog-filters");
+  bar.replaceChildren();
+  const terms = (state.vocabulary && state.vocabulary.disciplines) || [];
+  if (!terms.length) return;
+
+  const counts = new Map();
+  for (const entry of state.catalog)
+    for (const item of entry.disciplines || []) counts.set(item.key, (counts.get(item.key) || 0) + 1);
+
+  // Every discipline is offered, including the ones nothing is catalogued
+  // under. Somebody new to the field is reading this to find out what the
+  // field contains, and an empty one is an answer rather than a gap.
+  bar.append(filterButton(null, "All", state.catalog.length));
+  for (const term of terms) bar.append(filterButton(term.key, term.label, counts.get(term.key) || 0));
+}
+
+function filterButton(key, label, count) {
+  const node = el("button", {
+    className: discipline === key ? "active" : "",
+    text: `${label} (${count})`,
+    onClick: () => { discipline = key; renderCatalog(); },
+  });
+  node.type = "button";
+  if (count === 0) {
+    node.disabled = true;
+    node.title = "Nothing in the catalog covers this discipline yet";
+  }
+  return node;
+}
+
 function renderCatalog() {
+  renderDisciplines();
   const container = $("#catalog-list");
   container.replaceChildren();
 
@@ -132,8 +187,16 @@ function renderCatalog() {
     return;
   }
 
+  const showing = discipline
+    ? state.catalog.filter((entry) => (entry.disciplines || []).some((item) => item.key === discipline))
+    : state.catalog;
+  if (!showing.length) {
+    container.append(el("div", { className: "empty-state", text: "No package in the catalog covers that discipline." }));
+    return;
+  }
+
   const installed = new Map(state.packages.map((pack) => [pack.id, pack]));
-  for (const entry of state.catalog) {
+  for (const entry of showing) {
     const existing = installed.get(entry.id);
     const alreadyInstalled = Boolean(existing && existing.version === entry.version);
     const replaces = existing && existing.version !== entry.version ? existing.version : null;
@@ -146,14 +209,19 @@ function renderCatalog() {
             el("small", { text: `${entry.id} · ${entry.kind}` }),
           ]),
         ]),
-        el("p", { text: entry.description }),
+        // The catalog is where a package is still being decided on, so it says
+        // as much as it knows. What is already installed is shown differently,
+        // because the question there is how it is doing, not what it is.
+        el("p", { text: entry.about || entry.description }),
         el("div", { className: "tags" }, [
           alreadyInstalled ? chip("Installed", "ok") : null,
           replaces ? chip(`replaces ${replaces}`) : null,
           ...(entry.disciplines || []).map((item) => chip(item.label, "accent")),
           ...(entry.platforms || []).map((item) => chip(`${item.os}/${item.arch}`)),
           entry.project && entry.project.license ? chip(entry.project.license) : null,
+          ...(entry.commands || []).map((command) => chip(command)),
         ]),
+        metaRows(entry),
         el("div", { className: "card-actions" }, [
           alreadyInstalled
             ? button("Installed", "", null, { disabled: true, title: "This version is already installed" })

@@ -64,8 +64,6 @@ html[data-appearance="dark"] { --danger: #f2837a; --danger-soft: #2e1917; }
 .catalog-light.bad { background: var(--danger); }
 .sidebar footer b { display: block; }
 
-.empty-state { border: 1px dashed var(--text); padding: 36px; text-align: center; color: var(--muted); font-size: 14px; }
-
 /* The shared stylesheet hard-codes a light-mode grey here, which is unreadable on the dark canvas. */
 html[data-appearance="dark"] .tool-card > p { color: var(--muted); }
 html[data-appearance="dark"] .card-actions select { background: var(--panel); }

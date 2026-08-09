@@ -10,7 +10,7 @@
 
 const CATALOG_FEED = "catalog.json";
 
-const state = { packages: [], error: null };
+const state = { packages: [], vocabulary: null, discipline: null, error: null };
 
 const COMMANDS = [
   ["dfpm paths", "Show where dfpm stores files."],
@@ -53,6 +53,25 @@ function badge(name, tone) {
    having to carry a field about how a website looks. */
 const TONES = ["navy", "gold", "silver"];
 
+/* Somebody reading the catalog has not chosen anything yet, so the entry should
+   answer as much as it can. The three axes that are not the browsing one read
+   better as labelled lists than as another dozen chips. */
+const META_ROWS = [
+  ["capabilities", "Does"],
+  ["evidence", "Reads"],
+  ["use_cases", "Used for"],
+];
+
+function metaRows(entry) {
+  const rows = [];
+  for (const [field, label] of META_ROWS) {
+    const terms = entry[field] || [];
+    if (!terms.length) continue;
+    rows.push(el("dt", { text: label }), el("dd", { text: terms.map((item) => item.label).join(" · ") }));
+  }
+  return rows.length ? el("dl", { className: "meta-rows" }, rows) : null;
+}
+
 function tone(entry) {
   let total = 0;
   for (const character of entry.id) total = (total + character.codePointAt(0)) % 1024;
@@ -74,6 +93,7 @@ async function loadCatalog() {
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
     const feed = await response.json();
     state.packages = feed.packages || [];
+    state.vocabulary = feed.vocabulary || null;
   } catch (error) {
     // Opening the file straight from disk trips this, because a browser will
     // not fetch alongside a file:// page. Say what to do rather than leaving
@@ -83,8 +103,41 @@ async function loadCatalog() {
   renderCatalog();
 }
 
+function renderDisciplines() {
+  const bar = $("#catalog-filters");
+  bar.replaceChildren();
+  const terms = (state.vocabulary && state.vocabulary.disciplines) || [];
+  if (!terms.length) return;
+
+  const counts = new Map();
+  for (const entry of state.packages)
+    for (const item of entry.disciplines || []) counts.set(item.key, (counts.get(item.key) || 0) + 1);
+
+  // Every discipline is offered, including the ones nothing is catalogued
+  // under. Somebody who cannot yet name a tool is reading this to find out
+  // what the field contains, and an empty discipline is an answer rather
+  // than a gap.
+  bar.append(filterButton(null, "All", state.packages.length));
+  for (const term of terms) bar.append(filterButton(term.key, term.label, counts.get(term.key) || 0));
+}
+
+function filterButton(key, label, count) {
+  const node = el("button", {
+    className: state.discipline === key ? "active" : "",
+    text: `${label} (${count})`,
+    onClick: () => { state.discipline = key; renderCatalog(); },
+  });
+  node.type = "button";
+  if (count === 0) {
+    node.disabled = true;
+    node.title = "Nothing in the catalog covers this discipline yet";
+  }
+  return node;
+}
+
 function renderCatalog() {
   renderCatalogCount();
+  renderDisciplines();
   const container = $("#catalog-list");
   container.replaceChildren();
 
@@ -97,7 +150,15 @@ function renderCatalog() {
     return;
   }
 
-  for (const entry of state.packages) {
+  const showing = state.discipline
+    ? state.packages.filter((entry) => (entry.disciplines || []).some((item) => item.key === state.discipline))
+    : state.packages;
+  if (!showing.length) {
+    container.append(el("div", { className: "empty-state", text: "No package in the catalog covers that discipline." }));
+    return;
+  }
+
+  for (const entry of showing) {
     const project = entry.project || {};
     const platforms = (entry.platforms || []).map((item) => `${item.os}/${item.arch}`);
     const disciplines = entry.disciplines || [];
@@ -117,6 +178,7 @@ function renderCatalog() {
           project.license ? chip(project.license) : null,
           ...(entry.commands || []).map((command) => chip(command)),
         ]),
+        metaRows(entry),
         el("footer", {}, [
           el("span", { text: platforms.length > 1 ? `${platforms.length} builds, each digest pinned` : "Digest pinned and verified" }),
           project.repository ? el("a", { text: "Project site →", href: project.repository }) : null,

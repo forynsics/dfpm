@@ -98,6 +98,16 @@ class GuiTests(unittest.TestCase):
         self.assertIsNone(payload["catalogError"])
         self.assertEqual(payload["paths"]["root"], str(self.storage.root))
 
+    def test_state_carries_the_vocabulary_the_interface_filters_by(self) -> None:
+        # The interface offers every discipline, including ones nothing is
+        # catalogued under, so it has to be told them rather than deducing the
+        # list from whatever happens to be installed.
+        from dfpm.classification import vocabulary
+
+        _, payload = self.api("/api/state")
+        self.assertEqual(payload["vocabulary"], vocabulary())
+        self.assertTrue(payload["vocabulary"]["disciplines"])
+
     def test_install_update_and_uninstall_through_the_api(self) -> None:
         status, payload = self.api("/api/install/plan", body={"package": "example.tool"})
         self.assertEqual(status, 200)
