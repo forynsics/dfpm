@@ -1,0 +1,9 @@
+dfpm
+Copyright 2026 forynsics
+
+Licensed under the Apache License, Version 2.0. See LICENSE.
+
+dfpm distributes no third-party software. Packages in catalog/ reference release
+artifacts published by their own upstream projects, are downloaded directly from
+those projects over HTTPS, and remain subject to those projects' own licenses,
+which each manifest records and dfpm prints before anything is fetched.
