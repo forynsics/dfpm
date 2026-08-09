@@ -18,6 +18,8 @@ function el(tag, options = {}, children = []) {
   if (options.text !== undefined) node.textContent = options.text;
   if (options.title) node.title = options.title;
   if (options.type) node.type = options.type;
+  if (options.src) node.src = options.src;
+  if (options.alt !== undefined) node.alt = options.alt;
   if (options.disabled) node.disabled = true;
   if (options.onClick) node.addEventListener("click", options.onClick);
   for (const child of children) if (child) node.append(child);
@@ -39,6 +41,16 @@ function chip(text, tone) {
 
 function badge(name, tone) {
   return el("div", { className: `tool-badge ${tone}`, text: (name[0] || "?").toUpperCase() });
+}
+
+/* An empty panel reads as something being broken. Saying nothing is wrong,
+   in the same voice the rest of dfpm uses, is the whole job here. */
+function emptyState(text, illustrated = true) {
+  const node = el("div", { className: "empty-state" }, [
+    illustrated ? el("img", { className: "empty-mascot", src: "brix-sleeping.png", alt: "" }) : null,
+    el("p", { text }),
+  ]);
+  return node;
 }
 
 /* The three classification axes that are not the browsing one, as labelled
@@ -109,7 +121,7 @@ function renderInstalled() {
   const container = $("#installed-list");
   container.replaceChildren();
   if (!state.packages.length) {
-    container.append(el("div", { className: "empty-state", text: "Nothing is installed yet. Open the reviewed catalog to install a package." }));
+    container.append(emptyState("Nothing is installed yet. Open the catalog to install one."));
     return;
   }
 
@@ -179,11 +191,11 @@ function renderCatalog() {
   container.replaceChildren();
 
   if (state.catalogError) {
-    container.append(el("div", { className: "empty-state", text: state.catalogError }));
+    container.append(emptyState(state.catalogError, false));
     return;
   }
   if (!state.catalog.length) {
-    container.append(el("div", { className: "empty-state", text: "The catalog directory holds no manifests." }));
+    container.append(emptyState("The catalog directory holds no manifests."));
     return;
   }
 
@@ -191,7 +203,7 @@ function renderCatalog() {
     ? state.catalog.filter((entry) => (entry.disciplines || []).some((item) => item.key === discipline))
     : state.catalog;
   if (!showing.length) {
-    container.append(el("div", { className: "empty-state", text: "No package in the catalog covers that discipline." }));
+    container.append(emptyState("No package in the catalog covers that discipline."));
     return;
   }
 
@@ -236,7 +248,7 @@ function renderHealth() {
   const container = $("#health-list");
   container.replaceChildren();
   if (!state.findings.length) {
-    container.append(el("div", { className: "empty-state", text: "No managed packages to check." }));
+    container.append(emptyState("Nothing is installed, so there is nothing to check."));
     return;
   }
   const table = el("div", { className: "plain-table" }, [
@@ -267,7 +279,7 @@ function renderLocations() {
     ["Downloaded files", "Verified downloads kept so packages can be reinstalled offline", "cache"],
     ["Command shortcuts", "Small launchers pointing at the active version", "bin"],
     ["Package records", "What is installed, where it came from, and when", "state"],
-    ["Reviewed catalog", "Manifests this interface can install from", "catalog"],
+    ["Catalog", "The entries this interface can install from", "catalog"],
   ];
   for (const [title, description, key] of rows) {
     container.append(

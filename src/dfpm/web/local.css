@@ -64,6 +64,11 @@ html[data-appearance="dark"] { --danger: #f2837a; --danger-soft: #2e1917; }
 .catalog-light.bad { background: var(--danger); }
 .sidebar footer b { display: block; }
 
+/* Brix appears where the interface has nothing to report, which is the one
+   place a local tool can afford some warmth without getting in the way. */
+.empty-state p { margin: 0; }
+.empty-mascot { display: block; width: 78px; margin: 0 auto 12px; image-rendering: pixelated; }
+
 /* The shared stylesheet hard-codes a light-mode grey here, which is unreadable on the dark canvas. */
 html[data-appearance="dark"] .tool-card > p { color: var(--muted); }
 html[data-appearance="dark"] .card-actions select { background: var(--panel); }

@@ -31,6 +31,7 @@ ASSETS = {
     "/styles.css": ("styles.css", "text/css; charset=utf-8"),
     "/refinements.css": ("refinements.css", "text/css; charset=utf-8"),
     "/local.css": ("local.css", "text/css; charset=utf-8"),
+    "/brix-sleeping.png": ("brix-sleeping.png", "image/png"),
 }
 SHARED_STYLESHEETS = ("styles.css", "refinements.css")
 LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})

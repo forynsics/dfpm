@@ -78,7 +78,9 @@ body { font-family: Arial, "Helvetica Neue", Helvetica, sans-serif; color: var(-
    badge. */
 .tool-grid.list .meta-rows { grid-column: 2; }
 .meta-rows dt { font-size: 9px; font-weight: 800; letter-spacing: .08em; color: var(--muted); text-transform: uppercase; padding-top: 2px; }
-.meta-rows dd { margin: 0; color: #566172; line-height: 1.5; }
+/* var(--muted) rather than a fixed grey, because the same value has to stay
+   readable on the dark canvas as well as the light one. */
+.meta-rows dd { margin: 0; color: var(--muted); line-height: 1.5; }
 @media (max-width: 700px) { .meta-rows { grid-template-columns: 1fr; gap: 2px } .meta-rows dd { margin-bottom: 8px } }
 .kit-card { border-color: var(--text); border-radius: 0; box-shadow: 4px 4px 0 var(--accent); }
 .kit-card:nth-child(2) { box-shadow: 4px 4px 0 var(--blue); }

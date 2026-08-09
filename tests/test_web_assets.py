@@ -28,12 +28,18 @@ class WebAssetTests(unittest.TestCase):
             with self.subTest(asset=name):
                 self.assertTrue((ASSET_DIRECTORY / name).is_file())
 
-    def test_the_page_links_only_assets_that_are_served(self) -> None:
-        page = (ASSET_DIRECTORY / "index.html").read_text(encoding="utf-8")
-        served = {name for name, _ in ASSETS.values()}
-        for name in served:
-            if name != "index.html":
-                self.assertIn(name, page, f"{name} is served but never referenced by the page")
+    def test_the_interface_references_every_asset_it_serves(self) -> None:
+        # The page links its stylesheets and script; the script names anything
+        # it loads later, such as an image. Either counts as being used, and an
+        # asset named by neither is one the interface no longer needs.
+        referenced = "".join(
+            (ASSET_DIRECTORY / name).read_text(encoding="utf-8") for name in ("index.html", "app.js")
+        )
+        for name, _ in ASSETS.values():
+            if name in {"index.html", "app.js"}:
+                continue
+            with self.subTest(asset=name):
+                self.assertIn(name, referenced, f"{name} is served but never referenced by the interface")
 
 
 if __name__ == "__main__":
