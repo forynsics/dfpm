@@ -56,6 +56,24 @@ class LauncherTests(unittest.TestCase):
         self.assertIn("--scan", recorded)
         self.assertIn("some path", recorded)
 
+    def test_run_refuses_an_argument_cmd_would_reinterpret(self) -> None:
+        # Windows runs a .cmd through cmd.exe, which executes the text after an
+        # ampersand instead of handing it to the tool. Refusing beats mangling.
+        self.install_version("1.0.0")
+        with self.assertRaises(DfpmError) as caught:
+            launcher.run(self.storage, "example-tool", ["C:/evidence & more"])
+        message = str(caught.exception)
+        self.assertIn("'&'", message)
+        self.assertIn("example-tool.cmd", message)
+
+    def test_run_accepts_arguments_that_survive_cmd_intact(self) -> None:
+        destination = self.install_version("1.0.0", body='@echo %* > "%~dp0args.txt"\r\n')
+        arguments = ["--rules", r"D:\cases\2026\rules", "a name with spaces", "bang!value"]
+        self.assertEqual(launcher.run(self.storage, "example-tool", arguments), 0)
+        recorded = (destination / "bin" / "args.txt").read_text(encoding="utf-8").strip()
+        self.assertIn(r"D:\cases\2026\rules", recorded)
+        self.assertIn("a name with spaces", recorded)
+
     def test_run_reports_a_recorded_command_whose_file_vanished(self) -> None:
         destination = self.install_version("1.0.0")
         (destination / "bin" / "example-tool.cmd").unlink()
