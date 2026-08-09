@@ -1,6 +1,6 @@
 # Reviewed package catalog
 
-Every manifest here names one exact artifact and records its SHA-256, and a person approved it being here.
+Every file here describes one tool and every build of it dfpm can install. Each build names one exact file and records its SHA-256, and a person approved it being here.
 
 That approval is the point, not the typing. A manifest may perfectly well be produced by a script that reads a project's release feed, downloads the asset and computes the digest — nobody is auditing eleven megabytes of compiled Rust by hand, and pretending otherwise would be dishonest about what the digest is for. What it actually buys is that everyone installing a given version gets identical bytes, now and in three years, and that an asset quietly replaced at the same URL is caught. What must not happen is a manifest reaching this directory without a person approving the change. Discovery proposes; a person merges.
 
@@ -8,21 +8,23 @@ The steps below describe doing it by hand, which is how it works until that tool
 
 ## Reviewing a package
 
-1. Find the candidate release and the correct asset for the target platform. Asset naming is not stable across releases, and a project's newest release does not always publish binaries at all, so the newest tag is not automatically the right answer.
+1. Find the candidate release and the correct asset for each platform you intend to support. A tool shipping for Windows, Linux and macOS becomes three builds in one file, not three files. Asset naming is not stable across releases, and a project's newest release does not always publish binaries at all, so the newest tag is not automatically the right answer.
 2. Download the asset over HTTPS from the project's official location and compute its SHA-256 and size locally.
 3. Corroborate the digest against a second source where one exists, such as the digest the hosting platform recorded for the asset, or a checksum or signature the project publishes. GitHub only records digests for assets uploaded after it added the feature, so older releases have none and the locally computed digest is all you get.
-4. Inspect the archive to determine `strip_components`, the real entrypoint paths, and the files worth health checking. Record `install.extracted_size` and `install.entries` while you are there, so `dfpm install` can show what the package costs on disk before anything is downloaded. Both are verified after extraction, so a wrong figure fails the install rather than misleading someone.
+4. Inspect **each** archive to determine `strip_components`, the real entrypoint paths, and the files worth checking. Builds of one release are not interchangeable: their binaries are named differently and their file counts differ, so every build needs its own inspection rather than the Windows numbers copied across. Record `install.extracted_size` and `install.entries` while you are there, so `dfpm install` can show what the package costs on disk before anything is downloaded. Both are verified after extraction, so a wrong figure fails the install rather than misleading someone. Record them per build.
 5. Write `about`, and classify the package with `disciplines`, `capabilities`, `use_cases` and `evidence`. The one-line `description` says what the tool is; `about` describes what it does and produces, factually — not why it is good, which ages badly and is not the catalog's job to claim. Classification is what makes a package findable by someone who does not already know its name, which is most people most of the time. Keep the four axes honest: which discipline it belongs to, what it does, when you would reach for it, what it reads. `disciplines` is about whose evidence the tool examines, not which operating system the binary runs on — those differ often. Leave it empty for a tool that genuinely serves no single discipline rather than listing them all. The full vocabulary lives in `src/dfpm/classification.py`; a term that is not in it is refused, so a manifest cannot invent one. If no existing term fits, add one to `src/dfpm/classification.py` in the same change rather than forcing a near-miss.
-6. Record the upstream project, its license, and the platform the artifact was built for. `license` takes an SPDX expression, so an artifact under more than one license says so directly (`AGPL-3.0-only AND LicenseRef-DRL-1.1`). If the tool restricts who may use it or for what purpose, record `project.terms_url`; that alone makes dfpm refuse to install it from a script without `--accept-terms`.
+6. Record the upstream project and its license once, at the tool level. The platform belongs to each build; the platforms a tool supports are read from its builds rather than stated again. `license` takes an SPDX expression, so an artifact under more than one license says so directly (`AGPL-3.0-only AND LicenseRef-DRL-1.1`). If the tool restricts who may use it or for what purpose, record `project.terms_url`; that alone makes dfpm refuse to install it from a script without `--accept-terms`.
 7. If the tool needs particular arguments to work at all — some resolve their own rules or configuration relative to the working directory — record the working invocation in the review notes below. dfpm does not supply arguments on a tool's behalf, so this is documentation for whoever installs it, not configuration.
 8. Run `dfpm catalog`, which loads and validates every manifest in this directory and fails on a malformed one. Then install it and confirm the tool actually runs.
 
 ## Review notes
 
-### hayabusa 4.0.0
+### hayabusa
 
-- The digest was computed locally from the downloaded asset and matches the digest GitHub recorded for it.
-- The archive holds `hayabusa-4.0.0-win-x64.exe`, `config/` and `rules/` at its root with no wrapping directory, so `strip_components` is `0`. 5,077 files expanding to 53.5 MiB.
+- Three builds at 4.0.0: `windows/x64`, `linux/x64` (the gnu variant) and `macos/arm64`. Every digest was computed locally from the downloaded asset and matches the digest GitHub recorded.
+- Each holds its binary, `config/` and `rules/` at the archive root with no wrapping directory, so `strip_components` is `0` throughout.
+- **The builds are not interchangeable.** Windows unpacks 5,077 files to 53.5 MiB, Linux 5,043 files to 58.0 MiB, macOS 5,077 files to 53.8 MiB, and each binary carries its own target triple in its name. Copying one build's figures to another would fail the install, which is the point of recording them.
+- Only the Windows build has been installed and run. The Linux and macOS builds were downloaded, verified and inspected, but not executed.
 - **The executable name carries the version and target triple**, so it changes with every release. The entrypoint is still named `hayabusa`, since the command name is stable even when the file it points at is not. Re-check `install.entrypoints[].path` when bumping the version; nothing validates that it matches.
 - **It reads its rules from the working directory.** Run from anywhere else it fails with `[ERROR] The rules directory does not exist.` Verified: the same binary invoked directly from an unrelated folder exits 1, and through `dfpm run` exits 0. No `working_directory` is declared because the executable sits at the package root, so the default — the directory holding the executable — is already correct.
 - The binary is Rust and statically linked, so there is no `requires` entry. Confirmed by running it on a machine with no Java or .NET present.

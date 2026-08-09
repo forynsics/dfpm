@@ -9,6 +9,7 @@ from pathlib import Path
 from . import __version__, cache, classification, launcher, progress, removal, runtimes
 from .archive import human_size
 from .catalog import describe, load_catalog, resolve
+from .catalog import newest as catalog_newest
 from .doctor import inspect
 from .errors import DfpmError
 from .gui import serve
@@ -110,9 +111,12 @@ def _run(args: argparse.Namespace, storage: Storage) -> int:
                 "vocabulary": classification.vocabulary(),
             }, indent=2))
         else:
-            for package in packages:
-                print(f"{package.id:<28} {package.version:<14} {package.name}")
-                print(f"{'':<28} {package.description}")
+            for tool in packages:
+                newest = catalog_newest(tool)
+                platforms = ", ".join(str(item) for item in tool.platforms()) or "any platform"
+                print(f"{tool.id:<24} {newest.version:<12} {tool.name}")
+                print(f"{'':<24} {tool.description}")
+                print(f"{'':<24} {platforms}")
         return 0
     if args.command == "install":
         return _install(args, storage)

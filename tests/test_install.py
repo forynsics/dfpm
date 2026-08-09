@@ -71,7 +71,7 @@ class InstallTests(unittest.TestCase):
     def test_wrong_digest_never_creates_an_install_directory(self) -> None:
         _, manifest_path = create_package(self.base)
         data = json.loads(manifest_path.read_text(encoding="utf-8"))
-        data["package"]["sha256"] = "0" * 64
+        data["builds"][0]["package"]["sha256"] = "0" * 64
         manifest_path.write_text(json.dumps(data), encoding="utf-8")
         with self.assertRaises(VerificationError):
             install(Manifest.load(manifest_path), self.storage)
@@ -96,8 +96,8 @@ class InstallTests(unittest.TestCase):
             output.writestr("../outside.txt", "unsafe")
         data = json.loads(manifest_path.read_text(encoding="utf-8"))
         payload = archive.read_bytes()
-        data["package"]["sha256"] = hashlib.sha256(payload).hexdigest()
-        data["package"]["size"] = len(payload)
+        data["builds"][0]["package"]["sha256"] = hashlib.sha256(payload).hexdigest()
+        data["builds"][0]["package"]["size"] = len(payload)
         manifest_path.write_text(json.dumps(data), encoding="utf-8")
         with self.assertRaises(InstallError):
             install(Manifest.load(manifest_path), self.storage)
@@ -107,7 +107,7 @@ class InstallTests(unittest.TestCase):
         system, architecture = platforms.current()
         _, manifest_path = create_package(self.base)
         data = json.loads(manifest_path.read_text(encoding="utf-8"))
-        data["platform"] = {"os": "linux" if system != "linux" else "windows", "arch": architecture}
+        data["builds"][0]["platform"] = {"os": "linux" if system != "linux" else "windows", "arch": architecture}
         manifest_path.write_text(json.dumps(data), encoding="utf-8")
         with self.assertRaises(InstallError) as caught:
             install(Manifest.load(manifest_path), self.storage)
@@ -118,7 +118,7 @@ class InstallTests(unittest.TestCase):
         system, architecture = platforms.current()
         _, manifest_path = create_package(self.base)
         data = json.loads(manifest_path.read_text(encoding="utf-8"))
-        data["platform"] = {"os": system, "arch": architecture}
+        data["builds"][0]["platform"] = {"os": system, "arch": architecture}
         data["project"] = {"repository": "https://example.org/tool", "license": "BSD-3-Clause"}
         manifest_path.write_text(json.dumps(data), encoding="utf-8")
         install(Manifest.load(manifest_path), self.storage)

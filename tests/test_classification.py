@@ -79,10 +79,14 @@ class ManifestClassificationTests(unittest.TestCase):
     def setUp(self) -> None:
         self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
 
+    BUILD_FIELDS = frozenset({"version", "platform", "package", "install", "verify", "requires"})
+
     def load(self, **fields) -> Manifest:
         _, manifest_path = create_package(self.base)
         data = json.loads(manifest_path.read_text(encoding="utf-8"))
-        data.update(fields)
+        for key, value in fields.items():
+            target = data["builds"][0] if key in self.BUILD_FIELDS else data
+            target[key] = value
         manifest_path.write_text(json.dumps(data), encoding="utf-8")
         return Manifest.load(manifest_path)
 

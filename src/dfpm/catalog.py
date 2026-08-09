@@ -4,53 +4,99 @@ import re
 from pathlib import Path
 from typing import Any
 
-from . import classification
+from . import classification, platforms
 from .errors import ManifestError
-from .manifest import Manifest
+from .manifest import Build, Manifest, Platform, Tool
 
 
-def load_catalog(directory: Path) -> list[Manifest]:
+def load_catalog(directory: Path) -> list[Tool]:
+    """Every tool in the catalog, in the order a listing should show them."""
     if not directory.is_dir():
         raise ManifestError(f"Catalog directory does not exist: {directory}")
-    return [Manifest.load(path) for path in sorted(directory.glob("*.json"))]
+    return [Tool.load(path) for path in sorted(directory.glob("*.json"))]
 
 
-def resolve(directory: Path, package_id: str, version: str | None = None) -> Manifest:
-    matches = [item for item in load_catalog(directory) if item.id == package_id and (version is None or item.version == version)]
-    if not matches:
-        requested = f" {version}" if version else ""
-        raise ManifestError(f"Package not found in catalog: {package_id}{requested}")
-    if version is None and len(matches) > 1:
-        matches.sort(key=lambda item: version_key(item.version))
-    return matches[-1]
+def resolve(directory: Path, package_id: str, version: str | None = None, platform: str | None = None) -> Manifest:
+    """Choose one build of one tool: this machine's platform, newest version.
+
+    Selection is explicit rather than incidental. Filtering by platform first
+    matters because two builds of one version differ only in what they run on,
+    and taking whichever happened to sort last would put a Linux binary on a
+    Windows machine without ever saying so.
+    """
+    tools = [tool for tool in load_catalog(directory) if tool.id == package_id]
+    if not tools:
+        raise ManifestError(f"Package not found in catalog: {package_id}")
+    tool = tools[0]
+
+    wanted = _requested_platform(platform) if platform else platforms.current()
+    builds = list(tool.builds)
+    if version is not None:
+        builds = [build for build in builds if build.version == version]
+        if not builds:
+            available = ", ".join(tool.versions())
+            raise ManifestError(f"{package_id} has no version {version} in the catalog. It has: {available}")
+
+    usable = [build for build in builds if build.platform is None or _matches(build.platform, wanted)]
+    if not usable:
+        offered = ", ".join(str(item) for item in tool.platforms()) or "none"
+        raise ManifestError(
+            f"{package_id} has no build for {wanted[0]}/{wanted[1]}. It ships builds for: {offered}"
+        )
+    usable.sort(key=lambda build: version_key(build.version))
+    return tool.release(usable[-1])
 
 
-def describe(manifest: Manifest) -> dict[str, Any]:
-    """Summarize a manifest for listings, omitting optional sections that are absent.
+def _matches(platform: Platform, wanted: tuple[str, str]) -> bool:
+    return (platform.system, platform.architecture) == wanted
 
-    This is the one shape both interfaces read, so a package reads the same way
+
+def _requested_platform(text: str) -> tuple[str, str]:
+    """Read an explicitly requested platform, for staging a machine you are not sitting at."""
+    parts = text.replace("\\", "/").split("/")
+    if len(parts) != 2 or not all(part.strip() for part in parts):
+        raise ManifestError(f"Platform must be written as os/arch, for example windows/x64: {text!r}")
+    return parts[0].strip().lower(), parts[1].strip().lower()
+
+
+def newest(tool: Tool) -> Build:
+    """The newest build of a tool regardless of platform, for listings."""
+    return sorted(tool.builds, key=lambda build: version_key(build.version))[-1]
+
+
+def describe(tool: Tool) -> dict[str, Any]:
+    """Summarize a tool for listings, omitting optional sections that are absent.
+
+    This is the one shape both interfaces read, so a tool reads the same way
     wherever it is shown. Classification carries its human labels alongside the
-    keys, because a page should not have to know the vocabulary to display it.
+    keys, because a page should not have to know the vocabulary to display it,
+    and platforms are listed because that is a property of the tool rather than
+    of any one file.
     """
     entry: dict[str, Any] = {
-        "id": manifest.id,
-        "name": manifest.name,
-        "version": manifest.version,
-        "kind": manifest.kind,
-        "description": manifest.description,
+        "id": tool.id,
+        "name": tool.name,
+        "kind": tool.kind,
+        "description": tool.description,
+        "version": newest(tool).version,
+        "versions": list(tool.versions()),
+        "platforms": [{"os": item.system, "arch": item.architecture} for item in tool.platforms()],
     }
-    if manifest.about:
-        entry["about"] = manifest.about
+    if tool.about:
+        entry["about"] = tool.about
     for field in ("disciplines", "capabilities", "use_cases", "evidence"):
-        keys = getattr(manifest, field)
+        keys = getattr(tool, field)
         if keys:
             entry[field] = [{"key": key, "label": classification.label(field, key)} for key in keys]
-    if manifest.entrypoints:
-        entry["commands"] = [item.name for item in manifest.entrypoints]
-    if manifest.platform is not None:
-        entry["platform"] = {"os": manifest.platform.system, "arch": manifest.platform.architecture}
-    if manifest.project is not None:
-        recorded = {key: value for key, value in vars(manifest.project).items() if value is not None}
+    commands: list[str] = []
+    for build in tool.builds:
+        for entrypoint in build.entrypoints:
+            if entrypoint.name not in commands:
+                commands.append(entrypoint.name)
+    if commands:
+        entry["commands"] = commands
+    if tool.project is not None:
+        recorded = {key: value for key, value in vars(tool.project).items() if value is not None}
         if recorded:
             entry["project"] = recorded
     return entry

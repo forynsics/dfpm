@@ -22,7 +22,7 @@ class ManifestTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             _, manifest_path = create_package(Path(temporary))
             data = json.loads(manifest_path.read_text(encoding="utf-8"))
-            data["install"]["entrypoints"][0]["path"] = "../outside.exe"
+            data["builds"][0]["install"]["entrypoints"][0]["path"] = "../outside.exe"
             manifest_path.write_text(json.dumps(data), encoding="utf-8")
             with self.assertRaises(ManifestError):
                 Manifest.load(manifest_path)
@@ -37,15 +37,19 @@ class ManifestTests(unittest.TestCase):
             with self.subTest(name=name):
                 self.assertRaisesManifestError({"install": {"entrypoints": [{"name": name, "path": "bin/example-tool.cmd"}]}})
 
+    # Fields that describe one build rather than the tool as a whole.
+    BUILD_FIELDS = frozenset({"version", "platform", "package", "install", "verify", "requires"})
+
     def assertRaisesManifestError(self, changes: dict) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             _, manifest_path = create_package(Path(temporary))
             data = json.loads(manifest_path.read_text(encoding="utf-8"))
             for key, value in changes.items():
+                target = data["builds"][0] if key in self.BUILD_FIELDS else data
                 if isinstance(value, dict):
-                    data.setdefault(key, {}).update(value)
+                    target.setdefault(key, {}).update(value)
                 else:
-                    data[key] = value
+                    target[key] = value
             manifest_path.write_text(json.dumps(data), encoding="utf-8")
             with self.assertRaises(ManifestError):
                 Manifest.load(manifest_path)
@@ -64,7 +68,7 @@ class ManifestTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             _, manifest_path = create_package(Path(temporary))
             data = json.loads(manifest_path.read_text(encoding="utf-8"))
-            data["platform"] = {"os": "Windows", "arch": "X64"}
+            data["builds"][0]["platform"] = {"os": "Windows", "arch": "X64"}
             data["project"] = {"source": "https://example.org/tool", "license": "BSD-3-Clause"}
             manifest_path.write_text(json.dumps(data), encoding="utf-8")
 
@@ -84,7 +88,7 @@ class ManifestTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             _, manifest_path = create_package(Path(temporary))
             data = json.loads(manifest_path.read_text(encoding="utf-8"))
-            data["install"]["strategy"] = "run-anything"
+            data["builds"][0]["install"]["strategy"] = "run-anything"
             manifest_path.write_text(json.dumps(data), encoding="utf-8")
             with self.assertRaises(ManifestError):
                 Manifest.load(manifest_path)

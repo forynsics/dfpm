@@ -2,6 +2,8 @@
 
 The first implemented manifest format is intentionally narrow. It supports portable ZIP packages from local files or HTTPS sources. Broader package types and installation strategies will be added without weakening the validation rules around existing packages.
 
+A file describes **one tool** and **every build of it dfpm can install**. Those are different things and the split matters: a tool has a name, a description and a discipline, while a build has a URL, a digest and a platform. Holding both in one file means the description is written once instead of repeated per platform, and moving to a new release edits the builds rather than leaving a file behind for every version that ever shipped. Version control already keeps that history.
+
 ## Example
 
 ```json
@@ -12,34 +14,30 @@ The first implemented manifest format is intentionally narrow. It supports porta
   "version": "1.0.0",
   "kind": "tool",
   "description": "A short description of what the tool does.",
-  "platform": {
-    "os": "windows",
-    "arch": "x64"
-  },
   "project": {
     "homepage": "https://example.org/",
     "repository": "https://github.com/example/example-tool",
     "license": "BSD-3-Clause"
   },
-  "package": {
-    "url": "https://example.org/example-tool-1.0.0.zip",
-    "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-    "size": 1048576
-  },
-  "install": {
-    "strategy": "portable-zip",
-    "strip_components": 1,
-    "entrypoints": [
-      {
-        "name": "example-tool",
-        "path": "bin/example-tool.exe"
-      }
-    ]
-  },
-  "verify": [
+  "builds": [
     {
-      "type": "file",
-      "path": "bin/example-tool.exe"
+      "version": "1.0.0",
+      "platform": { "os": "windows", "arch": "x64" },
+      "package": {
+        "url": "https://example.org/example-tool-1.0.0-win64.zip",
+        "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "size": 1048576
+      },
+      "install": {
+        "strategy": "portable-zip",
+        "strip_components": 1,
+        "entrypoints": [
+          { "name": "example-tool", "path": "bin/example-tool.exe" }
+        ]
+      },
+      "verify": [
+        { "type": "file", "path": "bin/example-tool.exe" }
+      ]
     }
   ]
 }
@@ -49,7 +47,7 @@ The first implemented manifest format is intentionally narrow. It supports porta
 
 - `schema_version` must be `1`.
 - `id` is a stable lowercase package identity.
-- `version` becomes an installation directory name, so it must begin with a letter or number and use only letters, numbers, dots, plus signs, underscores, and hyphens.
+- `builds` lists every distributable dfpm can install, and must hold at least one. No two builds may claim the same version and platform. Everything below marked as a build field lives inside one of these; everything else describes the tool.
 - `kind` may be `tool`, `runtime`, `ruleset`, `artifact-pack`, `parser-pack`, `integration`, or `config-pack`.
 - `description` is one line, used wherever packages are listed.
 - `about` is optional and longer: a short plain-English paragraph explaining what the tool is for and when an investigator reaches for it. It is what someone reads when deciding whether this is the thing they need, so it should answer that rather than restate the name.
@@ -78,15 +76,16 @@ The first implemented manifest format is intentionally narrow. It supports porta
   A new axis has to clear the same bar: it must answer something the others cannot. Fields for features, workflows, outputs and techniques would each look reasonable alone and collectively produce a taxonomy nobody maintains.
 
   A term outside a vocabulary is refused rather than accepted as free text. Free tags fragment on the first synonym, and a catalog where `evtx`, `event log` and `eventlog` are three unrelated tags is worse than one with no tags at all. Each term carries aliases so a search matches however it is phrased, and those aliases are synonyms for the idea — never the name of a tool or a rule format, which belong to the package that implements them. A format genuinely worth searching for earns its own term instead, which is why `sigma-detection` is a capability rather than an alias on a broader one. Adding a term is a deliberate change reviewed alongside the package that needs it. `dfpm catalog --json` publishes every vocabulary alongside the packages, so an interface offering filters reads the list rather than keeping a copy that drifts.
-- `platform` is optional and singular, describing the one build this manifest points at. One manifest names one file with one digest, so a list would claim a single compiled binary runs on several systems — and could not express the different entrypoint path each would need in any case. A tool shipping builds for several systems gets a manifest per build. **Omitting `platform` means no restriction**, which is how something genuinely portable is expressed. When present, `platform.os` must be `windows`, `linux`, or `macos`, and `platform.arch` must be `x86`, `x64`, or `arm64`. dfpm refuses to install a package whose platform does not match the machine, which is what keeps a 32-bit or non-Windows build of the same tool from being installed by mistake.
+- `build.version` becomes an installation directory name, so it must begin with a letter or number and use only letters, numbers, dots, plus signs, underscores, and hyphens.
+- `build.platform` is optional and singular, describing the one file this build points at. A list would claim a single compiled binary runs on several systems, and could not express the different entrypoint path each of those needs — Hayabusa ships `hayabusa-4.0.0-win-x64.exe` on Windows and `hayabusa-4.0.0-lin-x64-gnu` on Linux. A tool shipping for several systems lists several builds, and **the platforms it supports follow from those** rather than being declared again where the two could disagree. **Omitting `platform` means no restriction**, which is how something genuinely portable is expressed. When present, `platform.os` must be `windows`, `linux`, or `macos`, and `platform.arch` must be `x86`, `x64`, or `arm64`. dfpm refuses to install a package whose platform does not match the machine, which is what keeps a 32-bit or non-Windows build of the same tool from being installed by mistake.
 - `project` is optional and records upstream provenance. `project.homepage`, `project.repository` and `project.terms_url` must be HTTPS URLs. It is `repository` rather than `source` because source can mean source code, a download source or a package source, and only one of those is meant.
 - `project.license` is a single string holding an SPDX **expression**, so an artifact under more than one license needs no extra field: Hayabusa ships as `AGPL-3.0-only AND LicenseRef-DRL-1.1`, the binary being AGPL and the bundled rules DRL. Terms with no SPDX identifier use a `LicenseRef-` value. dfpm displays this string and does not parse it; validating an expression would mean carrying the SPDX license list to catch typos in a field whose only job is to be read.
 - `project.terms_url` marks a package whose terms restrict *who* may use it, or for what purpose, beyond what a license identifier conveys. Its presence is the whole trigger: dfpm prints the URL in the install plan, and `--yes` alone will no longer install the package, because confirming a plan and asserting that restricted terms permit your use are different claims. An interactive install needs nothing extra — the existing confirmation already puts the terms in front of a person. A scripted one needs `--accept-terms`. The local interface applies the same rule.
 - `platform` and `project` are both recorded in the package state, so what is installed says where it came from and under what license.
-- `package.url` accepts an HTTPS URL, `file` URL, or path relative to the manifest. It is `package` rather than `artifact` deliberately: in a forensics catalog an artifact is a forensic artifact, and using the same word for the download would guarantee confusion.
-- `package.sha256` is mandatory and must contain the expected SHA-256 digest.
-- `package.size` is optional but recommended.
-- `requires` is optional and lists the platform runtimes a package needs, which dfpm detects but never installs. Each entry names a `runtime` (`dotnet`, `java`, `python`, `perl`, or `powershell`), an optional `version` constraint written as `>=` and a dotted number, and an optional `flavor` for runtimes that ship as separate installs — `dotnet` has `base`, `desktop` and `aspnet`, and a tool needing the desktop framework is not satisfied by the base runtime.
+- `build.package.url` accepts an HTTPS URL, `file` URL, or path relative to the manifest. It is `package` rather than `artifact` deliberately: in a forensics catalog an artifact is a forensic artifact, and using the same word for the download would guarantee confusion.
+- `build.package.sha256` is mandatory and must contain the expected SHA-256 digest.
+- `build.package.size` is optional but recommended.
+- `build.requires` is optional and lists the platform runtimes a package needs, which dfpm detects but never installs. Each entry names a `runtime` (`dotnet`, `java`, `python`, `perl`, or `powershell`), an optional `version` constraint written as `>=` and a dotted number, and an optional `flavor` for runtimes that ship as separate installs — `dotnet` has `base`, `desktop` and `aspnet`, and a tool needing the desktop framework is not satisfied by the base runtime.
 
   ```json
   "requires": [
@@ -95,14 +94,14 @@ The first implemented manifest format is intentionally narrow. It supports porta
   ```
 
   A requirement never blocks installation. A package installs whether or not the machine can run it, and whether it can is checked live at run time and by `dfpm doctor`, because a runtime can appear or disappear long after the install. A runtime that reports a version dfpm cannot read does **not** satisfy a stated minimum: treating that as a pass would let banner noise stand in for a real check.
-- `install.strategy` must currently be `portable-zip`.
+- `build.install.strategy` must currently be `portable-zip`.
 - `strip_components` removes a fixed number of leading archive path components.
 - `install.extracted_size` and `install.entries` are optional non-negative integers recording what the package costs on disk once unpacked, so `dfpm install` can show the cost before fetching anything. When present they are verified after extraction. A disagreement does not mean the download was tampered with — the digest already settles that — it means the manifest's own figures were taken from a different artifact.
 - Entrypoint names become stable command shims in the dfpm `bin` directory, so they follow the same character rules as `version` and must be unique within a manifest.
 - `working_directory` is optional and says where an entrypoint runs from, relative to the package root, with `.` meaning the root itself. Omitted, it is the directory holding the executable. Many tools resolve their own rules or configuration against the working directory and fail when launched from anywhere else, so this is what lets them be run from a case folder without any per-tool arrangement. It is also what someone opening a terminal beside the binary would get.
 - A manifest cannot supply **arguments** of its own, and that is deliberate. Inserting them was tried and abandoned: the command you typed and the command that ran would differ, which is precisely what `dfpm which` exists to prevent; an injected option lands in the same command line as the user's own, and duplicate options resolve differently in every argument parser, including by silently using both values; and the per-tool knowledge would not have stopped at arguments.
 - The difference between the two is worth being precise about, because they look similar. A working directory is a single process attribute with nothing to collide with — the user cannot also have passed one. An argument joins the list the user is already writing, where it can be duplicated, reordered or misread. One is a property of launching a process; the other is an edit to what the user asked for.
-- `verify` lists what must be true for an install to count as successful. Only file checks are supported today, and each names a path that has to exist. It is `verify` rather than `health_checks` because nothing here is checking whether a running service is healthy — it is confirming the install produced what the manifest said it would. Together with the entrypoints, these are the only paths `dfpm doctor` looks at: everything else inside a package's directory belongs to the package, and a tool that updates its own rule set or fetches data on first run is working normally rather than drifting.
+- `build.verify` lists what must be true for an install to count as successful. Only file checks are supported today, and each names a path that has to exist. It is `verify` rather than `health_checks` because nothing here is checking whether a running service is healthy — it is confirming the install produced what the manifest said it would. Together with the entrypoints, these are the only paths `dfpm doctor` looks at: everything else inside a package's directory belongs to the package, and a tool that updates its own rule set or fetches data on first run is working normally rather than drifting.
 
 All paths inside packages must be relative and stay within the package installation directory.
 
@@ -123,6 +122,12 @@ Any entry that breaks one of these rules fails the whole installation before any
 - At most 250,000 entries. This is a runaway backstop rather than a defence: its job is to fail quickly on something pathological instead of grinding for hours. It sits well above any real tool.
 
 Fixed byte ceilings and a compression-ratio limit were removed deliberately. Against a digest-pinned artifact they defended nothing the review step did not already cover, while a fixed cap knows nothing about the volume it is protecting — the same number is needlessly strict on a machine with room to spare and useless on one without.
+
+## Choosing a build
+
+`dfpm install <tool>` picks the newest version with a build for this machine. Platform is filtered before version, because two builds of one version differ only in what they run on, and taking whichever sorted last would put a Linux binary on a Windows machine without saying so. `--package-version` narrows to one version and the same platform rule then applies. A tool with no build for this machine is refused with the platforms it does ship for.
+
+Fetching another platform's build in order to stage a machine you are not sitting at is a cache concern rather than an install one, and is not built yet. Installing one would put a foreign binary in the tools directory behind a command shortcut that cannot run it.
 
 ## Installation behavior
 

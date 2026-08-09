@@ -7,14 +7,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from . import runtimes
-from . import classification
+from . import classification, runtimes
 from .errors import DfpmError, ManifestError
-from .names import unsafe_reason
+from .names import PACKAGE_ID, VERSION, unsafe_reason
 from .platforms import SUPPORTED_ARCHITECTURES, SUPPORTED_SYSTEMS
 
-PACKAGE_ID = re.compile(r"^[a-z0-9]+(?:[._-][a-z0-9]+)*$")
-VERSION = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$")
 ENTRYPOINT_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 SHA256 = re.compile(r"^[a-f0-9]{64}$")
 SUPPORTED_KINDS = {"tool", "runtime", "ruleset", "artifact-pack", "parser-pack", "integration", "config-pack"}
@@ -22,8 +19,11 @@ SUPPORTED_KINDS = {"tool", "runtime", "ruleset", "artifact-pack", "parser-pack",
 
 @dataclass(frozen=True)
 class Package:
-    """The file dfpm downloads. Named for what it is, not for what it holds:
-    "artifact" in this catalog means a forensic artifact."""
+    """The file dfpm downloads.
+
+    Named for what it is, not for what it holds: an artifact in this catalog is
+    a forensic artifact.
+    """
 
     url: str
     sha256: str
@@ -39,7 +39,7 @@ class Entrypoint:
 
 @dataclass(frozen=True)
 class Check:
-    """One thing that must be true for the install to count as successful."""
+    """One thing that must be true for an install to count as successful."""
 
     type: str
     path: str
@@ -80,7 +80,32 @@ class Project:
 
 
 @dataclass(frozen=True)
+class Build:
+    """One concrete distributable: a single file, for one platform, at one version."""
+
+    version: str
+    platform: Platform | None
+    package: Package
+    strip_components: int
+    extracted_size: int | None
+    entry_count: int | None
+    entrypoints: tuple[Entrypoint, ...]
+    verify: tuple[Check, ...]
+    requires: tuple[Requirement, ...]
+
+    def __str__(self) -> str:
+        return f"{self.version} ({self.platform})" if self.platform else self.version
+
+
+@dataclass(frozen=True)
 class Manifest:
+    """One build of one tool, flattened into everything an install needs.
+
+    A catalog entry describes a tool and holds several of these. This is the
+    view the rest of dfpm works with, so nothing downstream has to know that a
+    tool ships more than one file.
+    """
+
     schema_version: int
     id: str
     name: str
@@ -106,6 +131,53 @@ class Manifest:
 
     @classmethod
     def load(cls, path: Path) -> "Manifest":
+        """Load a catalog entry that describes exactly one build.
+
+        Anything with a choice to make goes through the catalog instead, which
+        knows this machine's platform and can say why it picked what it picked.
+        """
+        tool = Tool.load(path)
+        if len(tool.builds) != 1:
+            raise ManifestError(
+                f"{tool.id} has {len(tool.builds)} builds, so one has to be chosen rather than assumed"
+            )
+        return tool.release(tool.builds[0])
+
+    def package_url(self) -> str:
+        if "://" in self.package.url:
+            return self.package.url
+        return str((self.source_path.parent / self.package.url).resolve())
+
+
+@dataclass(frozen=True)
+class Tool:
+    """A catalog entry: one tool, and every build of it dfpm can install.
+
+    Tools are what a person browses; builds are what dfpm downloads. Holding
+    both in one file means the description, classification and provenance are
+    written once rather than repeated for every platform, and moving to a new
+    release edits the builds instead of accumulating a file for every version
+    that ever shipped. What those files would have preserved, version control
+    already holds.
+    """
+
+    schema_version: int
+    id: str
+    name: str
+    kind: str
+    description: str
+    about: str | None
+    disciplines: tuple[str, ...]
+    capabilities: tuple[str, ...]
+    use_cases: tuple[str, ...]
+    evidence: tuple[str, ...]
+    project: Project | None
+    builds: tuple[Build, ...]
+    source_path: Path
+    digest: str
+
+    @classmethod
+    def load(cls, path: Path) -> "Tool":
         try:
             raw_bytes = path.read_bytes()
             data = json.loads(raw_bytes)
@@ -118,8 +190,8 @@ class Manifest:
         return cls._from_dict(data, path.resolve(), hashlib.sha256(raw_bytes).hexdigest())
 
     @classmethod
-    def _from_dict(cls, data: dict[str, Any], path: Path, digest: str) -> "Manifest":
-        required = ("schema_version", "id", "name", "version", "kind", "description", "package", "install")
+    def _from_dict(cls, data: dict[str, Any], path: Path, digest: str) -> "Tool":
+        required = ("schema_version", "id", "name", "kind", "description", "builds")
         missing = [key for key in required if key not in data]
         if missing:
             raise ManifestError(f"Missing required fields: {', '.join(missing)}")
@@ -132,50 +204,17 @@ class Manifest:
         if kind not in SUPPORTED_KINDS:
             raise ManifestError(f"Unsupported package kind: {kind}")
 
-        package_data = _object(data["package"], "package")
-        package_url = _text(package_data.get("url"), "package.url")
-        package_hash = _text(package_data.get("sha256"), "package.sha256").lower()
-        if not SHA256.fullmatch(package_hash):
-            raise ManifestError("package.sha256 must be exactly 64 hexadecimal characters")
-        size = package_data.get("size")
-        if size is not None and (not isinstance(size, int) or isinstance(size, bool) or size < 0):
-            raise ManifestError("package.size must be a non-negative integer")
-
-        install = _object(data["install"], "install")
-        if install.get("strategy") != "portable-zip":
-            raise ManifestError("Only the portable-zip install strategy is currently supported")
-        strip_components = install.get("strip_components", 0)
-        if not isinstance(strip_components, int) or isinstance(strip_components, bool) or strip_components < 0:
-            raise ManifestError("install.strip_components must be a non-negative integer")
-        # What the package costs on disk once unpacked. Recorded at review time so
-        # the figure can be read, and shown, without fetching the artifact first.
-        extracted_size = _optional_count(install.get("extracted_size"), "install.extracted_size")
-        entry_count = _optional_count(install.get("entries"), "install.entries")
-
-        entrypoints = tuple(
-            Entrypoint(
-                _command_name(item.get("name")),
-                _relative_path(item.get("path"), "entrypoint.path"),
-                _working_directory(item.get("working_directory")),
-            )
-            for item in _object_list(install.get("entrypoints", []), "install.entrypoints")
-        )
-        names = [item.name for item in entrypoints]
-        if len(names) != len(set(names)):
-            raise ManifestError("Entrypoint names must be unique")
-
-        verify = tuple(
-            Check(_text(item.get("type"), "verify.type"), _relative_path(item.get("path"), "verify.path"))
-            for item in _object_list(data.get("verify", []), "verify")
-        )
-        if any(check.type != "file" for check in verify):
-            raise ManifestError("Only file checks are currently supported in verify")
+        builds = tuple(_build(item) for item in _object_list(data["builds"], "builds"))
+        if not builds:
+            raise ManifestError("builds must describe at least one build")
+        identities = [(item.version, str(item.platform)) for item in builds]
+        if len(identities) != len(set(identities)):
+            raise ManifestError("Two builds describe the same version and platform")
 
         return cls(
             schema_version=1,
             id=package_id,
             name=_text(data["name"], "name"),
-            version=_version(data["version"]),
             kind=kind,
             description=_text(data["description"], "description"),
             about=None if data.get("about") is None else _text(data["about"], "about"),
@@ -183,23 +222,106 @@ class Manifest:
             capabilities=classification.checked(data.get("capabilities"), "capabilities"),
             use_cases=classification.checked(data.get("use_cases"), "use_cases"),
             evidence=classification.checked(data.get("evidence"), "evidence"),
-            package=Package(package_url, package_hash, size),
-            strip_components=strip_components,
-            extracted_size=extracted_size,
-            entry_count=entry_count,
-            requires=_requirements(data.get("requires")),
-            entrypoints=entrypoints,
-            verify=verify,
-            platform=_platform(data.get("platform")),
             project=_project(data.get("project")),
+            builds=builds,
             source_path=path,
             digest=digest,
         )
 
-    def package_url(self) -> str:
-        if "://" in self.package.url:
-            return self.package.url
-        return str((self.source_path.parent / self.package.url).resolve())
+    def release(self, build: Build) -> Manifest:
+        """Flatten this tool and one of its builds into an installable manifest."""
+        return Manifest(
+            schema_version=self.schema_version,
+            id=self.id,
+            name=self.name,
+            version=build.version,
+            kind=self.kind,
+            description=self.description,
+            about=self.about,
+            disciplines=self.disciplines,
+            capabilities=self.capabilities,
+            use_cases=self.use_cases,
+            evidence=self.evidence,
+            package=build.package,
+            strip_components=build.strip_components,
+            extracted_size=build.extracted_size,
+            entry_count=build.entry_count,
+            requires=build.requires,
+            entrypoints=build.entrypoints,
+            verify=build.verify,
+            platform=build.platform,
+            project=self.project,
+            source_path=self.source_path,
+            digest=self.digest,
+        )
+
+    def platforms(self) -> tuple[Platform, ...]:
+        """Every platform this tool has a build for, derived rather than declared.
+
+        A tool runs on whatever it ships builds for. Stating that separately
+        would be a second copy of the same fact, free to disagree with the first.
+        """
+        found: list[Platform] = []
+        for build in self.builds:
+            if build.platform is not None and build.platform not in found:
+                found.append(build.platform)
+        return tuple(found)
+
+    def versions(self) -> tuple[str, ...]:
+        seen: list[str] = []
+        for build in self.builds:
+            if build.version not in seen:
+                seen.append(build.version)
+        return tuple(seen)
+
+
+def _build(data: dict[str, Any]) -> Build:
+    package_data = _object(data.get("package"), "build.package")
+    package_url = _text(package_data.get("url"), "package.url")
+    package_hash = _text(package_data.get("sha256"), "package.sha256").lower()
+    if not SHA256.fullmatch(package_hash):
+        raise ManifestError("package.sha256 must be exactly 64 hexadecimal characters")
+    size = package_data.get("size")
+    if size is not None and (not isinstance(size, int) or isinstance(size, bool) or size < 0):
+        raise ManifestError("package.size must be a non-negative integer")
+
+    install = _object(data.get("install"), "build.install")
+    if install.get("strategy") != "portable-zip":
+        raise ManifestError("Only the portable-zip install strategy is currently supported")
+    strip_components = install.get("strip_components", 0)
+    if not isinstance(strip_components, int) or isinstance(strip_components, bool) or strip_components < 0:
+        raise ManifestError("install.strip_components must be a non-negative integer")
+
+    entrypoints = tuple(
+        Entrypoint(
+            _command_name(item.get("name")),
+            _relative_path(item.get("path"), "entrypoint.path"),
+            _working_directory(item.get("working_directory")),
+        )
+        for item in _object_list(install.get("entrypoints", []), "install.entrypoints")
+    )
+    names = [item.name for item in entrypoints]
+    if len(names) != len(set(names)):
+        raise ManifestError("Entrypoint names must be unique")
+
+    verify = tuple(
+        Check(_text(item.get("type"), "verify.type"), _relative_path(item.get("path"), "verify.path"))
+        for item in _object_list(data.get("verify", []), "verify")
+    )
+    if any(check.type != "file" for check in verify):
+        raise ManifestError("Only file checks are currently supported in verify")
+
+    return Build(
+        version=_version(data.get("version")),
+        platform=_platform(data.get("platform")),
+        package=Package(package_url, package_hash, size),
+        strip_components=strip_components,
+        extracted_size=_optional_count(install.get("extracted_size"), "install.extracted_size"),
+        entry_count=_optional_count(install.get("entries"), "install.entries"),
+        entrypoints=entrypoints,
+        verify=verify,
+        requires=_requirements(data.get("requires")),
+    )
 
 
 def _optional_count(value: Any, field: str) -> int | None:
@@ -290,7 +412,11 @@ def _working_directory(value: Any) -> str | None:
 
 
 def _platform(value: Any) -> Platform | None:
-    """Read the optional platform the package was built for."""
+    """Read the platform one build was made for.
+
+    Singular, because a build is one compiled file. A tool that ships for
+    several systems lists several builds, and its platforms follow from those.
+    """
     if value is None:
         return None
     fields = _object(value, "platform")
@@ -343,4 +469,3 @@ def _relative_path(value: Any, field: str) -> str:
     if candidate.is_absolute() or ".." in candidate.parts:
         raise ManifestError(f"{field} must stay within the package directory")
     return text
-

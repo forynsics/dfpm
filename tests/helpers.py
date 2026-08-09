@@ -6,7 +6,6 @@ import zipfile
 from collections.abc import Sequence
 from pathlib import Path
 
-
 README_TEXT = "Synthetic dfpm test package\n"
 
 
@@ -22,8 +21,14 @@ def create_package(
     terms_url: str | None = None,
     working_directory: str | None = None,
     requires: list[dict] | None = None,
+    platform: dict | None = None,
+    extra_builds: list[dict] | None = None,
 ) -> tuple[Path, Path]:
-    """Write a synthetic catalog entry and its artifact, returning (catalog, manifest path)."""
+    """Write a synthetic catalog entry and its artifact, returning (catalog, manifest path).
+
+    One tool with one build, which is what nearly every test wants. A test
+    exercising selection passes extra_builds to add more.
+    """
     catalog = base / "catalog"
     artifacts = catalog / "artifacts"
     artifacts.mkdir(parents=True, exist_ok=True)
@@ -34,37 +39,46 @@ def create_package(
             output.writestr(f"example-tool/bin/{command}.cmd", script)
         output.writestr("example-tool/data/readme.txt", README_TEXT)
     artifact_bytes = archive.read_bytes()
-    manifest = {
-        "schema_version": 1,
-        "id": package_id,
-        "name": "Example Tool",
+
+    install: dict = {
+        "strategy": "portable-zip",
+        "strip_components": 1,
+        "entrypoints": [
+            {"name": command, "path": f"bin/{command}.cmd"}
+            | ({"working_directory": working_directory} if working_directory else {})
+            for command in commands
+        ],
+    }
+    if extracted_size is not None:
+        install["extracted_size"] = extracted_size
+    if entries is not None:
+        install["entries"] = entries
+
+    build: dict = {
         "version": version,
-        "kind": "tool",
-        "description": "A synthetic package used to verify dfpm safely.",
         "package": {
             "url": f"artifacts/{archive.name}",
             "sha256": hashlib.sha256(artifact_bytes).hexdigest(),
             "size": len(artifact_bytes),
         },
-        "install": {
-            "strategy": "portable-zip",
-            "strip_components": 1,
-            "entrypoints": [
-                {"name": command, "path": f"bin/{command}.cmd"}
-                | ({"working_directory": working_directory} if working_directory else {})
-                for command in commands
-            ],
-        },
+        "install": install,
         "verify": [{"type": "file", "path": "data/readme.txt"}],
     }
+    if platform is not None:
+        build["platform"] = platform
     if requires is not None:
-        manifest["requires"] = requires
+        build["requires"] = requires
+
+    manifest: dict = {
+        "schema_version": 1,
+        "id": package_id,
+        "name": "Example Tool",
+        "kind": "tool",
+        "description": "A synthetic package used to verify dfpm safely.",
+        "builds": [build] + list(extra_builds or []),
+    }
     if terms_url is not None:
         manifest["project"] = {"license": "LicenseRef-Example-EULA", "terms_url": terms_url}
-    if extracted_size is not None:
-        manifest["install"]["extracted_size"] = extracted_size
-    if entries is not None:
-        manifest["install"]["entries"] = entries
-    manifest_path = catalog / f"{package_id}-{version}.json"
+    manifest_path = catalog / f"{package_id}.json"
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     return catalog, manifest_path

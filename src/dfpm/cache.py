@@ -163,10 +163,14 @@ def _catalog_references(catalog: Path | None) -> tuple[dict[str, list[str]], boo
     if catalog is None:
         return {}, True, None
     try:
-        manifests = load_catalog(catalog)
+        tools = load_catalog(catalog)
     except DfpmError as exc:
         return {}, False, str(exc)
     references: dict[str, list[str]] = defaultdict(list)
-    for manifest in manifests:
-        references[manifest.package.sha256].append(f"{manifest.id} {manifest.version}")
+    for tool in tools:
+        # Every build, not just the one this machine would install. Seeding a
+        # cache for another platform is the reason --keep-catalog exists, and
+        # keeping only the local build's file would defeat it.
+        for build in tool.builds:
+            references[build.package.sha256].append(f"{tool.id} {build}")
     return references, True, None
