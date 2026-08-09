@@ -18,6 +18,7 @@ from .catalog import newer_than_installed as catalog_updates
 from .catalog import newest as catalog_newest
 from .catalog import version_key as catalog_version_key
 from .doctor import inspect
+from . import downloads
 from .downloads import retrieve
 from .errors import DfpmError
 from .gui import serve
@@ -59,6 +60,12 @@ def build_parser() -> argparse.ArgumentParser:
         dest="accept_terms",
         help="Assert that the package's usage terms permit your use. Never implied by --yes.",
     )
+    install_command.add_argument(
+        "--accept-digest-mismatch",
+        action="store_true",
+        dest="accept_digest_mismatch",
+        help="Install a rolling package whose bytes no longer match the catalog. Never implied by --yes.",
+    )
 
     download_command = commands.add_parser(
         "download",
@@ -68,6 +75,12 @@ def build_parser() -> argparse.ArgumentParser:
     download_command.add_argument("--package-version", dest="package_version", help="Download this version instead of the newest.")
     download_command.add_argument("--platform", help="Download the build for this os/arch, written as os/arch.")
     download_command.add_argument("--to", dest="destination", type=Path, help="Directory to save into. Defaults to the current one.")
+    download_command.add_argument(
+        "--accept-digest-mismatch",
+        action="store_true",
+        dest="accept_digest_mismatch",
+        help="Save the file even when its digest has changed, so it can be examined.",
+    )
 
     uninstall_command = commands.add_parser("uninstall", help="Remove installed files dfpm recorded.")
     uninstall_command.add_argument("package")
@@ -189,7 +202,7 @@ def _run(args: argparse.Namespace, storage: Storage) -> int:
         elif not findings:
             print("No installed packages to check.")
         else:
-            markers = {"passing": "PASS", "blocked": "WAIT", "failed": "FAIL"}
+            markers = {"passing": "PASS", "blocked": "WAIT", "failed": "FAIL", "unverified": "WARN"}
             for finding in findings:
                 marker = markers.get(finding.status, "FAIL")
                 print(f"{marker:<4} {finding.package} {finding.version}: {finding.detail}")
@@ -344,6 +357,10 @@ def _install(args: argparse.Namespace, storage: Storage) -> int:
         print(f"  Entry from:  {args.catalog}")
         print("               Not this machine's catalog. Install only from entries you trust.")
     print(f"  Source:      {manifest.package_url()}")
+    if manifest.package.rolling:
+        # Worth saying before the install rather than only when it goes wrong: a
+        # pinned digest against a URL like this describes a moment, not a release.
+        print("               Rolling: the publisher replaces this file rather than adding a new one.")
     print(f"  SHA-256:     {manifest.package.sha256}")
     if manifest.package.size is not None:
         print(f"  Download:    {human_size(manifest.package.size)}")
@@ -374,7 +391,12 @@ def _install(args: argparse.Namespace, storage: Storage) -> int:
             return 2
     reporter = progress.reporter()
     try:
-        destination = install(manifest, storage, on_progress=reporter)
+        destination = install(
+            manifest,
+            storage,
+            on_progress=reporter,
+            on_mismatch=_digest_decision(manifest.package, args.accept_digest_mismatch),
+        )
     finally:
         if reporter is not None:
             reporter.close()
@@ -383,6 +405,34 @@ def _install(args: argparse.Namespace, storage: Storage) -> int:
         print(f"Removed the previous version, {previous}.")
     _report_readiness(storage, manifest)
     return 0
+
+
+def _digest_decision(package, accepted: bool):
+    """How this run answers an artifact that is not the one the catalog described.
+
+    Only reached for a package whose URL the publisher replaces; an immutable one
+    never gets this far. The flag is deliberately not implied by --yes, for the
+    same reason --accept-terms is not: confirming a plan and accepting bytes
+    nobody reviewed are different claims, and the plan was drawn up before the
+    file was fetched.
+    """
+    def decide(expected: str, actual: str) -> bool:
+        if accepted:
+            return True
+        if not sys.stdin.isatty():
+            return False
+        print(f"\n{downloads.mismatch_report(package, actual, remedy=False)}", file=sys.stderr)
+        try:
+            answer = input("Continue? [y/N] ")
+        except EOFError:
+            # Nothing is there to answer. Falling through to the full report is
+            # better than treating silence as either yes or a bare refusal.
+            return False
+        if answer.strip().lower() in {"y", "yes"}:
+            return True
+        raise DfpmError("No changes made.")
+
+    return decide
 
 
 def _report_readiness(storage: Storage, manifest) -> None:
@@ -470,12 +520,24 @@ def _download(args: argparse.Namespace) -> int:
 
     reporter = progress.reporter()
     try:
-        retrieve(manifest.package, manifest.package_url(), target, reporter)
+        saved = retrieve(
+            manifest.package,
+            manifest.package_url(),
+            target,
+            reporter,
+            _digest_decision(manifest.package, args.accept_digest_mismatch),
+        )
     finally:
         if reporter is not None:
             reporter.close()
     print(f"Saved {target}")
-    print(f"  sha256 {manifest.package.sha256}, which is what the catalog pinned")
+    if saved.verified:
+        print(f"  sha256 {saved.digest}, which is what the catalog pinned")
+    else:
+        # Saying only what it hashes to would leave the reader to notice for
+        # themselves that it is not the file the catalog describes.
+        print(f"  sha256 {saved.digest}")
+        print(f"  The catalog pinned {manifest.package.sha256}, so this is not the reviewed file.")
     return 0
 
 

@@ -16,6 +16,9 @@ ENTRYPOINT_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 SHA256 = re.compile(r"^[a-f0-9]{64}$")
 SUPPORTED_KINDS = {"tool", "runtime", "ruleset", "artifact-pack", "parser-pack", "integration", "config-pack"}
 
+IMMUTABLE, ROLLING = "immutable", "rolling"
+STABILITIES = (IMMUTABLE, ROLLING)
+
 
 @dataclass(frozen=True)
 class Package:
@@ -28,6 +31,19 @@ class Package:
     url: str
     sha256: str
     size: int | None = None
+    stability: str = IMMUTABLE
+
+    @property
+    def rolling(self) -> bool:
+        """Whether the publisher replaces the file at this URL rather than adding a new one.
+
+        A fact about the address, not about the tool. Most projects publish an
+        asset per release under a URL carrying the version, and those bytes never
+        change again; some publish one URL per tool and overwrite it. A digest
+        that stops matching means something different in each case, and dfpm
+        cannot tell them apart by looking.
+        """
+        return self.stability == ROLLING
 
 
 @dataclass(frozen=True)
@@ -284,6 +300,10 @@ def _build(data: dict[str, Any]) -> Build:
     size = package_data.get("size")
     if size is not None and (not isinstance(size, int) or isinstance(size, bool) or size < 0):
         raise ManifestError("package.size must be a non-negative integer")
+    stability = package_data.get("stability", IMMUTABLE)
+    if not isinstance(stability, str) or stability.strip().lower() not in STABILITIES:
+        raise ManifestError(f"package.stability must be one of: {', '.join(STABILITIES)}")
+    stability = stability.strip().lower()
 
     install = _object(data.get("install"), "build.install")
     if install.get("strategy") != "portable-zip":
@@ -322,7 +342,7 @@ def _build(data: dict[str, Any]) -> Build:
     return Build(
         version=_version(data.get("version")),
         platform=_platform(data.get("platform")),
-        package=Package(package_url, package_hash, size),
+        package=Package(package_url, package_hash, size, stability),
         strip_components=strip_components,
         extracted_size=_optional_count(install.get("extracted_size"), "install.extracted_size"),
         entry_count=_optional_count(install.get("entries"), "install.entries"),

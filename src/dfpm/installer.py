@@ -10,7 +10,7 @@ from typing import Any
 
 from . import platforms, shims
 from .archive import DEFAULT_LIMITS, ArchiveLimits, check_path_lengths, extract_zip
-from .downloads import acquire
+from .downloads import Acquired, Decision, acquire
 from .errors import InstallError
 from .inventory import forget_package, read_package, write_package
 from .manifest import Manifest
@@ -24,13 +24,14 @@ def install(
     *,
     limits: ArchiveLimits = DEFAULT_LIMITS,
     on_progress: Reporter | None = None,
+    on_mismatch: Decision | None = None,
 ) -> Path:
     """Install a package, replacing whatever version of it was installed before."""
     check_platform(manifest)
     previous = check_destination(manifest, storage)
     storage.initialize()
     destination = storage.package_version(manifest.id, manifest.version)
-    artifact = acquire(manifest.package, manifest.package_url(), storage, on_progress)
+    artifact = acquire(manifest.package, manifest.package_url(), storage, on_progress, on_mismatch)
     record = _stage(manifest, artifact, storage, destination, limits, on_progress)
     _publish(manifest, storage, destination, record, previous)
     return destination
@@ -64,7 +65,7 @@ def check_destination(manifest: Manifest, storage: Storage) -> str | None:
 
 def _stage(
     manifest: Manifest,
-    artifact: Path,
+    artifact: Acquired,
     storage: Storage,
     destination: Path,
     limits: ArchiveLimits,
@@ -75,11 +76,16 @@ def _stage(
     staging_parent.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix=f"{manifest.id}-{manifest.version}-", dir=staging_parent))
     try:
+        # The recorded size is only usable as a target when this is the artifact
+        # it was recorded from. For anything else it is a figure describing a
+        # different file, so the archive's own totals are all there is to go on.
+        expected_size = manifest.extracted_size if artifact.verified else None
         managed_files = extract_zip(
-            artifact, staging, manifest.strip_components, limits, manifest.extracted_size, on_progress
+            artifact.path, staging, manifest.strip_components, limits, expected_size, on_progress
         )
         check_path_lengths(destination, managed_files, limits)
-        _check_recorded_extraction(manifest, managed_files)
+        if artifact.verified:
+            _check_recorded_extraction(manifest, managed_files)
         _validate_expected_paths(staging, manifest)
         record: dict[str, Any] = {
             "id": manifest.id,
@@ -101,7 +107,13 @@ def _stage(
             "version": manifest.version,
             "installed_at": datetime.now(UTC).isoformat(),
             "manifest_digest": manifest.digest,
-            "package_sha256": manifest.package.sha256,
+            # Two facts, deliberately not collapsed into one. The catalog records
+            # what a reviewer approved; this records what actually landed on the
+            # machine. They are equal on every ordinary install, and the only
+            # time they are not is exactly the time somebody needs both.
+            "package_sha256": artifact.digest,
+            "catalog_sha256": manifest.package.sha256,
+            "digest_verified": artifact.verified,
             "file_count": len(managed_files),
             "installed_size": sum(int(item["size"]) for item in managed_files),
             "entrypoints": [

@@ -96,6 +96,28 @@ class ManifestTests(unittest.TestCase):
             manifest = Manifest.load(manifest_path)
             self.assertEqual([check.path for check in manifest.verify], ["data/readme.txt"])
 
+    def test_package_stability_defaults_to_immutable(self) -> None:
+        # Most projects publish an asset per release at a URL carrying the
+        # version, and those bytes never change again. That is the assumption a
+        # manifest that says nothing should be read as making.
+        with tempfile.TemporaryDirectory() as temporary:
+            _, manifest_path = create_package(Path(temporary))
+            package = Manifest.load(manifest_path).package
+            self.assertEqual(package.stability, "immutable")
+            self.assertFalse(package.rolling)
+
+    def test_a_package_can_declare_that_its_url_is_replaced_in_place(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            _, manifest_path = create_package(Path(temporary), stability="rolling")
+            self.assertTrue(Manifest.load(manifest_path).package.rolling)
+
+    def test_rejects_a_stability_it_does_not_understand(self) -> None:
+        # Guessing at an unknown value would mean guessing how seriously to treat
+        # a digest that stops matching, which is the one thing it decides.
+        for value in ("mutable", "frozen", "", 1, None):
+            with self.subTest(value=value):
+                self.assertRaisesManifestError({"package": {"stability": value}})
+
     def test_rejects_unknown_install_strategy(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             _, manifest_path = create_package(Path(temporary))

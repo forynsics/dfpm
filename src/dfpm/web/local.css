@@ -53,6 +53,7 @@ html[data-appearance="dark"] { --danger: #f2837a; --danger-soft: #2e1917; }
 .finding-row .mark { font: 800 9px var(--mono); letter-spacing: .08em; }
 .finding-row .mark.ok { color: var(--green); }
 .finding-row .mark.bad { color: var(--danger); }
+.finding-row .mark.warn { color: var(--accent-dark); }
 .finding-row b { font-size: 13px; }
 .finding-row > span:last-child { color: var(--muted); }
 

@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from dfpm.downloads import acquire
+from dfpm.downloads import acquire, retrieve
 from dfpm.errors import VerificationError
 from dfpm.manifest import Package
 from dfpm.storage import Storage
@@ -39,18 +39,19 @@ class ArtifactTests(unittest.TestCase):
 
     def test_copies_and_verifies_a_local_path(self) -> None:
         cached = acquire(self.package, str(self.source), self.storage)
-        self.assertEqual(cached.name, self.package.sha256)
-        self.assertEqual(cached.read_bytes(), PAYLOAD)
+        self.assertEqual(cached.path.name, self.package.sha256)
+        self.assertEqual(cached.path.read_bytes(), PAYLOAD)
+        self.assertTrue(cached.verified)
 
     def test_accepts_a_file_url(self) -> None:
         cached = acquire(self.package, self.source.as_uri(), self.storage)
-        self.assertEqual(cached.read_bytes(), PAYLOAD)
+        self.assertEqual(cached.path.read_bytes(), PAYLOAD)
 
     def test_rejects_a_digest_mismatch_and_leaves_no_partial_behind(self) -> None:
         wrong = Package(str(self.source), "0" * 64, len(PAYLOAD))
         with self.assertRaises(VerificationError) as caught:
             acquire(wrong, str(self.source), self.storage)
-        self.assertIn("SHA-256", str(caught.exception))
+        self.assertIn("digest mismatch", str(caught.exception))
         self.assertEqual(self.partials(), [])
         self.assertEqual(list(self.storage.cache.iterdir()), [])
 
@@ -69,11 +70,11 @@ class ArtifactTests(unittest.TestCase):
     def test_reuses_a_cached_artifact_without_the_source(self) -> None:
         acquire(self.package, str(self.source), self.storage)
         self.source.unlink()
-        self.assertEqual(acquire(self.package, str(self.source), self.storage).read_bytes(), PAYLOAD)
+        self.assertEqual(acquire(self.package, str(self.source), self.storage).path.read_bytes(), PAYLOAD)
 
     def test_detects_a_cached_artifact_that_no_longer_matches_its_digest(self) -> None:
         cached = acquire(self.package, str(self.source), self.storage)
-        cached.write_bytes(b"tampered")
+        cached.path.write_bytes(b"tampered")
         with self.assertRaises(VerificationError):
             acquire(self.package, str(self.source), self.storage)
 
@@ -81,7 +82,7 @@ class ArtifactTests(unittest.TestCase):
         url = "https://example.org/payload.zip"
         with mock.patch("urllib.request.urlopen", return_value=FakeResponse(PAYLOAD, url)):
             cached = acquire(self.package, url, self.storage)
-        self.assertEqual(cached.read_bytes(), PAYLOAD)
+        self.assertEqual(cached.path.read_bytes(), PAYLOAD)
 
     def test_refuses_an_https_download_that_redirects_to_plain_http(self) -> None:
         """The digest alone cannot protect a download that silently left TLS."""
@@ -99,6 +100,113 @@ class ArtifactTests(unittest.TestCase):
                 acquire(self.package, "https://example.org/payload.zip", self.storage)
         self.assertIn("connection reset", str(caught.exception))
         self.assertEqual(self.partials(), [])
+
+
+class StabilityTests(unittest.TestCase):
+    """What a changed digest means depends on how the artifact is published."""
+
+    def setUp(self) -> None:
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.storage = Storage(self.base / "dfpm-data")
+        self.source = self.base / "payload.zip"
+        self.source.write_bytes(PAYLOAD)
+        self.arrived = hashlib.sha256(PAYLOAD).hexdigest()
+
+    def stale(self, stability: str) -> Package:
+        """An entry pinning bytes that are no longer what the URL serves."""
+        return Package(str(self.source), "0" * 64, len(PAYLOAD), stability)
+
+    def test_a_rolling_mismatch_is_explained_as_a_possible_new_release(self) -> None:
+        with self.assertRaises(VerificationError) as caught:
+            acquire(self.stale("rolling"), str(self.source), self.storage)
+        message = str(caught.exception)
+        self.assertIn("rolling upstream URL", message)
+        self.assertIn(self.arrived, message)
+
+    def test_an_immutable_mismatch_is_not_explained_away(self) -> None:
+        # The same event, on a URL that should never change, is not routine and
+        # must not be worded as though it were.
+        with self.assertRaises(VerificationError) as caught:
+            acquire(self.stale("immutable"), str(self.source), self.storage)
+        self.assertIn("expected to be immutable", str(caught.exception))
+        self.assertNotIn("rolling", str(caught.exception))
+
+    def test_an_immutable_package_is_never_offered_the_choice(self) -> None:
+        # Refusing a bypass is what makes the distinction real rather than a
+        # difference in wording.
+        asked = []
+        with self.assertRaises(VerificationError):
+            acquire(
+                self.stale("immutable"),
+                str(self.source),
+                self.storage,
+                on_mismatch=lambda expected, actual: asked.append(actual) or True,
+            )
+        self.assertEqual(asked, [])
+        self.assertEqual(list(self.storage.cache.iterdir()), [])
+
+    def test_an_accepted_rolling_mismatch_is_cached_under_what_it_actually_is(self) -> None:
+        # A content-addressed cache whose filenames are claims rather than facts
+        # would make every later lookup through it wrong.
+        acquired = acquire(
+            self.stale("rolling"),
+            str(self.source),
+            self.storage,
+            on_mismatch=lambda expected, actual: True,
+        )
+        self.assertEqual(acquired.digest, self.arrived)
+        self.assertFalse(acquired.verified)
+        self.assertEqual(acquired.path.name, self.arrived)
+        self.assertEqual([path.name for path in self.storage.cache.iterdir()], [self.arrived])
+
+    def test_declining_leaves_nothing_behind(self) -> None:
+        with self.assertRaises(VerificationError):
+            acquire(
+                self.stale("rolling"),
+                str(self.source),
+                self.storage,
+                on_mismatch=lambda expected, actual: False,
+            )
+        self.assertEqual(list(self.storage.cache.iterdir()), [])
+
+    def test_a_matching_artifact_is_verified_whatever_its_stability(self) -> None:
+        for stability in ("immutable", "rolling"):
+            with self.subTest(stability=stability):
+                storage = Storage(self.base / f"root-{stability}")
+                package = Package(str(self.source), self.arrived, len(PAYLOAD), stability)
+                acquired = acquire(package, str(self.source), storage)
+                self.assertTrue(acquired.verified)
+                self.assertEqual(acquired.digest, self.arrived)
+
+
+class RetrievalTests(unittest.TestCase):
+    """Saving a file to look at, which is not the same as installing it."""
+
+    def setUp(self) -> None:
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.source = self.base / "payload.zip"
+        self.source.write_bytes(PAYLOAD)
+        self.target = self.base / "saved.zip"
+
+    def test_an_immutable_mismatch_can_still_be_saved_for_inspection(self) -> None:
+        # Fetching a file to find out why it changed is the reasonable response
+        # to an unexpected digest, so this is allowed where installing is not.
+        wrong = Package(str(self.source), "0" * 64, len(PAYLOAD))
+        saved = retrieve(
+            wrong,
+            str(self.source),
+            self.target,
+            on_mismatch=lambda expected, actual: True,
+        )
+        self.assertFalse(saved.verified)
+        self.assertEqual(saved.digest, hashlib.sha256(PAYLOAD).hexdigest())
+        self.assertEqual(self.target.read_bytes(), PAYLOAD)
+
+    def test_a_mismatch_is_still_refused_by_default(self) -> None:
+        wrong = Package(str(self.source), "0" * 64, len(PAYLOAD))
+        with self.assertRaises(VerificationError):
+            retrieve(wrong, str(self.source), self.target)
+        self.assertFalse(self.target.exists())
 
 
 if __name__ == "__main__":

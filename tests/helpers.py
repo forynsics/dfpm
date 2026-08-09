@@ -22,6 +22,7 @@ def create_package(
     working_directory: str | None = None,
     requires: list[dict] | None = None,
     platform: dict | None = None,
+    stability: str | None = None,
     extra_builds: list[dict] | None = None,
 ) -> tuple[Path, Path]:
     """Write a synthetic catalog entry and its artifact, returning (catalog, manifest path).
@@ -64,6 +65,8 @@ def create_package(
         "install": install,
         "verify": [{"type": "file", "path": "data/readme.txt"}],
     }
+    if stability is not None:
+        build["package"]["stability"] = stability
     if platform is not None:
         build["platform"] = platform
     if requires is not None:

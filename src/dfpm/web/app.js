@@ -238,8 +238,10 @@ function renderInstalled() {
 function healthChip(problems) {
   const failed = problems.filter((item) => item.status === "failed").length;
   const blocked = problems.filter((item) => item.status === "blocked").length;
+  const unverified = problems.filter((item) => item.status === "unverified").length;
   if (failed) return chip(`${failed} problem${failed === 1 ? "" : "s"}`, "bad");
   if (blocked) return chip("Needs a runtime", "warn");
+  if (unverified) return chip("Unverified artifact", "warn");
   return chip("Healthy", "ok");
 }
 
@@ -348,11 +350,17 @@ function renderHealth() {
       el("span", { text: "DETAIL" }),
     ]),
   ]);
+  const marks = {
+    passing: ["ok", "PASS"],
+    blocked: ["warn", "WAIT"],
+    unverified: ["warn", "WARN"],
+    failed: ["bad", "FAIL"],
+  };
   for (const finding of state.findings) {
-    const passing = finding.status === "passing";
+    const [tone, label] = marks[finding.status] || marks.failed;
     table.append(
       el("div", { className: "finding-row" }, [
-        el("span", { className: `mark ${passing ? "ok" : "bad"}`, text: passing ? "PASS" : "FAIL" }),
+        el("span", { className: `mark ${tone}`, text: label }),
         el("b", { text: `${finding.package} ${finding.version}` }),
         el("span", { text: finding.detail }),
       ])

@@ -85,6 +85,19 @@ A file describes **one tool** and **every build of it dfpm can install**. Those 
 - `build.package.url` accepts an HTTPS URL, `file` URL, or path relative to the manifest. It is `package` rather than `artifact` deliberately: in a forensics catalog an artifact is a forensic artifact, and using the same word for the download would guarantee confusion.
 - `build.package.sha256` is mandatory and must contain the expected SHA-256 digest.
 - `build.package.size` is optional but recommended.
+- `build.package.stability` says whether the publisher replaces the file at this URL, and is either `immutable` (the default) or `rolling`. It describes the **address**, not the tool: most projects publish an asset per release under a URL carrying the version, and those bytes never change again, while some publish one URL per tool and overwrite it whenever they rebuild.
+
+  ```json
+  "package": {
+    "url": "https://downloads.example.org/latest/tool.zip",
+    "sha256": "0123…",
+    "stability": "rolling"
+  }
+  ```
+
+  It exists because a digest that stops matching means two entirely different things, and nothing about the bytes distinguishes them. On a `rolling` URL it usually means a new release, and dfpm says so, shows both digests, and lets a person decide — interactively, or with `--accept-digest-mismatch`. On an `immutable` one it means an artifact changed that should not have, so dfpm refuses and **the flag is refused with it**; wording the two cases differently while accepting both would make the distinction cosmetic. Getting hold of the changed file is still possible, and is what you would want to do about it: `dfpm download --accept-digest-mismatch` saves it for inspection without installing anything.
+
+  A `rolling` entry goes stale on its publisher's schedule rather than the catalog's. That is a property of the package, not a defect in the entry, and pinning the digest anyway is still worth it: it is what makes the change visible at all.
 - `build.requires` is optional and lists the platform runtimes a package needs, which dfpm detects but never installs. Each entry names a `runtime` (`dotnet`, `java`, `python`, `perl`, or `powershell`), an optional `version` constraint written as `>=` and a dotted number, and an optional `flavor` for runtimes that ship as separate installs — `dotnet` has `base`, `desktop` and `aspnet`, and a tool needing the desktop framework is not satisfied by the base runtime.
 
   ```json
@@ -151,6 +164,8 @@ The directory is the unit of ownership. dfpm creates `tools/<id>/<version>/` and
 Installing a different version does the same to the directory it replaces, and the install plan shows that folder and its contents before anything is fetched. So the consequence is the same in both cases and worth stating plainly: **everything in the directory goes, including whatever the tool put there after installation.** A tool that downloads its own rules will download them again after an upgrade.
 
 Redirecting a tool's own writes somewhere durable would mean building it from source with different paths compiled in, or patching it afterwards. dfpm extracts binaries the project already published and changes nothing about them, so there is no such seam. In exchange for accepting that, uninstalling never strands a directory that blocks reinstalling the same version, and never leaves thousands of files for a person to review by hand.
+
+The package record keeps two digests, not one: `catalog_sha256` is what the entry claimed when the package was installed, and `package_sha256` is what the bytes on disk actually hashed to, with `digest_verified` saying whether they agreed. On an ordinary install they are equal, and the only time they are not is exactly the time somebody needs both — so neither is allowed to overwrite the other. `dfpm doctor` reports an install whose digests disagree as `unverified`: the files are all present and the package runs, and it was never the artifact a reviewer approved, which nothing on disk would ever reveal. The cache is addressed by `package_sha256`, so it names what an artifact is rather than what it was expected to be.
 
 dfpm holds no per-file digests, and this is deliberate. Such a list would sit unsigned beside the files it vouched for, so anyone able to alter a binary could alter the list in the same breath — it detects accidental corruption, not an adversary. What is recorded instead is `artifact_sha256`, the digest of the file the project published, which is the claim worth making about an installed tool. Real integrity checking for a binary comes from its own code signature.
 

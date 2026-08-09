@@ -22,10 +22,13 @@ class Finding:
 def inspect(storage: Storage, package_id: str | None = None) -> list[Finding]:
     """Report on installed packages, optionally narrowing to one.
 
-    Three outcomes, and the distinction matters. `failed` means something dfpm
-    is responsible for is broken. `blocked` means the package is installed
+    Four outcomes, and the distinctions matter. `failed` means something dfpm is
+    responsible for is broken. `blocked` means the package is installed
     correctly but the machine is missing something it needs to run — nothing
-    dfpm did wrong, and nothing it can fix by reinstalling.
+    dfpm did wrong, and nothing it can fix by reinstalling. `unverified` means
+    the install itself worked and the bytes were never the reviewed ones, which
+    is a fact about where the package came from rather than about its condition,
+    and which no amount of re-checking the files on disk would reveal.
     """
     findings: list[Finding] = []
     seen = False
@@ -37,9 +40,11 @@ def inspect(storage: Storage, package_id: str | None = None) -> list[Finding]:
         seen = True
         broken = _file_problems(storage, package) + _shim_problems(storage, package)
         blocked, satisfied = _requirement_status(storage, package, cache)
+        unverified = _provenance_problems(package)
         findings.extend(Finding(package["id"], version, "failed", detail) for detail in broken)
         findings.extend(Finding(package["id"], version, "blocked", detail) for detail in blocked)
-        if not broken and not blocked:
+        findings.extend(Finding(package["id"], version, "unverified", detail) for detail in unverified)
+        if not broken and not blocked and not unverified:
             detail = "Installed files and command shortcuts are in place"
             if satisfied:
                 detail += f". Ready to run with {', '.join(satisfied)}"
@@ -47,6 +52,23 @@ def inspect(storage: Storage, package_id: str | None = None) -> list[Finding]:
     if package_id is not None and not seen:
         raise DfpmError(f"{package_id} is not installed")
     return findings
+
+
+def _provenance_problems(package: dict[str, Any]) -> list[str]:
+    """Say so when what was installed was never the artifact the catalog described.
+
+    Only an install that was explicitly allowed through can be in this state, so
+    this is not detection — it is making sure a decision taken once, possibly
+    weeks ago, is still visible afterwards.
+    """
+    if package.get("digest_verified", True):
+        return []
+    installed = package.get("package_sha256", "unknown")
+    reviewed = package.get("catalog_sha256", "unknown")
+    return [
+        f"Installed from an artifact the catalog did not describe. "
+        f"Installed {installed}, catalog recorded {reviewed}."
+    ]
 
 
 def _requirement_status(storage: Storage, package: dict[str, Any], cache: dict[str, Any]) -> tuple[list[str], list[str]]:
