@@ -35,7 +35,7 @@ class LegacyRecordTests(unittest.TestCase):
     """A record written before one-version-per-package must keep an install working."""
 
     def setUp(self) -> None:
-        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         self.storage = Storage(self.base / "dfpm-data")
         self.storage.initialize()
         path = self.storage.package_state("yara")
@@ -118,7 +118,7 @@ class RecordedDescriptionTests(unittest.TestCase):
         from dfpm.storage import Storage
         from tests.helpers import create_package
 
-        base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         catalog, _ = create_package(base)
         storage = Storage(base / "data")
         install(resolve_manifest(catalog, "example.tool"), storage)

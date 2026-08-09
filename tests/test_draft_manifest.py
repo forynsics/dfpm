@@ -88,7 +88,7 @@ class DraftTests(unittest.TestCase):
     """The whole draft, against archives shaped like the ones the catalog holds."""
 
     def setUp(self) -> None:
-        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
 
     def archive(self, members: dict[str, bytes]) -> Path:
         path = self.base / "artifact.zip"

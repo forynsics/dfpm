@@ -84,6 +84,11 @@ class InterpreterGuardTests(unittest.TestCase):
     def test_dfpms_own_interpreter_is_never_selected(self) -> None:
         # dfpm's virtual environment puts its scripts directory first on PATH.
         # A packaged tool must never be handed the interpreter dfpm runs on.
+        if sys.prefix == sys.base_prefix:
+            # Installed straight into the machine's Python, as on a build runner.
+            # There is no environment of dfpm's own to exclude, and the
+            # interpreter on PATH is the machine's own correct answer.
+            self.skipTest("dfpm is not running inside a virtual environment here")
         found = runtimes._safe_which("python")
         if found is not None:
             self.assertNotEqual(found.resolve(), Path(sys.executable).resolve())
@@ -116,7 +121,7 @@ class InterpreterGuardTests(unittest.TestCase):
             self.assertEqual(runtimes._detect(runtime, None).path, Path("real"))
 
     def test_a_runtime_dfpm_installed_wins_over_one_on_path(self) -> None:
-        base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         storage = Storage(base / "dfpm-data")
         _, manifest_path = create_package(base, commands=("perl",), body="@exit /b 0\r\n")
         destination = install(Manifest.load(manifest_path), storage)
@@ -138,7 +143,7 @@ class InstalledLocationTests(unittest.TestCase):
     """
 
     def setUp(self) -> None:
-        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         self.root = self.base / "dotnet-home"
         self.root.mkdir()
         self.executable = self.root / ("dotnet.exe" if os.name == "nt" else "dotnet")
@@ -199,7 +204,7 @@ class InstalledLocationTests(unittest.TestCase):
 
 class RequirementManifestTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
 
     def load(self, requires: list[dict]) -> Manifest:
         _, manifest_path = create_package(self.base, requires=requires)
@@ -239,7 +244,7 @@ class BlockedPackageTests(unittest.TestCase):
     """Installed and runnable are different states."""
 
     def setUp(self) -> None:
-        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         self.storage = Storage(self.base / "dfpm-data")
         self.catalog, manifest_path = create_package(self.base, requires=JAVA, body="@exit /b 0\r\n")
         self.manifest_path = manifest_path
@@ -307,7 +312,7 @@ class BlockedPackageTests(unittest.TestCase):
             self.assertEqual(broken, 1, "something dfpm owns being broken outranks a missing runtime")
 
     def test_a_satisfied_requirement_passes(self) -> None:
-        base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         storage = Storage(base / "dfpm-data")
         _, manifest_path = create_package(base, requires=[{"runtime": "java", "version": ">=8"}])
         detection = runtimes.Detection("java", path=Path("java.exe"), version=(21, 0, 1))
@@ -320,7 +325,7 @@ class BlockedPackageTests(unittest.TestCase):
 
 class DoctorArgumentTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         self.storage = Storage(self.base / "dfpm-data")
 
     def test_it_can_be_narrowed_to_one_package(self) -> None:

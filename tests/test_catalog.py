@@ -45,7 +45,7 @@ class SelectionTests(unittest.TestCase):
     """A tool ships several builds; exactly one of them can be installed here."""
 
     def setUp(self) -> None:
-        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         self.catalog = self.base / "catalog"
         self.system, self.architecture = current()
 
@@ -127,7 +127,7 @@ class SelectionTests(unittest.TestCase):
 
 class CatalogTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
 
     def test_resolve_reports_a_package_that_is_not_listed(self) -> None:
         create_package(self.base)
@@ -173,7 +173,7 @@ class UpdateComparisonTests(unittest.TestCase):
     """What the catalog offers, against what is installed."""
 
     def setUp(self) -> None:
-        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         self.catalog, _ = create_package(self.base)
 
     def add_version(self, version: str, **platform: str) -> None:

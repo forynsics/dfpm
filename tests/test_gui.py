@@ -16,7 +16,7 @@ from tests.helpers import create_package
 
 class GuiTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         self.catalog, _ = create_package(self.base)
         self.storage = Storage(self.base / "dfpm-data")
         self.server, self.session = create_server(self.storage, self.catalog, port=0)

@@ -43,7 +43,7 @@ def mark_encrypted(path: Path) -> Path:
 
 class ArchiveTests(unittest.TestCase):
     def extract(self, entries, *, strip: int = 0, limits: ArchiveLimits | None = None) -> list[dict[str, str | int]]:
-        base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         archive = build(base, entries)
         destination = base / "out"
         destination.mkdir()
@@ -90,7 +90,7 @@ class ArchiveTests(unittest.TestCase):
         self.assertRejected([(entry("bin/pipe", mode=stat.S_IFIFO | 0o644), "")], "special file")
 
     def test_rejects_encrypted_entry(self) -> None:
-        base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         archive = mark_encrypted(build(base, [("bin/tool.cmd", "data")]))
         destination = base / "out"
         destination.mkdir()
@@ -104,7 +104,7 @@ class ArchiveTests(unittest.TestCase):
 
     def test_writes_binary_content_byte_for_byte(self) -> None:
         payload = os.urandom(4096)
-        base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         archive = build(base, [("bin/tool.bin", payload)])
         destination = base / "out"
         destination.mkdir()
@@ -129,7 +129,7 @@ class FreeSpaceTests(unittest.TestCase):
     """Free space is what decides whether extraction hurts, so it is what dfpm measures."""
 
     def extract(self, entries, *, limits: ArchiveLimits | None = None, expected_size: int | None = None):
-        base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         archive = build(base, entries)
         destination = base / "out"
         destination.mkdir()

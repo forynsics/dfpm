@@ -18,7 +18,7 @@ class CatalogDiscoveryTests(unittest.TestCase):
     """Someone new has to be able to find what a tool is and what else it ships."""
 
     def setUp(self) -> None:
-        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         self.catalog = self.base / "catalog"
         self.system, self.architecture = current()
         self.other = "linux" if self.system != "linux" else "macos"

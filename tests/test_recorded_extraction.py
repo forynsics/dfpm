@@ -21,7 +21,7 @@ class RecordedExtractionTests(unittest.TestCase):
     """A manifest may record what it costs on disk, so the plan can show it before fetching."""
 
     def setUp(self) -> None:
-        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         self.storage = Storage(self.base / "dfpm-data")
 
     def install_with(self, **kwargs) -> Path:
@@ -65,7 +65,7 @@ class StagingTests(unittest.TestCase):
     """An install cleans up after itself and leaves every other run's work alone."""
 
     def setUp(self) -> None:
-        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         self.storage = Storage(self.base / "dfpm-data")
         self.staging = self.storage.root / "staging"
 
@@ -118,7 +118,7 @@ class RemoveTreeTests(unittest.TestCase):
             self.assertTrue(remove_tree(Path("some-dir")))
 
     def test_a_failed_cleanup_does_not_mask_why_the_install_failed(self) -> None:
-        base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         storage = Storage(base / "dfpm-data")
         _, manifest_path = create_package(base, body=BODY, entries=99)
         with (

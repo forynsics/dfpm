@@ -23,7 +23,7 @@ from tests.helpers import create_package
 
 class InstallTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         self.storage = Storage(self.base / "dfpm-data")
 
     def install_version(self, version: str = "1.0.0", **kwargs) -> Path:
@@ -150,7 +150,7 @@ class ReplacementPlanTests(unittest.TestCase):
     """Installing over a version deletes its folder, so the plan has to say so first."""
 
     def setUp(self) -> None:
-        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         self.storage = Storage(self.base / "dfpm-data")
 
     def plan(self, catalog: Path, version: str) -> str:

@@ -17,7 +17,7 @@ from tests.helpers import create_package
 
 class CacheTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         self.storage = Storage(self.base / "dfpm-data")
         self.catalog, self.manifest_path = create_package(self.base)
 

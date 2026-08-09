@@ -77,7 +77,7 @@ class VocabularyTests(unittest.TestCase):
 
 class ManifestClassificationTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
 
     BUILD_FIELDS = frozenset({"version", "platform", "package", "install", "verify", "requires"})
 

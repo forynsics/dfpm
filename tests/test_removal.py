@@ -20,7 +20,7 @@ class RemovalTests(unittest.TestCase):
     """The version directory is the package, so removing one is removing that directory."""
 
     def setUp(self) -> None:
-        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         self.storage = Storage(self.base / "dfpm-data")
 
     def install_version(self, version: str = "1.0.0", *, commands=("example-tool",)) -> Path:
@@ -116,7 +116,7 @@ class ReadOnlyFileTests(unittest.TestCase):
     """Real packages ship read-only files, and Windows will not delete those."""
 
     def setUp(self) -> None:
-        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         self.storage = Storage(self.base / "dfpm-data")
 
     def test_a_read_only_file_does_not_block_removal(self) -> None:
@@ -145,7 +145,7 @@ class RemovalSafetyTests(unittest.TestCase):
     """Recursive deletion is the one place a bug is unrecoverable."""
 
     def setUp(self) -> None:
-        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         self.storage = Storage(self.base / "dfpm-data")
         self.storage.initialize()
 

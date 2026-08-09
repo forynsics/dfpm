@@ -21,7 +21,7 @@ class TermsTests(unittest.TestCase):
     """Confirming a plan is not the same as asserting that terms permit your use."""
 
     def setUp(self) -> None:
-        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         self.storage = Storage(self.base / "dfpm-data")
         self.catalog, self.manifest_path = create_package(self.base, terms_url=TERMS)
 
@@ -62,7 +62,7 @@ class TermsTests(unittest.TestCase):
         self.assertIn("Installed to", out)
 
     def test_a_package_without_terms_is_unaffected_by_yes(self) -> None:
-        base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         catalog, _ = create_package(base)
         storage = Storage(base / "dfpm-data")
         with contextlib.redirect_stdout(io.StringIO()):
@@ -93,7 +93,7 @@ class GuiTermsTests(unittest.TestCase):
     """The local interface applies the same rule as the command line."""
 
     def setUp(self) -> None:
-        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         self.storage = Storage(self.base / "dfpm-data")
         self.catalog, _ = create_package(self.base, terms_url=TERMS)
 

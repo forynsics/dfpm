@@ -16,7 +16,7 @@ class SyncFixture(unittest.TestCase):
     """A published catalog and a machine that can sync from it."""
 
     def setUp(self) -> None:
-        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         self.published, _ = create_package(self.base)
         self.local = self.base / "machine" / "catalog"
         self.republish()

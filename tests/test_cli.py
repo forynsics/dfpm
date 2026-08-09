@@ -15,7 +15,7 @@ from tests.helpers import create_package
 class CliTests(unittest.TestCase):
     def test_cli_lifecycle(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            base = Path(temporary)
+            base = Path(temporary).resolve()
             catalog, _ = create_package(base)
             root = base / "data"
             output = io.StringIO()
@@ -32,7 +32,7 @@ class CliTests(unittest.TestCase):
 
     def test_declining_a_plan_changes_nothing(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            base = Path(temporary)
+            base = Path(temporary).resolve()
             catalog, _ = create_package(base)
             root = base / "data"
             output = io.StringIO()
@@ -57,7 +57,7 @@ class PlanProvenanceTests(unittest.TestCase):
         # inherited it would fail for a reason that has nothing to do with dfpm.
         self.enterContext(mock.patch.dict("os.environ", {}, clear=False))
         __import__("os").environ.pop("DFPM_CATALOG", None)
-        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         self.catalog, _ = create_package(self.base)
         self.root = self.base / "data"
 

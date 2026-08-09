@@ -28,7 +28,7 @@ class FakeResponse(io.BytesIO):
 
 class ArtifactTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         self.storage = Storage(self.base / "dfpm-data")
         self.source = self.base / "payload.zip"
         self.source.write_bytes(PAYLOAD)
@@ -106,7 +106,7 @@ class StabilityTests(unittest.TestCase):
     """What a changed digest means depends on how the artifact is published."""
 
     def setUp(self) -> None:
-        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         self.storage = Storage(self.base / "dfpm-data")
         self.source = self.base / "payload.zip"
         self.source.write_bytes(PAYLOAD)
@@ -183,7 +183,7 @@ class RetrievalTests(unittest.TestCase):
     """Saving a file to look at, which is not the same as installing it."""
 
     def setUp(self) -> None:
-        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         self.source = self.base / "payload.zip"
         self.source.write_bytes(PAYLOAD)
         self.target = self.base / "saved.zip"

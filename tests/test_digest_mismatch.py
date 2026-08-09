@@ -25,7 +25,7 @@ class MismatchFixture(unittest.TestCase):
     """A catalog entry whose URL now serves something other than what it pinned."""
 
     def setUp(self) -> None:
-        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         self.storage = Storage(self.base / "dfpm-data")
 
     def stale_entry(self, stability: str | None = None) -> Manifest:

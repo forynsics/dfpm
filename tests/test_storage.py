@@ -54,7 +54,7 @@ class CatalogLocationTests(unittest.TestCase):
     """Where entries are read from, now that it is a location rather than a guess."""
 
     def setUp(self) -> None:
-        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         self.storage = Storage(self.base / "data")
 
     def test_the_machine_has_a_catalog_of_its_own(self) -> None:

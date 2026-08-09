@@ -89,7 +89,7 @@ class RenderingTests(unittest.TestCase):
 
 class InstallReportingTests(unittest.TestCase):
     def test_an_install_reports_both_stages(self) -> None:
-        base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         storage = Storage(base / "dfpm-data")
         _, manifest_path = create_package(base)
         seen: list[tuple[str, int, int | None]] = []
@@ -101,7 +101,7 @@ class InstallReportingTests(unittest.TestCase):
         self.assertEqual(extract[-1][1], extract[-1][2], "it finishes at the total it announced")
 
     def test_no_reporter_is_the_normal_case(self) -> None:
-        base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         storage = Storage(base / "dfpm-data")
         _, manifest_path = create_package(base)
         self.assertTrue(install(Manifest.load(manifest_path), storage).is_dir())

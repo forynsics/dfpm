@@ -18,7 +18,7 @@ class DownloadTests(unittest.TestCase):
     """Getting the release file itself, for a machine dfpm is not running on."""
 
     def setUp(self) -> None:
-        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         self.catalog = self.base / "catalog"
         self.storage = Storage(self.base / "data")
         self.saved = self.base / "saved"

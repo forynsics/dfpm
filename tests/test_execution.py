@@ -24,7 +24,7 @@ class WorkingDirectoryTests(unittest.TestCase):
     """A tool that resolves its own data against the working directory has to find it."""
 
     def setUp(self) -> None:
-        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         self.storage = Storage(self.base / "dfpm-data")
         self.elsewhere = self.base / "somewhere-else"
         self.elsewhere.mkdir()
@@ -99,7 +99,7 @@ class ExitCodeTests(unittest.TestCase):
     """dfpm run returns the tool's code, so its own failures must not collide."""
 
     def setUp(self) -> None:
-        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         self.storage = Storage(self.base / "dfpm-data")
 
     def install_version(self, body: str) -> Path:
@@ -146,7 +146,7 @@ class ExitCodeTests(unittest.TestCase):
 
 class WorkingDirectoryManifestTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
 
     def with_value(self, value: str) -> Path:
         _, manifest_path = create_package(self.base, working_directory=value)
