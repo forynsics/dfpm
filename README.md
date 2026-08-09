@@ -75,7 +75,7 @@ python -m venv .venv
 
 ```text
 dfpm paths
-dfpm catalog
+dfpm catalog [<package-id>]
 dfpm install <package-id> [--package-version <version>]
 dfpm uninstall <package-id>
 dfpm run <command> [arguments...]
@@ -121,11 +121,20 @@ Both plans show the path, the file count and the size before anything happens, a
 
 The `catalog/` directory holds the manifests dfpm can install from. Each one names the release file its project published, records its SHA-256, and records the upstream project, its license and the platform it was built for. The download size and the size on disk are recorded too — not as a second integrity check, since the digest already settles what the bytes are, but so the plan can tell you the cost before you agree to it.
 
-It currently contains **YARA 4.5.5** and **Hayabusa 4.0.0**, both for Windows x64. dfpm is in early development, so the catalog is still being built out. See [catalog/README.md](catalog/README.md) for what goes into an entry, and the review notes recorded for each package.
+It currently contains **YARA 4.5.5** for Windows x64 and **Hayabusa 4.0.0** for Windows, Linux and macOS. dfpm is in early development, so the catalog is still being built out. See [catalog/README.md](catalog/README.md) for what goes into an entry, and the review notes recorded for each package.
 
 Recording a digest per release is a job for a script, not a person — reading a project's release feed, fetching the asset and computing the hash is exactly the work a machine should do. What a person does is approve the change. That tooling does not exist yet, so entries are currently written by hand; until it does, the catalog will grow slowly and deliberately.
 
-A manifest can also record what the package costs on disk once unpacked, so the install plan shows the size and file count before anything is downloaded. See the [manifest format](docs/manifest-v1.md) for the full list of rules extraction applies, and for what those rules are and are not defending against.
+Each entry describes one tool and every build of it dfpm can install, so a tool shipping for several systems is one entry rather than one per platform. `dfpm catalog` lists what is available; `dfpm catalog <package-id>` shows everything known about one of them, including the builds this machine cannot use:
+
+```text
+  Builds
+    4.0.0      windows/x64        42.1 MiB  <- installs on this machine
+    4.0.0      linux/x64          44.1 MiB
+    4.0.0      macos/arm64        43.3 MiB
+```
+
+Installing picks the newest version with a build for your machine, and the plan says so rather than leaving it implied. A manifest also records what the package costs on disk once unpacked, so the plan shows the size and file count before anything is downloaded. See the [manifest format](docs/manifest-v1.md) for the full list of rules extraction applies, and for what those rules are and are not defending against.
 
 ## Running installed tools
 

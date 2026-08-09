@@ -4,12 +4,15 @@ import argparse
 import json
 import shutil
 import sys
+import textwrap
 from pathlib import Path
 
 from . import __version__, cache, classification, launcher, progress, removal, runtimes
 from .archive import human_size
+from . import platforms
 from .catalog import describe, load_catalog, resolve
 from .catalog import newest as catalog_newest
+from .catalog import version_key as catalog_version_key
 from .doctor import inspect
 from .errors import DfpmError
 from .gui import serve
@@ -26,7 +29,8 @@ def build_parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="command", required=True)
 
     commands.add_parser("paths", help="Show where dfpm stores files.")
-    catalog = commands.add_parser("catalog", help="List available packages.")
+    catalog = commands.add_parser("catalog", help="List available packages, or show one in detail.")
+    catalog.add_argument("package", nargs="?", help="Show everything known about this package.")
     catalog.add_argument("--json", action="store_true")
 
     install_command = commands.add_parser("install", help="Install a package, replacing any version already installed.")
@@ -100,24 +104,7 @@ def _run(args: argparse.Namespace, storage: Storage) -> int:
         print(f"Package records:    {storage.state / 'packages'}")
         return 0
     if args.command == "catalog":
-        packages = load_catalog(args.catalog)
-        if args.json:
-            # The vocabulary travels with the packages so an interface can offer
-            # every discipline as a filter, including the ones nothing is
-            # catalogued under yet. Hard-coding that list somewhere else is how
-            # the two drift apart.
-            print(json.dumps({
-                "packages": [describe(package) for package in packages],
-                "vocabulary": classification.vocabulary(),
-            }, indent=2))
-        else:
-            for tool in packages:
-                newest = catalog_newest(tool)
-                platforms = ", ".join(str(item) for item in tool.platforms()) or "any platform"
-                print(f"{tool.id:<24} {newest.version:<12} {tool.name}")
-                print(f"{'':<24} {tool.description}")
-                print(f"{'':<24} {platforms}")
-        return 0
+        return _catalog(args)
     if args.command == "install":
         return _install(args, storage)
     if args.command == "uninstall":
@@ -151,6 +138,97 @@ def _run(args: argparse.Namespace, storage: Storage) -> int:
     return 1
 
 
+def _other_builds(catalog: Path, manifest) -> int:
+    """How many builds of this tool were not chosen, for the install plan."""
+    try:
+        tools = [tool for tool in load_catalog(catalog) if tool.id == manifest.id]
+    except DfpmError:
+        return 0
+    return len(tools[0].builds) - 1 if tools else 0
+
+
+def _catalog(args: argparse.Namespace) -> int:
+    tools = load_catalog(args.catalog)
+    if args.package:
+        matches = [tool for tool in tools if tool.id == args.package]
+        if not matches:
+            raise DfpmError(f"Package not found in catalog: {args.package}")
+        tools = matches
+
+    if args.json:
+        # The vocabulary travels with the packages so an interface can offer
+        # every discipline as a filter, including the ones nothing is
+        # catalogued under yet. Hard-coding that list somewhere else is how
+        # the two drift apart.
+        print(json.dumps({
+            "packages": [describe(tool) for tool in tools],
+            "vocabulary": classification.vocabulary(),
+        }, indent=2))
+        return 0
+
+    if args.package:
+        _show_tool(tools[0])
+        return 0
+
+    for tool in tools:
+        platforms = ", ".join(str(item) for item in tool.platforms()) or "any platform"
+        print(f"{tool.id:<24} {catalog_newest(tool).version:<12} {tool.name}")
+        print(f"{'':<24} {tool.description}")
+        print(f"{'':<24} {platforms}")
+    print("\nRun 'dfpm catalog <package>' to see everything known about one of them.")
+    return 0
+
+
+def _show_tool(tool) -> None:
+    """Everything known about one tool, including builds this machine cannot use.
+
+    Somebody deciding whether a tool is worth installing needs more than a line,
+    and somebody wondering what else it ships needs to be able to see it. The
+    install plan only ever shows the one build it chose.
+    """
+    here = platforms.current()
+    print(f"{tool.name}  {catalog_newest(tool).version}")
+    print(f"  {tool.description}")
+    print()
+    if tool.about:
+        for line in textwrap.wrap(tool.about, width=76):
+            print(f"  {line}")
+        print()
+
+    labelled = [
+        ("Discipline", "disciplines"),
+        ("Does", "capabilities"),
+        ("Use for", "use_cases"),
+        ("Reads", "evidence"),
+    ]
+    for heading, field in labelled:
+        keys = getattr(tool, field)
+        if keys:
+            print(f"  {heading + ':':<12} {', '.join(classification.label(field, key) for key in keys)}")
+
+    commands = [name for build in tool.builds for name in (item.name for item in build.entrypoints)]
+    if commands:
+        print(f"  {'Commands:':<12} {', '.join(dict.fromkeys(commands))}")
+    if tool.project:
+        if tool.project.license:
+            print(f"  {'License:':<12} {tool.project.license}")
+        if tool.project.repository:
+            print(f"  {'Project:':<12} {tool.project.repository}")
+
+    print("\n  Builds")
+    for build in sorted(tool.builds, key=lambda item: catalog_version_key(item.version), reverse=True):
+        platform = str(build.platform) if build.platform else "any platform"
+        size = human_size(build.package.size) if build.package.size else ""
+        usable = build.platform is None or (build.platform.system, build.platform.architecture) == here
+        marker = "  <- installs on this machine" if usable else ""
+        print(f"    {build.version:<10} {platform:<16} {size:>10}{marker}")
+    if not any(
+        build.platform is None or (build.platform.system, build.platform.architecture) == here
+        for build in tool.builds
+    ):
+        print(f"\n  None of these run on {here[0]}/{here[1]}.")
+
+
 def _free_space(root: Path) -> int | None:
     """Free bytes on the volume dfpm installs to, measured at the nearest existing parent."""
     for candidate in (root, *root.parents):
@@ -178,7 +256,11 @@ def _install(args: argparse.Namespace, storage: Storage) -> int:
         if outgoing.grew:
             print(f"               Installed with {outgoing.installed_count:,}; anything added since goes too.")
     if manifest.platform is not None:
-        print(f"  Platform:    {manifest.platform}")
+        # Say that a choice was made. Otherwise a tool shipping for three
+        # systems looks like it only exists for this one.
+        others = _other_builds(args.catalog, manifest)
+        note = f"  (1 of {others + 1} builds; 'dfpm catalog {manifest.id}' shows the rest)" if others else ""
+        print(f"  Platform:    {manifest.platform}{note}")
     if manifest.project is not None:
         if manifest.project.license:
             print(f"  License:     {manifest.project.license}")
