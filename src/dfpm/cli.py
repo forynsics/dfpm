@@ -84,7 +84,7 @@ def main(argv: list[str] | None = None) -> int:
         return _run(args, storage)
     except DfpmError as exc:
         print(f"error: {exc}", file=sys.stderr)
-        return 1
+        return exc.exit_code
     except KeyboardInterrupt:
         print("Cancelled.", file=sys.stderr)
         return 130
@@ -349,6 +349,7 @@ def _which(args: argparse.Namespace, storage: Storage) -> int:
             "version": resolution.version,
             "target": str(resolution.target),
             "shim": str(resolution.shim),
+            "working_directory": str(resolution.working_directory),
             "path_status": status,
             "path_resolves_to": found,
         }, indent=2))
@@ -356,6 +357,7 @@ def _which(args: argparse.Namespace, storage: Storage) -> int:
 
     print(f"{resolution.name} -> {resolution.target}")
     print(f"  Package:  {resolution.package} {resolution.version}")
+    print(f"  Runs in:  {resolution.working_directory}")
     print(f"  Shortcut: {resolution.shim}{'' if resolution.shim_exists else ' (missing, run dfpm doctor)'}")
     if status == "dfpm":
         print("  On PATH:  resolves to this package's command shortcut")

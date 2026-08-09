@@ -18,6 +18,24 @@ class Shim:
     package: str
     version: str
     target: Path
+    working_directory: Path
+
+
+def working_directory(root: Path, entrypoint: dict) -> Path:
+    """Where an entrypoint runs from.
+
+    Defaults to the directory holding the executable, which is what a tool
+    resolving its own rules or configuration against the working directory
+    needs, and what someone opening a terminal beside the binary would get.
+    A manifest overrides it relative to the package root, using "." for the
+    root itself.
+    """
+    declared = entrypoint.get("working_directory")
+    if declared is None:
+        return (root / entrypoint["path"]).parent
+    if declared == ".":
+        return root
+    return root / declared
 
 
 def planned(storage: Storage) -> dict[str, Shim]:
@@ -33,7 +51,13 @@ def planned(storage: Storage) -> dict[str, Shim]:
             claimed = shims.get(name)
             if claimed is not None and claimed.package != package["id"]:
                 raise InstallError(f"Command name '{name}' is claimed by both {claimed.package} and {package['id']}")
-            shims[name] = Shim(name, package["id"], version, root / entrypoint["path"])
+            shims[name] = Shim(
+                name,
+                package["id"],
+                version,
+                root / entrypoint["path"],
+                working_directory(root, entrypoint),
+            )
     return shims
 
 
@@ -64,7 +88,16 @@ def owned(path: Path) -> bool:
 def _write(path: Path, shim: Shim) -> None:
     if path.exists() and not owned(path):
         raise InstallError(f"Refusing to replace a file dfpm does not manage: {path}")
-    content = f"{MARKER} package={shim.package} version={shim.version}\r\n@echo off\r\n\"{shim.target}\" %*\r\n"
+    # setlocal scopes the directory change to this script, so a shell that runs
+    # the shim is left where it was. The tool's exit code still propagates
+    # through the implicit endlocal.
+    content = (
+        f"{MARKER} package={shim.package} version={shim.version}\r\n"
+        f"@echo off\r\n"
+        f"setlocal\r\n"
+        f'cd /d "{shim.working_directory}"\r\n'
+        f'"{shim.target}" %*\r\n'
+    )
     handle, temporary = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
     try:
         with os.fdopen(handle, "w", encoding="utf-8", newline="") as output:

@@ -20,6 +20,7 @@ def create_package(
     extracted_size: int | None = None,
     entries: int | None = None,
     terms_url: str | None = None,
+    working_directory: str | None = None,
 ) -> tuple[Path, Path]:
     """Write a synthetic catalog entry and its artifact, returning (catalog, manifest path)."""
     catalog = base / "catalog"
@@ -47,7 +48,11 @@ def create_package(
         "install": {
             "strategy": "portable-zip",
             "strip_components": 1,
-            "entrypoints": [{"name": command, "path": f"bin/{command}.cmd"} for command in commands],
+            "entrypoints": [
+                {"name": command, "path": f"bin/{command}.cmd"}
+                | ({"working_directory": working_directory} if working_directory else {})
+                for command in commands
+            ],
         },
         "health_checks": [{"type": "file", "path": "data/readme.txt"}],
     }

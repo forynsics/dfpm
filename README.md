@@ -120,9 +120,13 @@ dfpm run yara --version
 dfpm run yara rules.yar C:\evidence\collected
 ```
 
-It looks up the command among the installed packages, runs that exact file, and passes your arguments through as a real argument list. Its exit code is the tool's exit code, so it composes normally in scripts.
+It looks up the command among the installed packages, runs that exact file from the directory the package expects, and passes your arguments through as a real argument list.
 
-**dfpm never adds arguments of its own.** What you type is what runs. Some tools look for their own rules or configuration relative to the current directory and will need to be told where those live — that is the tool's own interface, and the catalog records the working invocation rather than dfpm quietly supplying it.
+Its exit code is the tool's exit code, so it composes normally in scripts. dfpm's own refusals use the shell's conventions instead — **`127`** when no installed package provides the command, **`126`** when it resolved but could not be launched — so a script can tell them apart from anything the tool itself returns.
+
+**dfpm never adds arguments of its own.** What you type is what runs.
+
+What it does decide is *where* the tool runs. A command launches from the directory holding its executable rather than from wherever you happen to be, so a tool that keeps its rules or configuration beside itself finds them from any working directory. A package can name a different directory if it expects one. `dfpm which` shows it before you run anything.
 
 One exception, because Windows leaves no honest alternative: when a package's entrypoint is a `.cmd` or `.bat`, Windows runs it through `cmd`, which re-reads the command line before the script ever sees it. An argument containing `&`, `|`, `<`, `>`, `^`, `(`, `)`, `"` or `%` would not arrive intact, so dfpm refuses it and points you at the file to run directly rather than passing something the tool would misread.
 

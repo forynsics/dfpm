@@ -101,9 +101,12 @@ class LauncherTests(unittest.TestCase):
         self.assertEqual(main(["--root", str(self.storage.root), "run", "example-tool", "--flag", "value"]), 7)
 
     def test_cli_run_reports_an_unknown_command(self) -> None:
+        # 127 is the shell's own code for "command not found". dfpm run returns
+        # the tool's exit code, and tools use 1 for ordinary outcomes, so dfpm
+        # must not also use 1 for its own refusals.
         errors = io.StringIO()
         with contextlib.redirect_stderr(errors):
-            self.assertEqual(main(["--root", str(self.storage.root), "run", "nosuchtool"]), 1)
+            self.assertEqual(main(["--root", str(self.storage.root), "run", "nosuchtool"]), 127)
         self.assertIn("No installed package provides", errors.getvalue())
 
 

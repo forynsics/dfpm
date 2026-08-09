@@ -81,7 +81,11 @@ def _stage(
             "artifact_sha256": manifest.artifact.sha256,
             "file_count": len(managed_files),
             "installed_size": sum(int(item["size"]) for item in managed_files),
-            "entrypoints": [{"name": item.name, "path": item.path} for item in manifest.entrypoints],
+            "entrypoints": [
+                {"name": item.name, "path": item.path}
+                | ({"working_directory": item.working_directory} if item.working_directory else {})
+                for item in manifest.entrypoints
+            ],
             "health_checks": [{"type": item.type, "path": item.path} for item in manifest.health_checks],
         }
         if manifest.platform is not None:

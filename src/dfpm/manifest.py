@@ -29,6 +29,7 @@ class Artifact:
 class Entrypoint:
     name: str
     path: str
+    working_directory: str | None = None
 
 
 @dataclass(frozen=True)
@@ -122,7 +123,11 @@ class Manifest:
         entry_count = _optional_count(install.get("entries"), "install.entries")
 
         entrypoints = tuple(
-            Entrypoint(_command_name(item.get("name")), _relative_path(item.get("path"), "entrypoint.path"))
+            Entrypoint(
+                _command_name(item.get("name")),
+                _relative_path(item.get("path"), "entrypoint.path"),
+                _working_directory(item.get("working_directory")),
+            )
             for item in _object_list(install.get("entrypoints", []), "install.entrypoints")
         )
         names = [item.name for item in entrypoints]
@@ -195,6 +200,22 @@ def _command_name(value: Any) -> str:
     if reason is not None:
         raise ManifestError(f"entrypoint.name {reason}")
     return text
+
+
+def _working_directory(value: Any) -> str | None:
+    """Where an entrypoint expects to be run from, relative to the package root.
+
+    Omitted means the directory holding the executable, which is what a tool
+    resolving its own rules or configuration against the working directory
+    needs. A tool whose binary sits in a subdirectory but which expects the
+    package root says so with ".".
+    """
+    if value is None:
+        return None
+    text = _text(value, "entrypoint.working_directory").replace("\\", "/")
+    if text == ".":
+        return text
+    return _relative_path(text, "entrypoint.working_directory")
 
 
 def _platform(value: Any) -> Platform | None:
