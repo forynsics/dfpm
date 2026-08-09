@@ -1,6 +1,10 @@
 # Reviewed package catalog
 
-Every manifest here pins an exact artifact URL, SHA-256 digest, and size that a maintainer has reviewed. Nothing in this directory is generated automatically, and release discovery never writes to it: discovery can suggest a candidate release, but a person decides what dfpm is allowed to install.
+Every manifest here names one exact artifact and records its SHA-256, and a person approved it being here.
+
+That approval is the point, not the typing. A manifest may perfectly well be produced by a script that reads a project's release feed, downloads the asset and computes the digest — nobody is auditing eleven megabytes of compiled Rust by hand, and pretending otherwise would be dishonest about what the digest is for. What it actually buys is that everyone installing a given version gets identical bytes, now and in three years, and that an asset quietly replaced at the same URL is caught. What must not happen is a manifest reaching this directory without a person approving the change. Discovery proposes; a person merges.
+
+The steps below describe doing it by hand, which is how it works until that tooling exists.
 
 ## Reviewing a package
 
@@ -8,7 +12,7 @@ Every manifest here pins an exact artifact URL, SHA-256 digest, and size that a 
 2. Download the asset over HTTPS from the project's official location and compute its SHA-256 and size locally.
 3. Corroborate the digest against a second source where one exists, such as the digest the hosting platform recorded for the asset, or a checksum or signature the project publishes. GitHub only records digests for assets uploaded after it added the feature, so older releases have none and the locally computed digest is all you get.
 4. Inspect the archive to determine `strip_components`, the real entrypoint paths, and the files worth health checking. Record `install.extracted_size` and `install.entries` while you are there, so `dfpm install` can show what the package costs on disk before anything is downloaded. Both are verified after extraction, so a wrong figure fails the install rather than misleading someone.
-5. Record the upstream project, its license, and the platform the artifact was built for. `license` takes an SPDX expression, so an artifact under more than one licence says so directly (`AGPL-3.0-only AND LicenseRef-DRL-1.1`). If the tool restricts who may use it or for what purpose, record `project.terms_url`; that alone makes dfpm refuse to install it from a script without `--accept-terms`.
+5. Record the upstream project, its license, and the platform the artifact was built for. `license` takes an SPDX expression, so an artifact under more than one license says so directly (`AGPL-3.0-only AND LicenseRef-DRL-1.1`). If the tool restricts who may use it or for what purpose, record `project.terms_url`; that alone makes dfpm refuse to install it from a script without `--accept-terms`.
 6. If the tool needs particular arguments to work at all — some resolve their own rules or configuration relative to the working directory — record the working invocation in the review notes below. dfpm does not supply arguments on a tool's behalf, so this is documentation for whoever installs it, not configuration.
 7. Run `dfpm catalog`, which loads and validates every manifest in this directory and fails on a malformed one. Then install it and confirm the tool actually runs.
 

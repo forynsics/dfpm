@@ -3,9 +3,7 @@ from __future__ import annotations
 import contextlib
 import json
 import os
-import shutil
 import tempfile
-import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -16,9 +14,7 @@ from .artifacts import acquire
 from .errors import InstallError
 from .inventory import forget_package, read_package, write_package
 from .manifest import Manifest
-from .storage import Storage
-
-STAGING_RETRY_DELAYS = (0, 0.1, 0.3, 1.0)
+from .storage import Storage, remove_tree
 
 
 def install(manifest: Manifest, storage: Storage, *, limits: ArchiveLimits = DEFAULT_LIMITS) -> Path:
@@ -83,7 +79,8 @@ def _stage(
             "installed_at": datetime.now(UTC).isoformat(),
             "manifest_digest": manifest.digest,
             "artifact_sha256": manifest.artifact.sha256,
-            "files": managed_files,
+            "file_count": len(managed_files),
+            "installed_size": sum(int(item["size"]) for item in managed_files),
             "entrypoints": [{"name": item.name, "path": item.path} for item in manifest.entrypoints],
             "health_checks": [{"type": item.type, "path": item.path} for item in manifest.health_checks],
         }
@@ -98,7 +95,9 @@ def _stage(
         os.replace(staging, destination)
         return record
     except Exception:
-        _discard_staging(staging)
+        # A successful install never reaches here: publishing moves the staging
+        # directory rather than copying it, so there is nothing left to remove.
+        remove_tree(staging)
         raise
 
 
@@ -115,7 +114,7 @@ def _publish(
         write_package(storage, manifest.id, record)
         shims.reconcile(storage)
     except Exception:
-        shutil.rmtree(destination, ignore_errors=True)
+        remove_tree(destination)
         if restore is None:
             forget_package(storage, manifest.id)
         else:
@@ -124,30 +123,7 @@ def _publish(
             shims.reconcile(storage)
         raise
     if previous and previous != manifest.version:
-        shutil.rmtree(storage.package_version(manifest.id, previous), ignore_errors=True)
-
-
-def _discard_staging(staging: Path) -> bool:
-    """Remove a staged install that is not going to be published.
-
-    A successful install never reaches here, because publishing moves the
-    staging directory rather than copying it. This is the failure path, and on
-    Windows it runs straight into a transient lock: antivirus and the search
-    indexer both open a freshly written executable, and a delete issued in that
-    window fails for a reason that clears on its own a moment later. Retry
-    before giving up, and report whether the directory actually went.
-    """
-    for delay in STAGING_RETRY_DELAYS:
-        if delay:
-            time.sleep(delay)
-        try:
-            shutil.rmtree(staging)
-            return True
-        except FileNotFoundError:
-            return True
-        except OSError:
-            continue
-    return False
+        remove_tree(storage.package_version(manifest.id, previous))
 
 
 def _check_recorded_extraction(manifest: Manifest, files: list[dict[str, Any]]) -> None:

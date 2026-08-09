@@ -1,9 +1,34 @@
 from __future__ import annotations
 
 import os
+import shutil
+import time
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
+
+TREE_REMOVAL_DELAYS = (0, 0.1, 0.3, 1.0)
+
+
+def remove_tree(path: Path) -> bool:
+    """Delete a directory tree, retrying briefly before giving up.
+
+    Windows holds a short lock on a freshly written executable while antivirus
+    or the search indexer reads it, so a delete issued in that window fails for
+    a reason that clears on its own a moment later. Reports whether the
+    directory actually went, rather than swallowing the failure.
+    """
+    for delay in TREE_REMOVAL_DELAYS:
+        if delay:
+            time.sleep(delay)
+        try:
+            shutil.rmtree(path)
+            return True
+        except FileNotFoundError:
+            return True
+        except OSError:
+            continue
+    return False
 
 
 @dataclass(frozen=True)

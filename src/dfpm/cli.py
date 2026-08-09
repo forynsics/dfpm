@@ -41,7 +41,6 @@ def build_parser() -> argparse.ArgumentParser:
 
     uninstall_command = commands.add_parser("uninstall", help="Remove installed files dfpm recorded.")
     uninstall_command.add_argument("package")
-    uninstall_command.add_argument("--force", action="store_true", help="Also remove managed files that changed since installation.")
     uninstall_command.add_argument("--yes", action="store_true", help="Confirm the displayed plan.")
 
     cache_command = commands.add_parser("cache", help="Inspect and clean the verified download cache.")
@@ -202,33 +201,26 @@ def _install(args: argparse.Namespace, storage: Storage) -> int:
 
 def _uninstall(args: argparse.Namespace, storage: Storage) -> int:
     plan = removal.plan(storage, args.package)
-    preserved = plan.preserved(args.force)
 
     print("Removal plan")
     print(f"  Package:     {plan.name} {plan.version} ({plan.package})")
-    print(f"  Removes:     {len(plan.removable) + (len(plan.modified) if args.force else 0)} file(s) dfpm installed")
-    if plan.modified:
-        changed = "removed because --force was given" if args.force else "kept, because dfpm did not write their current contents"
-        print(f"  Changed:     {len(plan.modified)} managed file(s) {changed}")
-    if plan.unknown:
-        print(f"  Preserves:   {len(plan.unknown)} file(s) dfpm did not install")
-    if plan.blocked:
-        print(f"  Links:       {len(plan.blocked)} recorded path(s) are now links and will not be touched")
+    print(f"  Removes:     {plan.root}")
+    print(f"               {plan.file_count:,} file(s), {human_size(plan.total_size)}")
+    if plan.grew:
+        # The tool may maintain its own files, or someone may have added their
+        # own. Either way the whole directory goes, so say so before it does.
+        print(f"  Note:        the install put {plan.installed_count:,} file(s) here; everything present now is removed")
     if plan.commands:
         print(f"  Commands:    {', '.join(plan.commands)} removed")
-    print("  Verified downloads stay in the cache; 'dfpm cache prune' clears them.")
+    print("  Downloads stay in the cache; 'dfpm cache prune' clears them.")
     if not args.yes:
         answer = input("Continue? [y/N] ").strip().lower()
         if answer not in {"y", "yes"}:
             print("No changes made.")
             return 2
 
-    removal.execute(storage, plan, force=args.force)
+    removal.execute(storage, plan)
     print(f"Removed {plan.package} {plan.version}")
-    if preserved:
-        print(f"Kept {len(preserved)} file(s) in {plan.root}:")
-        for relative in preserved:
-            print(f"  {relative}")
     return 0
 
 

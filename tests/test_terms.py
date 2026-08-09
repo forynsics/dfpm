@@ -79,7 +79,7 @@ class TermsTests(unittest.TestCase):
         self.assertIn("project.terms_url", str(caught.exception))
 
     def test_a_license_expression_is_carried_verbatim(self) -> None:
-        # Two licences in one artifact, as an SPDX expression. dfpm displays it
+        # Two licenses in one artifact, as an SPDX expression. dfpm displays it
         # rather than parsing it, so no schema change was needed.
         _, manifest_path = create_package(self.base, terms_url=TERMS)
         data = json.loads(manifest_path.read_text(encoding="utf-8"))

@@ -54,7 +54,7 @@
         <div class="page-title">
           <p class="kicker">Read only</p>
           <h1>Health</h1>
-          <p>Every managed file is hashed again and compared against what dfpm recorded when it was installed. Nothing is changed.</p>
+          <p>Each package is checked for being where it was put, with its commands and shortcuts intact. Nothing is changed.</p>
         </div>
         <div id="health-list"></div>
       </section>
@@ -63,7 +63,7 @@
         <div class="page-title">
           <p class="kicker">On disk</p>
           <h1>Locations</h1>
-          <p>Where dfpm keeps managed files on this computer.</p>
+          <p>Where dfpm keeps installed packages on this computer.</p>
         </div>
         <div class="settings-list" id="locations-list"></div>
         <div class="system-note"><b>Installing never writes outside these folders.</b><p>Packages are unpacked into their own versioned directory and reached through a small command shortcut. Machine-level prerequisites are handled separately, and would be described and authorized before anything changed.</p></div>

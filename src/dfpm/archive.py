@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import os
 import shutil
 import stat
@@ -133,9 +132,9 @@ def extract_zip(
                 target.mkdir(parents=True, exist_ok=True)
                 continue
             target.parent.mkdir(parents=True, exist_ok=True)
-            digest, size = _write_entry(source, info, target, extracted, budget)
+            size = _write_entry(source, info, target, extracted, budget)
             extracted += size
-            files.append({"path": str(PurePosixPath(*stripped)), "size": size, "sha256": digest})
+            files.append({"path": str(PurePosixPath(*stripped)), "size": size})
     if not files:
         raise InstallError(
             "Archive did not contain any installable files. Check whether install.strip_components is set too high."
@@ -195,8 +194,7 @@ def _write_entry(
     target: Path,
     already_extracted: int,
     budget: int,
-) -> tuple[str, int]:
-    digest = hashlib.sha256()
+) -> int:
     size = 0
     try:
         with source.open(info) as reader, target.open("wb") as writer:
@@ -209,10 +207,9 @@ def _write_entry(
                         f"Archive is expanding past the {human_size(budget)} there is room for, "
                         f"so its recorded sizes understate it: {info.filename}"
                     )
-                digest.update(chunk)
                 writer.write(chunk)
     except (OSError, RuntimeError, zipfile.BadZipFile) as exc:
         raise InstallError(f"Could not extract archive entry: {info.filename}") from exc
     if size != info.file_size:
         raise InstallError(f"Archive entry does not match the size recorded in its header: {info.filename}")
-    return digest.hexdigest(), size
+    return size

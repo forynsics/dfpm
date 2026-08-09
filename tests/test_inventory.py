@@ -24,7 +24,7 @@ LEGACY_RECORD = {
             "installed_at": "2026-08-08T17:23:32+00:00",
             "entrypoints": [{"name": "yara", "path": "yara64.exe"}],
             "health_checks": [],
-            "files": [{"path": "yara64.exe", "size": 3, "sha256": "5" * 64}],
+            "file_count": 1,
             "platform": {"os": "windows", "arch": "x64"},
         }
     },
@@ -68,10 +68,10 @@ class LegacyRecordTests(unittest.TestCase):
         findings = inspect(self.storage)
         self.assertTrue(findings, "a legacy record must not be silently skipped")
         self.assertEqual({item.version for item in findings}, {"4.5.5"})
-        self.assertIn("Missing managed file: yara64.exe", [item.detail for item in findings])
+        self.assertIn("Missing command shortcut: yara.cmd", [item.detail for item in findings])
 
     def test_a_current_record_is_left_untouched(self) -> None:
-        current = {"id": "other", "name": "Other", "version": "1.0.0", "entrypoints": [], "files": []}
+        current = {"id": "other", "name": "Other", "version": "1.0.0", "entrypoints": [], "file_count": 0}
         write_package(self.storage, "other", current)
         self.assertEqual(read_package(self.storage, "other"), current)
 

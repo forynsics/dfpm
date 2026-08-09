@@ -41,7 +41,7 @@ class DoctorTests(unittest.TestCase):
         destination = self.install_version()
         (destination / "data" / "readme.txt").unlink()
         problems = self.failures()
-        self.assertIn("Missing managed file: data/readme.txt", problems)
+        self.assertIn("Health check failed: data/readme.txt", problems)
         self.assertIn("Health check failed: data/readme.txt", problems)
 
     def test_only_the_installed_version_is_reported(self) -> None:

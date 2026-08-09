@@ -53,8 +53,8 @@ The first implemented manifest format is intentionally narrow. It supports porta
 - `kind` may be `tool`, `runtime`, `ruleset`, `artifact-pack`, `parser-pack`, `integration`, or `config-pack`.
 - `platform` is optional. When present, `platform.os` must be `windows`, `linux`, or `macos`, and `platform.arch` must be `x86`, `x64`, or `arm64`. dfpm refuses to install a package whose platform does not match the machine, which is what keeps a 32-bit or non-Windows build of the same tool from being installed by mistake.
 - `project` is optional and records upstream provenance. `project.homepage`, `project.source` and `project.terms_url` must be HTTPS URLs.
-- `project.license` is a single string holding an SPDX **expression**, so an artifact under more than one licence needs no extra field: Hayabusa ships as `AGPL-3.0-only AND LicenseRef-DRL-1.1`, the binary being AGPL and the bundled rules DRL. Terms with no SPDX identifier use a `LicenseRef-` value. dfpm displays this string and does not parse it; validating an expression would mean carrying the SPDX licence list to catch typos in a field whose only job is to be read.
-- `project.terms_url` marks a package whose terms restrict *who* may use it, or for what purpose, beyond what a licence identifier conveys. Its presence is the whole trigger: dfpm prints the URL in the install plan, and `--yes` alone will no longer install the package, because confirming a plan and asserting that restricted terms permit your use are different claims. An interactive install needs nothing extra — the existing confirmation already puts the terms in front of a person. A scripted one needs `--accept-terms`. The local interface applies the same rule.
+- `project.license` is a single string holding an SPDX **expression**, so an artifact under more than one license needs no extra field: Hayabusa ships as `AGPL-3.0-only AND LicenseRef-DRL-1.1`, the binary being AGPL and the bundled rules DRL. Terms with no SPDX identifier use a `LicenseRef-` value. dfpm displays this string and does not parse it; validating an expression would mean carrying the SPDX license list to catch typos in a field whose only job is to be read.
+- `project.terms_url` marks a package whose terms restrict *who* may use it, or for what purpose, beyond what a license identifier conveys. Its presence is the whole trigger: dfpm prints the URL in the install plan, and `--yes` alone will no longer install the package, because confirming a plan and asserting that restricted terms permit your use are different claims. An interactive install needs nothing extra — the existing confirmation already puts the terms in front of a person. A scripted one needs `--accept-terms`. The local interface applies the same rule.
 - `platform` and `project` are both recorded in the package state, so what is installed says where it came from and under what license.
 - `artifact.source` accepts an HTTPS URL, `file` URL, or path relative to the manifest.
 - `artifact.sha256` is mandatory and must contain the expected SHA-256 digest.
@@ -64,7 +64,7 @@ The first implemented manifest format is intentionally narrow. It supports porta
 - `install.extracted_size` and `install.entries` are optional non-negative integers recording what the package costs on disk once unpacked, so `dfpm install` can show the cost before fetching anything. When present they are verified after extraction. A disagreement does not mean the download was tampered with — the digest already settles that — it means the manifest's own figures were taken from a different artifact.
 - Entrypoint names become stable command shims in the dfpm `bin` directory, so they follow the same character rules as `version` and must be unique within a manifest.
 - A manifest cannot supply arguments of its own, and this is deliberate. Some tools resolve their own data relative to the working directory — Hayabusa looks for `./rules` — so they fail when run from elsewhere unless told where to look. Having dfpm insert the missing arguments was tried and abandoned: the command you typed and the command that ran would differ, which is precisely what `dfpm which` exists to prevent; the injected option would collide with the same option passed by the user, and duplicate options resolve differently in every argument parser, including silently using both values; and the per-tool knowledge would not stop at arguments, extending next to environment variables, config file locations and working directories. dfpm installs the files and tells you where they are. How a tool is invoked is the tool's interface, and belongs in the catalog review notes rather than in dfpm.
-- File health checks verify that required files remain present. dfpm also records and checks the digest of every extracted file.
+- File health checks verify that required files remain present. Together with the entrypoints, they are the only paths `dfpm doctor` looks at: everything else inside a package's directory belongs to the package, and a tool that updates its own rule set or fetches data on first run is working normally rather than drifting.
 
 All paths inside packages must be relative and stay within the package installation directory.
 
@@ -100,12 +100,12 @@ Command shims are derived from the installed version's recorded entrypoints and 
 
 ## Removal behavior
 
-`dfpm uninstall <package>` removes the installed version. Removal always prints what dfpm owns before touching anything, and it deletes only files it recorded at install time and can still recognize:
+`dfpm uninstall <package>` removes the version directory and the command shortcuts pointing at it, then forgets the package. The plan prints the path, the file count and the total size first, and says so when the directory holds more than the install put there.
 
-- A recorded file whose digest still matches is removed.
-- A recorded file whose contents changed is kept, because dfpm did not write the bytes that are there now. `--force` removes these as well.
-- A recorded path that is now a link is never touched.
-- Any file dfpm did not install is kept, and the directories holding it are kept with it.
-- Directories are removed only once they are empty.
+The directory is the unit of ownership. dfpm creates `tools/<id>/<version>/` and nothing else writes to it, so there is no per-file inventory to consult and no question of which files inside it are dfpm's. That is what lets a tool which maintains its own files be removed without ceremony: a rule set updated in place is still part of the package, and removing the package removes it.
 
-Verified downloads stay in the content-addressed cache so a package can be reinstalled without network access. Because preserved files keep the version directory alive, reinstalling that same version is refused until the leftover directory is reviewed and moved.
+The consequence is worth stating plainly: **everything in that directory is deleted, including anything put there after installation.** Work you want to keep belongs somewhere else. In exchange, uninstalling never strands a directory that then blocks reinstalling the same version, and never leaves thousands of files behind for a person to review by hand.
+
+dfpm holds no per-file digests, and this is deliberate. Such a list would sit unsigned beside the files it vouched for, so anyone able to alter a binary could alter the list in the same breath — it detects accidental corruption, not an adversary. What is recorded instead is `artifact_sha256`, the digest of the file the project published, which is the claim worth making about an installed tool. Real integrity checking for a binary comes from its own code signature.
+
+Downloads stay in the content-addressed cache, so a package can be reinstalled without network access.

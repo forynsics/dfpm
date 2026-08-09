@@ -80,17 +80,17 @@
           <article>
             <span>▦</span>
             <h2>Leave you guessing which version ran</h2>
-            <p>One version of a package is installed at a time. Installing replaces what was there, and the old version is removed only once the new one is in place and working. No stack of folders to reason about mid-case.</p>
+            <p>One version of a package is installed at a time. Installing replaces what was there, and the old version is removed only once the new one is in place and working. No stack of folders to pick through mid-case.</p>
           </article>
           <article>
             <span>✎</span>
             <h2>Change your system behind your back</h2>
-            <p>dfpm never edits your PATH, never writes outside the folders it shows you, and deletes only files it installed and can still recognise. Anything it did not put there is preserved and reported.</p>
+            <p>dfpm never edits your PATH, never writes outside the folders it shows you, and deletes only the directories it created. Removing a package removes its own folder and its command shortcuts — nothing else on your machine is touched.</p>
           </article>
           <article>
             <span>◷</span>
             <h2>And one thing it always does</h2>
-            <p>Prints the plan first. Package, version, platform, licence, source, digest, destination, and what will be replaced — every time, before anything changes.</p>
+            <p>Prints the plan first. Package, version, platform, license, source, digest, download size, destination, and what will be replaced — every time, before anything changes.</p>
           </article>
         </div>
 
@@ -112,10 +112,10 @@
         </div>
 
         <div class="lifecycle">
-          <article><b>1</b><div><h3>The package points at an official release</h3><p>An entry names the artifact the project itself published and pins its SHA-256 and size, alongside the licence and the platform it was built for. dfpm never repackages, rebuilds or mirrors anything — what you install is the file the maintainers released.</p></div><div class="mascot mascot-step" data-asset="assets/brix-magnifier.png" role="img" aria-label="Brix inspecting with a magnifying glass"></div></article>
-          <article><b>2</b><div><h3>The artifact is fetched and verified</h3><p>Downloaded over HTTPS into a content-addressed cache and checked against the pinned SHA-256 and size. A redirect that drops out of HTTPS is refused outright.</p></div></article>
-          <article><b>3</b><div><h3>The archive is opened under limits</h3><p>Extraction is bounded by entry count, total size, per-file size and expansion ratio. Path traversal, drive letters, symlinks, encrypted entries, reserved device names and case collisions are all rejected.</p></div></article>
-          <article><b>4</b><div><h3>The result is checked before it counts</h3><p>Files land in a staging directory first. The expected entrypoints and health-check files must be present, or the whole install is discarded and nothing becomes active.</p></div></article>
+          <article><b>1</b><div><h3>The package points at an official release</h3><p>An entry names the artifact the project itself published and records its SHA-256, alongside the license and the platform it was built for. dfpm never repackages, rebuilds or mirrors anything — what you install is the file the maintainers released.</p></div><div class="mascot mascot-step" data-asset="assets/brix-magnifier.png" role="img" aria-label="Brix inspecting with a magnifying glass"></div></article>
+          <article><b>2</b><div><h3>The artifact is fetched and checked</h3><p>Downloaded over HTTPS into a content-addressed cache and re-hashed against the digest the entry recorded. Anything else is refused, as is a redirect that drops out of HTTPS.</p></div></article>
+          <article><b>3</b><div><h3>The archive stays where it was put</h3><p>Path traversal, absolute paths, drive letters, symlinks, encrypted entries and reserved device names are all rejected. Extraction is refused if the result would not fit the volume, and a reserve is kept back so a successful install never leaves you at zero bytes free.</p></div></article>
+          <article><b>4</b><div><h3>The result is checked before it counts</h3><p>Files land in a staging directory first. The expected entrypoints and health-check files must be present, and the size and file count must match what the entry recorded, or the whole install is discarded and nothing is installed.</p></div></article>
           <article><b>5</b><div><h3>Only then does it take over</h3><p>The staged version moves into place atomically, command shortcuts are rewritten, and the version it replaces is removed. A failure at any earlier point leaves your working version untouched.</p></div><div class="mascot mascot-step" data-asset="assets/brix-thumbsup.png" role="img" aria-label="Brix giving a thumbs up"></div></article>
         </div>
 
@@ -130,12 +130,12 @@
           <article>
             <span>✓</span>
             <h2>Health without side effects</h2>
-            <p><code>dfpm doctor</code> re-hashes every managed file against what was recorded at install time and reports what changed. It reads; it never repairs, moves or deletes.</p>
+            <p><code>dfpm doctor</code> checks that each package is still where it was put, that its commands still exist, and that its shortcuts still belong to it. It does not police the rest of a package's folder — a tool updating its own rules is working, not breaking. It reads; it never repairs, moves or deletes.</p>
           </article>
           <article>
             <span>▤</span>
-            <h2>A cache you can reason about</h2>
-            <p>Verified downloads are kept so a package can be reinstalled with no network at all — useful in an isolated lab, and useful years later when an upstream release has vanished. <code>dfpm cache</code> shows what is there and what still needs it.</p>
+            <h2>Downloads outlive their source</h2>
+            <p>Checked downloads are kept so a package can be reinstalled with no network at all — useful in an isolated lab, and useful years later when an upstream release has been pulled. <code>dfpm cache</code> shows what is there and what still needs it.</p>
           </article>
         </div>
       </section>
@@ -163,7 +163,7 @@
 
         <div class="system-note">
           <b>What an entry guarantees.</b>
-          <p>Every package names the release artifact its project published, pins that artifact's SHA-256 and size, and records the upstream project, its licence and the platform it was built for. On install, dfpm fetches it over HTTPS, refuses the download outright if the source redirects away from HTTPS, and verifies the digest before anything is extracted.</p>
+          <p>Every package names the release artifact its project published, records that artifact's SHA-256, and records the upstream project, its license and the platform it was built for. On install, dfpm fetches it over HTTPS, refuses the download outright if the source redirects away from HTTPS, and re-hashes the file before anything is extracted. The download size is recorded too, so the plan can tell you what you are about to fetch and what it will cost on disk.</p>
         </div>
       </section>
 

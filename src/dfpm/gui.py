@@ -252,7 +252,7 @@ def _summarize(package: dict[str, Any]) -> dict[str, Any]:
         "kind": package.get("kind"),
         "version": package.get("version"),
         "installedAt": package.get("installed_at"),
-        "files": len(package.get("files", [])),
+        "files": package.get("file_count"),
         "platform": package.get("platform"),
         "project": package.get("project"),
         "entrypoints": [item["name"] for item in package.get("entrypoints", [])],
@@ -319,10 +319,11 @@ def _plan_uninstall(session: Session, payload: dict[str, Any]) -> dict[str, Any]
             "package": plan.package,
             "name": plan.name,
             "version": plan.version,
-            "removes": len(plan.removable),
-            "modified": len(plan.modified),
-            "unknown": len(plan.unknown),
-            "blocked": len(plan.blocked),
+            "root": str(plan.root),
+            "files": plan.file_count,
+            "size": plan.total_size,
+            "installedFiles": plan.installed_count,
+            "grew": plan.grew,
             "commands": list(plan.commands),
         }
     }
@@ -330,11 +331,8 @@ def _plan_uninstall(session: Session, payload: dict[str, Any]) -> dict[str, Any]
 
 def _do_uninstall(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
     plan = removal.plan(session.storage, _require(payload, "package"))
-    force = payload.get("force", False) is True
-    removal.execute(session.storage, plan, force=force)
-    kept = len(plan.preserved(force))
-    detail = f", keeping {kept} file(s) dfpm did not install" if kept else ""
-    return {"message": f"Removed {plan.package} {plan.version}{detail}"}
+    removal.execute(session.storage, plan)
+    return {"message": f"Removed {plan.package} {plan.version}"}
 
 
 Action = Callable[[Session, dict[str, Any]], dict[str, Any]]

@@ -14,6 +14,8 @@ from tests.helpers import create_package
 
 
 class RemovalTests(unittest.TestCase):
+    """The version directory is the package, so removing one is removing that directory."""
+
     def setUp(self) -> None:
         self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
         self.storage = Storage(self.base / "dfpm-data")
@@ -22,12 +24,12 @@ class RemovalTests(unittest.TestCase):
         _, manifest_path = create_package(self.base, version=version, commands=commands)
         return install(Manifest.load(manifest_path), self.storage)
 
-    def uninstall(self, *, force: bool = False) -> removal.RemovalPlan:
+    def uninstall(self) -> removal.RemovalPlan:
         plan = removal.plan(self.storage, "example.tool")
-        removal.execute(self.storage, plan, force=force)
+        removal.execute(self.storage, plan)
         return plan
 
-    def test_removes_recorded_files_shims_and_directories(self) -> None:
+    def test_removes_the_directory_shims_and_record(self) -> None:
         destination = self.install_version()
         plan = self.uninstall()
 
@@ -37,42 +39,45 @@ class RemovalTests(unittest.TestCase):
         self.assertFalse((self.storage.bin / "example-tool.cmd").exists())
         self.assertIsNone(read_package(self.storage, "example.tool"))
 
-    def test_files_dfpm_never_installed_are_preserved(self) -> None:
+    def test_the_plan_measures_what_is_there_now(self) -> None:
         destination = self.install_version()
-        stray = destination / "data" / "analyst-notes.txt"
-        stray.write_text("case notes\n", encoding="utf-8")
+        plan = removal.plan(self.storage, "example.tool")
+        # dfpm's own install record is not counted, so this compares like with like.
+        self.assertEqual(plan.file_count, 2)
+        self.assertEqual(plan.installed_count, 2)
+        self.assertFalse(plan.grew)
+        self.assertGreater(plan.total_size, 0)
+        self.assertEqual(plan.root, destination)
 
-        plan = self.uninstall()
-
-        self.assertEqual(plan.unknown, ("data/analyst-notes.txt",))
-        self.assertEqual(stray.read_text(encoding="utf-8"), "case notes\n")
-        self.assertFalse((destination / "bin" / "example-tool.cmd").exists())
-        self.assertFalse((destination / ".dfpm-install.json").exists())
-        self.assertIsNone(read_package(self.storage, "example.tool"))
-
-    def test_modified_managed_files_are_kept_by_default(self) -> None:
+    def test_files_added_after_installation_are_removed_with_the_package(self) -> None:
+        # A tool that updates its own rules, or anything dropped in by hand,
+        # lives in the package's directory and goes when the package goes.
         destination = self.install_version()
-        changed = destination / "data" / "readme.txt"
-        changed.write_text("edited by the analyst\n", encoding="utf-8")
+        (destination / "rules").mkdir()
+        (destination / "rules" / "updated.yml").write_text("rule\n", encoding="utf-8")
 
         plan = removal.plan(self.storage, "example.tool")
-        self.assertEqual(plan.modified, ("data/readme.txt",))
-        removal.execute(self.storage, plan)
-        self.assertEqual(changed.read_text(encoding="utf-8"), "edited by the analyst\n")
+        self.assertTrue(plan.grew)
+        self.assertEqual(plan.installed_count, 2)
+        self.assertEqual(plan.file_count, 3)
 
-    def test_force_removes_modified_managed_files(self) -> None:
-        destination = self.install_version()
-        (destination / "data" / "readme.txt").write_text("edited\n", encoding="utf-8")
-        self.uninstall(force=True)
+        removal.execute(self.storage, plan)
         self.assertFalse(destination.exists())
 
-    def test_reinstall_is_refused_while_preserved_files_remain(self) -> None:
+    def test_a_modified_file_does_not_change_anything(self) -> None:
+        destination = self.install_version()
+        (destination / "data" / "readme.txt").write_text("edited by the analyst\n", encoding="utf-8")
+        plan = removal.plan(self.storage, "example.tool")
+        self.assertFalse(plan.grew)
+        removal.execute(self.storage, plan)
+        self.assertFalse(destination.exists())
+
+    def test_the_same_version_can_be_installed_again_afterwards(self) -> None:
+        # Nothing is preserved, so nothing is left behind to block a reinstall.
         destination = self.install_version()
         (destination / "data" / "readme.txt").write_text("edited\n", encoding="utf-8")
         self.uninstall()
-        with self.assertRaises(InstallError) as caught:
-            self.install_version()
-        self.assertIn("preserved during removal", str(caught.exception))
+        self.assertTrue(self.install_version().is_dir())
 
     def test_rejects_a_package_that_is_not_installed(self) -> None:
         with self.assertRaises(InstallError):
@@ -88,6 +93,20 @@ class RemovalTests(unittest.TestCase):
         self.assertIsNone(read_package(self.storage, "example.tool"))
         self.assertEqual(read_package(self.storage, "other.tool")["version"], "2.0.0")
         self.assertTrue((self.storage.bin / "other-tool.cmd").is_file())
+
+    def test_a_directory_that_will_not_delete_is_reported(self) -> None:
+        from unittest import mock
+
+        self.install_version()
+        plan = removal.plan(self.storage, "example.tool")
+        with (
+            mock.patch("dfpm.removal.remove_tree", return_value=False),
+            self.assertRaises(InstallError) as caught,
+        ):
+            removal.execute(self.storage, plan)
+        self.assertIn("holding a file open", str(caught.exception))
+        # The record survives, so the package is not silently forgotten.
+        self.assertIsNotNone(read_package(self.storage, "example.tool"))
 
 
 if __name__ == "__main__":

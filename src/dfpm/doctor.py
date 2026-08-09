@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from .artifacts import file_digest
 from .inventory import list_packages
 from .shims import owned
 from .storage import Storage
@@ -27,19 +26,27 @@ def inspect(storage: Storage) -> list[Finding]:
         if problems:
             findings.extend(Finding(package["id"], version, "failed", detail) for detail in problems)
         else:
-            findings.append(Finding(package["id"], version, "passing", "All managed files match their recorded digests"))
+            findings.append(Finding(package["id"], version, "passing", "Installed files and command shortcuts are in place"))
     return findings
 
 
 def _file_problems(storage: Storage, package: dict[str, Any]) -> list[str]:
+    """Check that the package is still where it was put and can still run.
+
+    Only the files the manifest names are checked, and only for existence. The
+    rest of a package's directory belongs to the package: a tool that updates
+    its own rule set or downloads data on first run is behaving normally, and
+    reporting that as drift would bury a real problem under thousands of
+    findings. Nothing here re-hashes anything, so the cost does not grow with
+    the size of a package.
+    """
     root = storage.package_version(package["id"], package["version"])
+    if not root.is_dir():
+        return [f"Install directory is missing: {root}"]
     problems: list[str] = []
-    for managed in package.get("files", []):
-        path = root / managed["path"]
-        if not path.is_file():
-            problems.append(f"Missing managed file: {managed['path']}")
-        elif file_digest(path) != managed["sha256"]:
-            problems.append(f"Modified managed file: {managed['path']}")
+    for entrypoint in package.get("entrypoints", []):
+        if not (root / entrypoint["path"]).is_file():
+            problems.append(f"Missing entrypoint: {entrypoint['path']}")
     for check in package.get("health_checks", []):
         if check["type"] == "file" and not (root / check["path"]).is_file():
             problems.append(f"Health check failed: {check['path']}")

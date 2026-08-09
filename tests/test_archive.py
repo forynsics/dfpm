@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import os
 import stat
 import tempfile
@@ -59,7 +58,6 @@ class ArchiveTests(unittest.TestCase):
         files = self.extract([("tool/bin/tool.cmd", "@echo tool\r\n"), ("tool/readme.txt", "notes\n")], strip=1)
         self.assertEqual([item["path"] for item in files], ["bin/tool.cmd", "readme.txt"])
         self.assertEqual(files[1]["size"], len("notes\n"))
-        self.assertEqual(len(files[0]["sha256"]), 64)
 
     def test_rejects_parent_traversal(self) -> None:
         self.assertRejected([("../outside.txt", "unsafe")], "parent or self reference")
@@ -104,11 +102,15 @@ class ArchiveTests(unittest.TestCase):
         entries = [(f"bin/tool{index}.cmd", "data") for index in range(4)]
         self.assertRejected(entries, "above the 3", limits=ArchiveLimits(max_entries=3))
 
-    def test_records_digests_for_binary_content(self) -> None:
+    def test_writes_binary_content_byte_for_byte(self) -> None:
         payload = os.urandom(4096)
-        files = self.extract([("bin/tool.bin", payload)])
+        base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        archive = build(base, [("bin/tool.bin", payload)])
+        destination = base / "out"
+        destination.mkdir()
+        files = extract_zip(archive, destination, 0)
         self.assertEqual(files[0]["size"], 4096)
-        self.assertEqual(files[0]["sha256"], hashlib.sha256(payload).hexdigest())
+        self.assertEqual((destination / "bin" / "tool.bin").read_bytes(), payload)
 
     def test_rejects_archive_with_nothing_left_after_stripping(self) -> None:
         self.assertRejected([("readme.txt", "notes")], "did not contain any installable files", strip=1)
@@ -173,7 +175,7 @@ class PathLengthTests(unittest.TestCase):
     """Windows gives up past 260 characters, part-way through, with an opaque error."""
 
     def test_a_path_beyond_the_limit_is_refused_and_named(self) -> None:
-        files = [{"path": "rules/sigma/builtin/security/a_very_long_detection_rule_name.yml", "size": 1, "sha256": "x"}]
+        files = [{"path": "rules/sigma/builtin/security/a_very_long_detection_rule_name.yml", "size": 1}]
         with self.assertRaises(InstallError) as caught:
             check_path_lengths(
                 Path(r"C:\Users\an-analyst\AppData\Local\dfpm\tools\hayabusa\4.0.0"),
@@ -186,18 +188,18 @@ class PathLengthTests(unittest.TestCase):
         self.assertIn("a_very_long_detection_rule_name.yml", message)
 
     def test_a_path_inside_the_limit_is_allowed(self) -> None:
-        files = [{"path": "yara64.exe", "size": 1, "sha256": "x"}]
+        files = [{"path": "yara64.exe", "size": 1}]
         check_path_lengths(Path(r"C:\dfpm\tools\yara\4.5.5"), files, system="nt")
 
     def test_the_limit_does_not_apply_off_windows(self) -> None:
-        files = [{"path": "nested/" * 40 + "leaf.txt", "size": 1, "sha256": "x"}]
+        files = [{"path": "nested/" * 40 + "leaf.txt", "size": 1}]
         check_path_lengths(Path("/home/analyst/.local/share/dfpm/tools/example/1.0.0"), files, system="posix")
 
     def test_the_longest_path_decides_even_when_it_is_not_first(self) -> None:
         files = [
-            {"path": "a.txt", "size": 1, "sha256": "x"},
-            {"path": "deeply/nested/directory/tree/holding/one/long/name.txt", "size": 1, "sha256": "x"},
-            {"path": "b.txt", "size": 1, "sha256": "x"},
+            {"path": "a.txt", "size": 1},
+            {"path": "deeply/nested/directory/tree/holding/one/long/name.txt", "size": 1},
+            {"path": "b.txt", "size": 1},
         ]
         with self.assertRaises(InstallError) as caught:
             check_path_lengths(Path(r"C:\dfpm\tools\example\1.0.0"), files, ArchiveLimits(max_path_length=60), system="nt")

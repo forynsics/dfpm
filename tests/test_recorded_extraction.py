@@ -6,9 +6,9 @@ from pathlib import Path
 from unittest import mock
 
 from dfpm.errors import InstallError, ManifestError
-from dfpm.installer import _discard_staging, install
+from dfpm.installer import install
 from dfpm.manifest import Manifest
-from dfpm.storage import Storage
+from dfpm.storage import Storage, remove_tree
 from tests import helpers
 from tests.helpers import create_package
 
@@ -88,7 +88,7 @@ class StagingTests(unittest.TestCase):
         self.assertTrue((other / "half-extracted.bin").is_file())
 
 
-class StagingDiscardTests(unittest.TestCase):
+class RemoveTreeTests(unittest.TestCase):
     """Antivirus and the search indexer hold a freshly written executable briefly."""
 
     def test_a_transient_lock_is_retried_until_it_clears(self) -> None:
@@ -100,30 +100,30 @@ class StagingDiscardTests(unittest.TestCase):
                 raise PermissionError(32, "The process cannot access the file")
 
         with (
-            mock.patch("dfpm.installer.shutil.rmtree", side_effect=flaky),
-            mock.patch("dfpm.installer.time.sleep"),
+            mock.patch("dfpm.storage.shutil.rmtree", side_effect=flaky),
+            mock.patch("dfpm.storage.time.sleep"),
         ):
-            self.assertTrue(_discard_staging(Path("staging-dir")))
+            self.assertTrue(remove_tree(Path("some-dir")))
         self.assertEqual(len(attempts), 3)
 
     def test_a_directory_that_never_unlocks_is_given_up_on(self) -> None:
         with (
-            mock.patch("dfpm.installer.shutil.rmtree", side_effect=PermissionError(32, "locked")),
-            mock.patch("dfpm.installer.time.sleep"),
+            mock.patch("dfpm.storage.shutil.rmtree", side_effect=PermissionError(32, "locked")),
+            mock.patch("dfpm.storage.time.sleep"),
         ):
-            self.assertFalse(_discard_staging(Path("staging-dir")))
+            self.assertFalse(remove_tree(Path("some-dir")))
 
-    def test_an_already_gone_directory_counts_as_cleaned(self) -> None:
-        with mock.patch("dfpm.installer.shutil.rmtree", side_effect=FileNotFoundError):
-            self.assertTrue(_discard_staging(Path("staging-dir")))
+    def test_an_already_gone_directory_counts_as_removed(self) -> None:
+        with mock.patch("dfpm.storage.shutil.rmtree", side_effect=FileNotFoundError):
+            self.assertTrue(remove_tree(Path("some-dir")))
 
     def test_a_failed_cleanup_does_not_mask_why_the_install_failed(self) -> None:
         base = Path(self.enterContext(tempfile.TemporaryDirectory()))
         storage = Storage(base / "dfpm-data")
         _, manifest_path = create_package(base, body=BODY, entries=99)
         with (
-            mock.patch("dfpm.installer.shutil.rmtree", side_effect=PermissionError(32, "locked")),
-            mock.patch("dfpm.installer.time.sleep"),
+            mock.patch("dfpm.storage.shutil.rmtree", side_effect=PermissionError(32, "locked")),
+            mock.patch("dfpm.storage.time.sleep"),
             self.assertRaises(InstallError) as caught,
         ):
             install(Manifest.load(manifest_path), storage)

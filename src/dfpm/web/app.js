@@ -95,7 +95,7 @@ function renderInstalled() {
     const commands = pack.entrypoints || [];
     const summary = [
       commands.length ? `Runs as ${commands.join(" and ")}.` : null,
-      `${pack.files} managed file${pack.files === 1 ? "" : "s"}, installed ${(pack.installedAt || "").slice(0, 10)}.`,
+      `${pack.files ?? "?"} file${pack.files === 1 ? "" : "s"} installed ${(pack.installedAt || "").slice(0, 10)}.`,
     ].filter(Boolean).join(" ");
 
     container.append(
@@ -197,7 +197,7 @@ function renderLocations() {
     ["Tools and versions", "Program files owned and managed by dfpm", "tools"],
     ["Downloaded files", "Verified downloads kept so packages can be reinstalled offline", "cache"],
     ["Command shortcuts", "Small launchers pointing at the active version", "bin"],
-    ["Package records", "What dfpm installed, and the digest of every file", "state"],
+    ["Package records", "What is installed, where it came from, and when", "state"],
     ["Reviewed catalog", "Manifests this interface can install from", "catalog"],
   ];
   for (const [title, description, key] of rows) {
@@ -226,7 +226,7 @@ async function previewInstall(entry) {
       el("div", { className: "facts" }, [fact("Destination", plan.destination), fact("System-wide changes", "None")]),
       el("div", { className: "system-note" }, [
         el("b", { text: "What happens when you confirm" }),
-        el("p", { text: "dfpm downloads this artifact, refuses it unless the digest matches exactly, extracts it under fixed size limits, checks the expected files are present, and only then makes it active." }),
+        el("p", { text: "dfpm downloads this artifact, refuses it unless the digest matches exactly, extracts it only if the result fits the volume, checks the expected files are present, and only then installs it." }),
       ]),
     ]);
     openModal("Install plan", `Install ${plan.name} ${plan.version}?`, body, "Install", () =>
@@ -240,31 +240,28 @@ async function previewInstall(entry) {
 async function previewUninstall(pack) {
   try {
     const { plan } = await call("/api/uninstall/plan", { package: pack.id });
-    const preserved = plan.unknown + plan.blocked;
-    const forceBox = el("input", { type: "checkbox" });
     const body = el("div", {}, [
       el("div", { className: "facts" }, [
         fact("Version", plan.version),
-        fact("Files removed", plan.removes),
+        fact("Removes", `${plan.files} file(s)`),
         fact("Commands removed", plan.commands.join(", ")),
         fact("Cache", "Kept, so it can be reinstalled offline"),
       ]),
-      preserved
+      el("p", { className: "path", text: plan.root }),
+      plan.grew
         ? el("div", { className: "system-note" }, [
-            el("b", { text: `${preserved} file${preserved === 1 ? "" : "s"} will be kept` }),
-            el("p", { text: "dfpm did not install these, so it will not delete them. The folders holding them are kept too." }),
+            el("b", { text: "This folder holds more than the install put there" }),
+            el("p", {
+              text:
+                `Installed with ${plan.installedFiles} file(s); ${plan.files} are there now. ` +
+                "A tool that updates its own rules does this. Everything in the folder is removed.",
+            }),
           ])
         : null,
-      plan.modified
-        ? el("label", {}, [
-            forceBox,
-            el("span", { text: `Also remove ${plan.modified} managed file(s) whose contents changed since installation. They are kept by default, because dfpm did not write what is in them now.` }),
-          ])
-        : null,
-      el("p", { text: "Verified downloads stay in the cache, so this package can be reinstalled without network access." }),
+      el("p", { text: "Downloads stay in the cache, so this package can be reinstalled without network access." }),
     ]);
     openModal("Removal plan", `Remove ${plan.name}?`, body, "Remove", () =>
-      run("/api/uninstall", { package: pack.id, force: forceBox.checked })
+      run("/api/uninstall", { package: pack.id })
     );
   } catch (error) {
     toast(error.message, true);

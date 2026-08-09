@@ -33,7 +33,7 @@ class InstallTests(unittest.TestCase):
 
         state = read_package(self.storage, "example.tool")
         self.assertEqual(state["version"], "1.0.0")
-        self.assertEqual(len(state["files"]), 2)
+        self.assertEqual(state["file_count"], 2)
         self.assertEqual(inspect(self.storage)[0].status, "passing")
 
     def test_installing_a_newer_version_replaces_the_old_one(self) -> None:

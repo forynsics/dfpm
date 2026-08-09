@@ -29,7 +29,7 @@ const COMMANDS = [
   ["dfpm which <command>", "Show which file a command runs."],
   ["dfpm gui", "Open a local interface for managing installed packages."],
   ["dfpm list", "List installed packages."],
-  ["dfpm doctor", "Check managed files without changing them."],
+  ["dfpm doctor", "Check installed packages without changing them."],
 ];
 
 const $ = (selector) => document.querySelector(selector);

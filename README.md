@@ -24,18 +24,18 @@ dfpm does not acquire or interpret evidence, manage cases, or run investigation 
 
 **It will not install anything it cannot verify.** Every package pins a SHA-256. The download is refused unless the bytes match exactly, and refused again if an HTTPS source quietly redirects to plain HTTP. Cached artifacts are re-hashed every time they are used, not only when first downloaded. A digest you cannot check is not provenance.
 
-**It will not leave you guessing which version ran.** One version of a package is installed at a time. Installing replaces what was there, and the old version is removed only once the new one is in place and working. No stack of folders to reason about mid-case.
+**It will not leave you guessing which version ran.** One version of a package is installed at a time. Installing replaces what was there, and the old version is removed only once the new one is in place and working. No stack of folders to pick through mid-case.
 
-**It will not change your system behind your back.** dfpm never edits your PATH, never writes outside the folders it shows you, and deletes only files it installed and can still recognise. Anything it did not put there is preserved and reported.
+**It will not change your system behind your back.** dfpm never edits your PATH, never writes outside the folders it shows you, and deletes only the directories it created. Removing a package removes its own folder and its command shortcuts — nothing else on your machine is touched.
 
-**And one thing it always does.** It prints the plan first — package, version, platform, licence, source, digest, download size, what the install costs on disk, free space, destination, and what will be replaced — every time, before anything changes.
+**And one thing it always does.** It prints the plan first — package, version, platform, license, source, digest, download size, what the install costs on disk, free space, destination, and what will be replaced — every time, before anything changes.
 
 ## How it works
 
 Every install follows the same five steps. If any of them fails, the step before it is left exactly as it was.
 
-1. **The package points at an official release.** An entry names the artifact the project itself published and pins its SHA-256 and size, alongside the licence and the platform it was built for. dfpm never repackages, rebuilds or mirrors anything.
-2. **The artifact is fetched and verified.** Downloaded over HTTPS into a content-addressed cache and checked against the pinned digest and size. A redirect that drops out of HTTPS is refused outright.
+1. **The package points at an official release.** An entry names the artifact the project itself published and records its SHA-256, alongside the license and the platform it was built for. dfpm never repackages, rebuilds or mirrors anything.
+2. **The artifact is fetched and checked.** Downloaded over HTTPS into a content-addressed cache and re-hashed against the digest the entry recorded. Anything else is refused, as is a redirect that drops out of HTTPS.
 3. **The archive stays inside the directory it was given.** Path traversal, absolute paths, drive letters, symlinks, encrypted entries, reserved device names and case collisions are all rejected outright. Extraction is refused if the result would not fit the volume, with a reserve kept back so a successful install never leaves you at zero bytes free.
 4. **The result is checked before it counts.** Files land in a staging directory first. The expected entrypoints and health-check files must be present, and the size and file count must match what the manifest recorded, or the whole install is discarded and nothing is installed.
 5. **Only then does it take over.** The staged version moves into place atomically, command shortcuts are rewritten, and the version it replaces is removed.
@@ -93,15 +93,17 @@ A package that declares a platform is refused outright on a machine that does no
 
 A few tools carry terms restricting who may use them, or for what purpose. Those packages record the terms URL, dfpm shows it in the plan, and `--yes` on its own will not install them — confirming a plan and asserting that restricted terms permit your use are different claims, and only you can make the second one. Answering the prompt covers it interactively; a scripted install needs `--accept-terms`.
 
-Removal is equally explicit. `dfpm uninstall` previews everything dfpm owns, then deletes only the files it recorded at install time and can still recognise. Files it did not install, and managed files whose contents have changed since installation, are preserved and reported rather than deleted.
+Removal is equally explicit. Each version lives in a directory dfpm created and nothing else writes to, so `dfpm uninstall` removes that directory and the command shortcuts pointing at it. The plan shows the path, the file count and the size first, and says so when the directory holds more than the install put there — which is what happens when a tool updates its own rules or downloads data on first run. Everything in that folder goes, so keep your own work somewhere else.
 
 ## The catalog
 
 <img align="right" width="100" src="assets/brix-box.png" alt="">
 
-The `catalog/` directory holds the manifests dfpm can install from. Each one names the release artifact its project published, pins that artifact's SHA-256 and size, and records the upstream project, its licence and the platform it was built for.
+The `catalog/` directory holds the manifests dfpm can install from. Each one names the release artifact its project published, records that artifact's SHA-256, and records the upstream project, its license and the platform it was built for. The download size and the size on disk are recorded too — not as a second integrity check, since the digest already settles what the bytes are, but so the plan can tell you the cost before you agree to it.
 
 It currently contains one package, **YARA 4.5.5 for Windows x64**. dfpm is in early development, so the catalog is still being built out. See [catalog/README.md](catalog/README.md) for what goes into an entry.
+
+Recording a digest per release is a job for a script, not a person — reading a project's release feed, fetching the asset and computing the hash is exactly the work a machine should do. What a person does is approve the change. That tooling does not exist yet, so entries are currently written by hand; until it does, the catalog will grow slowly and deliberately.
 
 A manifest can also record what the package costs on disk once unpacked, so the install plan shows the size and file count before anything is downloaded. See the [manifest format](docs/manifest-v1.md) for the full list of rules extraction applies, and for what those rules are and are not defending against.
 
@@ -163,7 +165,7 @@ dfpm cache prune     # remove everything no installed package needs, and interru
 dfpm cache remove <digest>
 ```
 
-`prune` clears everything no installed package needs, which is the behaviour `apt clean` gives you and needs no flags for the common case. If you are seeding a cache for offline installs, `--keep-catalog` narrows it to artifacts no manifest lists either, and in that mode a catalog that cannot be read makes `prune` refuse rather than treat everything as unused. `remove` refuses a digest an installed package still depends on unless you pass `--force`, and files dfpm does not recognise are reported and left alone, exactly as they are during uninstall.
+`prune` clears everything no installed package needs, which is the behaviour `apt clean` gives you and needs no flags for the common case. If you are seeding a cache for offline installs, `--keep-catalog` narrows it to artifacts no manifest lists either, and in that mode a catalog that cannot be read makes `prune` refuse rather than treat everything as unused. `remove` refuses a digest an installed package still depends on unless you pass `--force`, and files in the cache directory that are not named after their own digest are reported and left alone rather than deleted.
 
 ## Local interface
 
@@ -198,7 +200,7 @@ state\packages\               Managed-file records
 
 dfpm is in early development. Interfaces, manifests and behaviour remain subject to change, and the command line ships only what is actually implemented.
 
-**Working today:** manifest validation, verified local and HTTPS artifacts, contained portable ZIP installation with a free-space check, an install plan that shows what a package costs before it is fetched, replacing installs, conservative removal, a manageable download cache, command shortcuts and `dfpm run`, a loopback management interface, and read-only health checks.
+**Working today:** manifest validation, verified local and HTTPS artifacts, contained portable ZIP installation with a free-space check, an install plan that shows what a package costs before it is fetched, replacing installs, directory-scoped removal, a manageable download cache, command shortcuts and `dfpm run`, a loopback management interface, and read-only health checks.
 
 **Not built yet:** lockfile export, repair, release discovery, executable health checks, a `dfpm search` command, and packages that need an interpreter such as Python, Perl or Java. Linux and macOS support, private and offline registries, signed repository snapshots and organisation policy are longer-term.
 
