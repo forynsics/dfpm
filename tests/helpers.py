@@ -7,6 +7,9 @@ from collections.abc import Sequence
 from pathlib import Path
 
 
+README_TEXT = "Synthetic dfpm test package\n"
+
+
 def create_package(
     base: Path,
     *,
@@ -14,6 +17,8 @@ def create_package(
     version: str = "1.0.0",
     commands: Sequence[str] = ("example-tool",),
     body: str | None = None,
+    extracted_size: int | None = None,
+    entries: int | None = None,
 ) -> tuple[Path, Path]:
     """Write a synthetic catalog entry and its artifact, returning (catalog, manifest path)."""
     catalog = base / "catalog"
@@ -24,7 +29,7 @@ def create_package(
         for command in commands:
             script = body if body is not None else f"@echo {command} {version}\r\n"
             output.writestr(f"example-tool/bin/{command}.cmd", script)
-        output.writestr("example-tool/data/readme.txt", "Synthetic dfpm test package\n")
+        output.writestr("example-tool/data/readme.txt", README_TEXT)
     artifact_bytes = archive.read_bytes()
     manifest = {
         "schema_version": 1,
@@ -45,6 +50,10 @@ def create_package(
         },
         "health_checks": [{"type": "file", "path": "data/readme.txt"}],
     }
+    if extracted_size is not None:
+        manifest["install"]["extracted_size"] = extracted_size
+    if entries is not None:
+        manifest["install"]["entries"] = entries
     manifest_path = catalog / f"{package_id}-{version}.json"
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     return catalog, manifest_path

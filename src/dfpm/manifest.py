@@ -63,6 +63,8 @@ class Manifest:
     description: str
     artifact: Artifact
     strip_components: int
+    extracted_size: int | None
+    entry_count: int | None
     entrypoints: tuple[Entrypoint, ...]
     health_checks: tuple[HealthCheck, ...]
     platform: Platform | None
@@ -113,6 +115,10 @@ class Manifest:
         strip_components = install.get("strip_components", 0)
         if not isinstance(strip_components, int) or isinstance(strip_components, bool) or strip_components < 0:
             raise ManifestError("install.strip_components must be a non-negative integer")
+        # What the package costs on disk once unpacked. Recorded at review time so
+        # the figure can be read, and shown, without fetching the artifact first.
+        extracted_size = _optional_count(install.get("extracted_size"), "install.extracted_size")
+        entry_count = _optional_count(install.get("entries"), "install.entries")
 
         entrypoints = tuple(
             Entrypoint(_command_name(item.get("name")), _relative_path(item.get("path"), "entrypoint.path"))
@@ -138,6 +144,8 @@ class Manifest:
             description=_text(data["description"], "description"),
             artifact=Artifact(artifact_source, artifact_hash, size),
             strip_components=strip_components,
+            extracted_size=extracted_size,
+            entry_count=entry_count,
             entrypoints=entrypoints,
             health_checks=health_checks,
             platform=_platform(data.get("platform")),
@@ -150,6 +158,14 @@ class Manifest:
         if "://" in self.artifact.source:
             return self.artifact.source
         return str((self.source_path.parent / self.artifact.source).resolve())
+
+
+def _optional_count(value: Any, field: str) -> int | None:
+    if value is None:
+        return None
+    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+        raise ManifestError(f"{field} must be a non-negative integer")
+    return value
 
 
 def _text(value: Any, field: str) -> str:

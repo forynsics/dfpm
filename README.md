@@ -22,13 +22,13 @@ dfpm does not acquire or interpret evidence, manage cases, or run investigation 
 
 <img align="right" width="96" src="assets/brix-magnifier.png" alt="">
 
-**It will not install anything it cannot verify.** Every package pins a SHA-256. The download is refused unless the bytes match exactly, and refused again if an HTTPS source quietly redirects to plain HTTP. A digest you cannot check is not provenance.
+**It will not install anything it cannot verify.** Every package pins a SHA-256. The download is refused unless the bytes match exactly, and refused again if an HTTPS source quietly redirects to plain HTTP. Cached artifacts are re-hashed every time they are used, not only when first downloaded. A digest you cannot check is not provenance.
 
 **It will not leave you guessing which version ran.** One version of a package is installed at a time. Installing replaces what was there, and the old version is removed only once the new one is in place and working. No stack of folders to reason about mid-case.
 
 **It will not change your system behind your back.** dfpm never edits your PATH, never writes outside the folders it shows you, and deletes only files it installed and can still recognise. Anything it did not put there is preserved and reported.
 
-**And one thing it always does.** It prints the plan first — package, version, platform, licence, source, digest, destination, and what will be replaced — every time, before anything changes.
+**And one thing it always does.** It prints the plan first — package, version, platform, licence, source, digest, download size, what the install costs on disk, free space, destination, and what will be replaced — every time, before anything changes.
 
 ## How it works
 
@@ -36,8 +36,8 @@ Every install follows the same five steps. If any of them fails, the step before
 
 1. **The package points at an official release.** An entry names the artifact the project itself published and pins its SHA-256 and size, alongside the licence and the platform it was built for. dfpm never repackages, rebuilds or mirrors anything.
 2. **The artifact is fetched and verified.** Downloaded over HTTPS into a content-addressed cache and checked against the pinned digest and size. A redirect that drops out of HTTPS is refused outright.
-3. **The archive is opened under limits.** Extraction is bounded by entry count, total size, per-file size and expansion ratio. Path traversal, drive letters, symlinks, encrypted entries, reserved device names and case collisions are all rejected.
-4. **The result is checked before it counts.** Files land in a staging directory first. The expected entrypoints and health-check files must be present, or the whole install is discarded and nothing becomes active.
+3. **The archive stays inside the directory it was given.** Path traversal, absolute paths, drive letters, symlinks, encrypted entries, reserved device names and case collisions are all rejected outright. Extraction is refused if the result would not fit the volume, with a reserve kept back so a successful install never leaves you at zero bytes free.
+4. **The result is checked before it counts.** Files land in a staging directory first. The expected entrypoints and health-check files must be present, and the size and file count must match what the manifest recorded, or the whole install is discarded and nothing is installed.
 5. **Only then does it take over.** The staged version moves into place atomically, command shortcuts are rewritten, and the version it replaces is removed.
 
 <p align="center">
@@ -72,7 +72,24 @@ dfpm doctor
 
 Going back to an older release is the same command with a version: `dfpm install yara --package-version 4.5.4`. That is usually instant and needs no network, because the artifact is already in the verified cache.
 
-Installation always displays the package, the version being replaced, platform, licence, upstream project, source, digest, destination, and system-wide impact before making changes. A package that declares a platform is refused outright on a machine that does not match it. Use `--yes` only when the plan has already been reviewed.
+Installation always displays the plan before making changes:
+
+```text
+Install plan
+  Package:     YARA 4.5.5
+  Platform:    windows/x64
+  License:     BSD-3-Clause
+  Source:      https://github.com/VirusTotal/yara/releases/download/v4.5.5/...
+  SHA-256:     352396c8a3d9b31b157a4820abd3b9347fc934a2314cdda8a4f566a5570163e4
+  Download:    2.1 MiB
+  Installed:   4.6 MiB across 2 files
+  Destination: C:\Users\you\AppData\Local\dfpm\tools\yara\4.5.5
+  Disk:        412.8 GiB free on that volume
+  System-wide changes: none
+Continue? [y/N]
+```
+
+A package that declares a platform is refused outright on a machine that does not match it. Use `--yes` only when the plan has already been reviewed.
 
 Removal is equally explicit. `dfpm uninstall` previews everything dfpm owns, then deletes only the files it recorded at install time and can still recognise. Files it did not install, and managed files whose contents have changed since installation, are preserved and reported rather than deleted.
 
@@ -84,7 +101,7 @@ The `catalog/` directory holds the manifests dfpm can install from. Each one nam
 
 It currently contains one package, **YARA 4.5.5 for Windows x64**. dfpm is in early development, so the catalog is still being built out. See [catalog/README.md](catalog/README.md) for what goes into an entry.
 
-Every archive is extracted under fixed size, entry-count and expansion limits, and unsafe entries are rejected outright. See the [manifest format](docs/manifest-v1.md) for the full list.
+A manifest can also record what the package costs on disk once unpacked, so the install plan shows the size and file count before anything is downloaded. See the [manifest format](docs/manifest-v1.md) for the full list of rules extraction applies, and for what those rules are and are not defending against.
 
 ## Running installed tools
 
@@ -97,7 +114,11 @@ dfpm run yara --version
 dfpm run yara rules.yar C:\evidence\collected
 ```
 
-It looks up the command among the installed packages, runs that exact file, and passes your arguments through as a real argument list. Its exit code is the tool's exit code, so it composes normally in scripts. `dfpm which` shows what a command resolves to before you run it:
+It looks up the command among the installed packages, runs that exact file, and passes your arguments through as a real argument list. Its exit code is the tool's exit code, so it composes normally in scripts.
+
+One exception, because Windows leaves no honest alternative: when a package's entrypoint is a `.cmd` or `.bat`, Windows runs it through `cmd`, which re-reads the command line before the script ever sees it. An argument containing `&`, `|`, `<`, `>`, `^`, `(`, `)`, `"` or `%` would not arrive intact, so dfpm refuses it and points you at the file to run directly rather than passing something the tool would misread.
+
+`dfpm which` shows what a command resolves to before you run it:
 
 ```text
 yara -> C:\Users\you\AppData\Local\dfpm\tools\yara\4.5.5\yara64.exe
@@ -128,7 +149,7 @@ Every artifact dfpm downloads is verified and then kept in a content-addressed c
 
 - **Offline and air-gapped installs.** Populate the cache on a connected machine, copy the directory to an isolated one, and install with no network at all.
 - **Upstream is not permanent.** Release assets get deleted and versions get yanked. A pinned digest is worthless without the bytes, and re-running an analysis years later needs the exact version that was used at the time.
-- **Repair without a download.** A damaged install can be rebuilt from the artifact already proven to match its digest.
+- **Reinstalling never needs the network.** Going back to an earlier release, or putting a version back after removing it, uses bytes already proven to match their digest.
 - **Provenance.** The cached file is literally the bytes that were verified and installed.
 
 ```powershell
@@ -173,7 +194,7 @@ state\packages\               Managed-file records
 
 dfpm is in early development. Interfaces, manifests and behaviour remain subject to change, and the command line ships only what is actually implemented.
 
-**Working today:** manifest validation, verified local and HTTPS artifacts, bounded portable ZIP installation, replacing installs, conservative removal, a manageable download cache, command shortcuts and `dfpm run`, a loopback management interface, and read-only health checks.
+**Working today:** manifest validation, verified local and HTTPS artifacts, contained portable ZIP installation with a free-space check, an install plan that shows what a package costs before it is fetched, replacing installs, conservative removal, a manageable download cache, command shortcuts and `dfpm run`, a loopback management interface, and read-only health checks.
 
 **Not built yet:** lockfile export, repair, release discovery, executable health checks, a `dfpm search` command, and packages that need an interpreter such as Python, Perl or Java. Linux and macOS support, private and offline registries, signed repository snapshots and organisation policy are longer-term.
 
@@ -185,7 +206,9 @@ Telemetry is disabled by default. dfpm is not intended to receive evidence, case
 
 ## License
 
-Licensing terms have not yet been selected. Until a license is added, the repository remains all rights reserved.
+dfpm is released under the [Apache License 2.0](LICENSE). See [NOTICE](NOTICE).
+
+dfpm distributes no third-party software. Every catalogued package is downloaded from the upstream project's own release URL and stays under its own license, which the manifest records and `dfpm install` prints before anything is fetched. Some tools carry terms restricting who may use them, or for what purpose; reviewing those terms is yours to do.
 
 <p align="center">
   <img src="assets/divider-dam.png" alt="" width="440">

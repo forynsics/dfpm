@@ -1,15 +1,18 @@
 from __future__ import annotations
 
+import hashlib
 import os
 import stat
 import tempfile
 import unittest
 import warnings
 import zipfile
+from collections import namedtuple
 from collections.abc import Iterable
 from pathlib import Path
+from unittest import mock
 
-from dfpm.archive import ArchiveLimits, extract_zip
+from dfpm.archive import ArchiveLimits, check_path_lengths, extract_zip
 from dfpm.errors import InstallError
 
 
@@ -77,7 +80,7 @@ class ArchiveTests(unittest.TestCase):
         self.assertRejected([("bin/tool.cmd", "first"), ("bin/tool.cmd", "second")], "duplicate path")
 
     def test_rejects_case_colliding_paths(self) -> None:
-        self.assertRejected([("bin/Tool.cmd", "first"), ("bin/tool.cmd", "second")], "collide on Windows")
+        self.assertRejected([("bin/Tool.cmd", "first"), ("bin/tool.cmd", "second")], "differ only by capitalization")
 
     def test_rejects_path_used_as_file_and_directory(self) -> None:
         self.assertRejected([("bin/tool/", ""), ("bin/tool", "data")], "both a file and a directory")
@@ -97,24 +100,108 @@ class ArchiveTests(unittest.TestCase):
             extract_zip(archive, destination, 0)
         self.assertIn("encrypted entry", str(caught.exception))
 
-    def test_rejects_too_many_entries(self) -> None:
+    def test_rejects_more_entries_than_it_will_extract(self) -> None:
         entries = [(f"bin/tool{index}.cmd", "data") for index in range(4)]
-        self.assertRejected(entries, "above the limit of 3", limits=ArchiveLimits(max_entries=3))
+        self.assertRejected(entries, "above the 3", limits=ArchiveLimits(max_entries=3))
 
-    def test_rejects_archive_above_total_size_limit(self) -> None:
-        self.assertRejected([("bin/tool.cmd", "x" * 4096)], "extraction limit", limits=ArchiveLimits(max_total_size=1024))
-
-    def test_rejects_zip_bomb_expansion_ratio(self) -> None:
-        limits = ArchiveLimits(max_expansion_ratio=4, ratio_exemption=1024)
-        self.assertRejected([("bin/bomb.bin", "\0" * 200000)], "expands more than 4 times", limits=limits)
-
-    def test_accepts_incompressible_data_within_ratio(self) -> None:
-        limits = ArchiveLimits(max_expansion_ratio=4, ratio_exemption=1024)
-        files = self.extract([("bin/tool.bin", os.urandom(4096))], limits=limits)
+    def test_records_digests_for_binary_content(self) -> None:
+        payload = os.urandom(4096)
+        files = self.extract([("bin/tool.bin", payload)])
         self.assertEqual(files[0]["size"], 4096)
+        self.assertEqual(files[0]["sha256"], hashlib.sha256(payload).hexdigest())
 
     def test_rejects_archive_with_nothing_left_after_stripping(self) -> None:
         self.assertRejected([("readme.txt", "notes")], "did not contain any installable files", strip=1)
+
+    def test_an_empty_result_points_at_strip_components(self) -> None:
+        self.assertRejected([("tool/readme.txt", "notes")], "strip_components", strip=4)
+
+
+def fake_usage(free: int):
+    """Stand in for shutil.disk_usage so space behaviour is deterministic."""
+    usage = namedtuple("usage", "total used free")
+    return mock.patch("dfpm.archive.shutil.disk_usage", return_value=usage(free * 2, free, free))
+
+
+class FreeSpaceTests(unittest.TestCase):
+    """Free space is what decides whether extraction hurts, so it is what dfpm measures."""
+
+    def extract(self, entries, *, limits: ArchiveLimits | None = None, expected_size: int | None = None):
+        base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        archive = build(base, entries)
+        destination = base / "out"
+        destination.mkdir()
+        return extract_zip(archive, destination, 0, limits or ArchiveLimits(), expected_size)
+
+    def test_refuses_when_the_volume_has_no_room(self) -> None:
+        limits = ArchiveLimits(free_space_margin=1024)
+        with fake_usage(free=2048), self.assertRaises(InstallError) as caught:
+            self.extract([("bin/tool.bin", b"x" * 8192)], limits=limits)
+        message = str(caught.exception)
+        self.assertIn("free", message)
+        self.assertIn("in reserve", message)
+
+    def test_extracts_when_the_volume_has_room(self) -> None:
+        limits = ArchiveLimits(free_space_margin=1024)
+        with fake_usage(free=10 * 1024**2):
+            files = self.extract([("bin/tool.bin", b"x" * 8192)], limits=limits)
+        self.assertEqual(files[0]["size"], 8192)
+
+    def test_stops_when_the_recorded_sizes_understate_the_archive(self) -> None:
+        # Passes the up-front check on the strength of a small declared size,
+        # then runs past the room actually available while being written.
+        limits = ArchiveLimits(free_space_margin=1024)
+        with fake_usage(free=1024 + 128), self.assertRaises(InstallError) as caught:
+            self.extract([("bin/tool.bin", b"x" * 8192)], limits=limits, expected_size=64)
+        self.assertIn("understate", str(caught.exception))
+
+    def test_a_pinned_size_is_preferred_over_the_archives_own_claim(self) -> None:
+        # 8 KiB of content fits the volume, but the manifest says the install is
+        # far larger, and the manifest is the reviewed figure.
+        limits = ArchiveLimits(free_space_margin=0)
+        with fake_usage(free=64 * 1024), self.assertRaises(InstallError) as caught:
+            self.extract([("bin/tool.bin", b"x" * 8192)], limits=limits, expected_size=1024**3)
+        self.assertIn("Extracting needs", str(caught.exception))
+
+    def test_an_unmeasurable_volume_falls_back_to_the_declared_size(self) -> None:
+        with mock.patch("dfpm.archive.shutil.disk_usage", side_effect=OSError("no such device")):
+            files = self.extract([("bin/tool.bin", b"x" * 8192)])
+        self.assertEqual(files[0]["size"], 8192)
+
+
+class PathLengthTests(unittest.TestCase):
+    """Windows gives up past 260 characters, part-way through, with an opaque error."""
+
+    def test_a_path_beyond_the_limit_is_refused_and_named(self) -> None:
+        files = [{"path": "rules/sigma/builtin/security/a_very_long_detection_rule_name.yml", "size": 1, "sha256": "x"}]
+        with self.assertRaises(InstallError) as caught:
+            check_path_lengths(
+                Path(r"C:\Users\an-analyst\AppData\Local\dfpm\tools\hayabusa\4.0.0"),
+                files,
+                ArchiveLimits(max_path_length=80),
+                system="nt",
+            )
+        message = str(caught.exception)
+        self.assertIn("characters long", message)
+        self.assertIn("a_very_long_detection_rule_name.yml", message)
+
+    def test_a_path_inside_the_limit_is_allowed(self) -> None:
+        files = [{"path": "yara64.exe", "size": 1, "sha256": "x"}]
+        check_path_lengths(Path(r"C:\dfpm\tools\yara\4.5.5"), files, system="nt")
+
+    def test_the_limit_does_not_apply_off_windows(self) -> None:
+        files = [{"path": "nested/" * 40 + "leaf.txt", "size": 1, "sha256": "x"}]
+        check_path_lengths(Path("/home/analyst/.local/share/dfpm/tools/example/1.0.0"), files, system="posix")
+
+    def test_the_longest_path_decides_even_when_it_is_not_first(self) -> None:
+        files = [
+            {"path": "a.txt", "size": 1, "sha256": "x"},
+            {"path": "deeply/nested/directory/tree/holding/one/long/name.txt", "size": 1, "sha256": "x"},
+            {"path": "b.txt", "size": 1, "sha256": "x"},
+        ]
+        with self.assertRaises(InstallError) as caught:
+            check_path_lengths(Path(r"C:\dfpm\tools\example\1.0.0"), files, ArchiveLimits(max_path_length=60), system="nt")
+        self.assertIn("name.txt", str(caught.exception))
 
 
 if __name__ == "__main__":

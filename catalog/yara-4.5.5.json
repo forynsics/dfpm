@@ -22,6 +22,8 @@
   "install": {
     "strategy": "portable-zip",
     "strip_components": 0,
+    "extracted_size": 4783616,
+    "entries": 2,
     "entrypoints": [
       {
         "name": "yara",

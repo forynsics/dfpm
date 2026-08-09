@@ -59,6 +59,7 @@ The first implemented manifest format is intentionally narrow. It supports porta
 - `artifact.size` is optional but recommended.
 - `install.strategy` must currently be `portable-zip`.
 - `strip_components` removes a fixed number of leading archive path components.
+- `install.extracted_size` and `install.entries` are optional non-negative integers recording what the package costs on disk once unpacked, so `dfpm install` can show the cost before fetching anything. When present they are verified after extraction. A disagreement does not mean the download was tampered with — the digest already settles that — it means the manifest's own figures were taken from a different artifact.
 - Entrypoint names become stable command shims in the dfpm `bin` directory, so they follow the same character rules as `version` and must be unique within a manifest.
 - File health checks verify that required files remain present. dfpm also records and checks the digest of every extracted file.
 
@@ -66,20 +67,29 @@ All paths inside packages must be relative and stay within the package installat
 
 ## Archive safety
 
-Every archive is extracted under fixed bounds, and any entry that breaks one of these rules fails the whole installation before it can be activated:
+The artifact's SHA-256 is verified before extraction begins, so the bytes are always exactly the ones a reviewer pinned. Nothing in this section is an integrity control — the digest is. What remains is containment: keeping an archive inside the directory it was granted, and failing with a readable message instead of filling a disk.
 
-- At most 20,000 entries, 4 GiB extracted in total, and 2 GiB in any single file.
-- At most 200:1 expansion against the compressed size, which is checked before extraction against the declared sizes and again against the bytes actually written. Archives that extract less than 8 MiB are exempt, because small archives cannot do meaningful damage.
-- No absolute paths, parent traversal, drive letters, or alternate data streams.
+Any entry that breaks one of these rules fails the whole installation before anything is installed:
+
+- No absolute paths, parent traversal, drive letters, or alternate data streams. This is the rule that carries the weight. dfpm builds each destination path itself rather than delegating to the standard library, so a `..` component would write outside the package directory. Python's own `extractall` silently rewrites such a path instead of refusing it, which is the worse outcome for a tool that records where every file went.
 - No symbolic links, device files, or other non-regular entries.
 - No encrypted entries, because their contents cannot be reviewed.
 - No reserved Windows device names such as `nul` or `com1`, and no path component ending in a space or a dot.
-- No duplicate paths, and no paths that differ only by capitalization, since NTFS would silently merge them.
+- No duplicate paths, and no paths that differ only by capitalization, since a case-insensitive filesystem merges them and the digest dfpm recorded would stop describing what is on disk.
 - Every extracted file must match the size recorded in its own header.
+- The result must fit. Free space on the target volume is checked before extraction, against `install.extracted_size` where the manifest records it and the archive's declared totals otherwise, then enforced again against bytes actually written, because an archive's declared sizes are only its own claim. A reserve is kept back so a successful install cannot leave the volume at zero.
+- On Windows, no resulting path may exceed 260 characters. The length is measured against the final destination rather than the staging directory, since staging uses a temporary name.
+- At most 250,000 entries. This is a runaway backstop rather than a defence: its job is to fail quickly on something pathological instead of grinding for hours. It sits well above any real tool.
+
+Fixed byte ceilings and a compression-ratio limit were removed deliberately. Against a digest-pinned artifact they defended nothing the review step did not already cover, while a fixed cap knows nothing about the volume it is protecting — the same number is needlessly strict on a machine with room to spare and useless on one without.
 
 ## Installation behavior
 
-dfpm downloads into a content-addressed cache, verifies the artifact, extracts into a staging directory, validates expected files, and only then moves the version into its final directory and records it. An interrupted or invalid staged install never becomes the installed version.
+dfpm downloads into a content-addressed cache, verifies the artifact, extracts into a staging directory, validates expected files, and only then moves the version into its final directory and records it. An interrupted or invalid staged install never becomes the installed version. A cached artifact is re-hashed on every use, not only when it is first downloaded, so a cache entry that is corrupted or replaced on disk is caught before extraction.
+
+Staging is cleaned up by the install that created it, and by nothing else. A successful install leaves nothing behind, because publishing moves the staging directory into place rather than copying it; a failed one deletes it, retrying briefly first, since Windows holds a short lock on a freshly written executable while antivirus or the search indexer reads it.
+
+An install that is killed outright leaves its staging directory on disk, and dfpm does not go looking for it later. Deciding that a directory belongs to no one requires a lock dfpm does not take, and guessing from a timestamp would mean deleting a directory another dfpm might be writing to.
 
 One version of a package is installed at a time. Installing a different version replaces the current one, and the version being replaced is removed only after the new one is in place and its command shortcuts are working, so a failed install leaves the previous version untouched. Returning to an earlier release is `dfpm install <package> --package-version <version>`, which normally needs no network because the artifact is still in the verified cache.
 

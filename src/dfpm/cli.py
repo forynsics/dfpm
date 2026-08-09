@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import sys
 from pathlib import Path
 
 from . import __version__, cache, launcher, removal
+from .archive import human_size
 from .catalog import describe, load_catalog, resolve
 from .doctor import inspect
 from .errors import DfpmError
@@ -127,6 +129,16 @@ def _run(args: argparse.Namespace, storage: Storage) -> int:
     return 1
 
 
+def _free_space(root: Path) -> int | None:
+    """Free bytes on the volume dfpm installs to, measured at the nearest existing parent."""
+    for candidate in (root, *root.parents):
+        try:
+            return shutil.disk_usage(candidate).free
+        except OSError:
+            continue
+    return None
+
+
 def _install(args: argparse.Namespace, storage: Storage) -> int:
     manifest = resolve(args.catalog, args.package, args.package_version)
     check_platform(manifest)
@@ -145,7 +157,17 @@ def _install(args: argparse.Namespace, storage: Storage) -> int:
             print(f"  Project:     {manifest.project.source}")
     print(f"  Source:      {manifest.artifact_source()}")
     print(f"  SHA-256:     {manifest.artifact.sha256}")
+    if manifest.artifact.size is not None:
+        print(f"  Download:    {human_size(manifest.artifact.size)}")
+    if manifest.extracted_size is not None:
+        installed = human_size(manifest.extracted_size)
+        if manifest.entry_count is not None:
+            installed += f" across {manifest.entry_count:,} files"
+        print(f"  Installed:   {installed}")
     print(f"  Destination: {storage.package_version(manifest.id, manifest.version)}")
+    free = _free_space(storage.root)
+    if free is not None:
+        print(f"  Disk:        {human_size(free)} free on that volume")
     print("  System-wide changes: none")
     if not args.yes:
         answer = input("Continue? [y/N] ").strip().lower()
