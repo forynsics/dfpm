@@ -225,7 +225,13 @@ def _installed_locations(runtime: Runtime) -> list[Path]:
     found: list[Path] = []
     for template in runtime.install_roots:
         root = _expand(template)
-        if root is None or not root.is_dir():
+        # An entry meant for another platform must not be probed on this one. A
+        # POSIX root is not absolute on Windows, it is relative to the current
+        # drive, so "/usr/share/dotnet" would quietly become "C:\usr\share\
+        # dotnet" — a location nobody intended to search and which dfpm would
+        # then run a binary from. Requiring absoluteness rules those out here
+        # and keeps them everywhere they mean something.
+        if root is None or not root.is_absolute() or not root.is_dir():
             continue
         for command in runtime.commands:
             for name in (command, f"{command}.exe"):

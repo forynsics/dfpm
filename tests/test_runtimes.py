@@ -15,6 +15,7 @@ from dfpm.doctor import inspect
 from dfpm.errors import CommandNotRunnable, DfpmError, ManifestError
 from dfpm.installer import install
 from dfpm.manifest import Manifest, Requirement
+from dfpm.runtimes import Runtime
 from dfpm.storage import Storage
 from tests.helpers import create_package
 
@@ -178,6 +179,17 @@ class InstalledLocationTests(unittest.TestCase):
         os.environ.pop("DOTNET_ROOT", None)
         self.assertIsNone(runtimes._expand("$DOTNET_ROOT"))
         self.assertIsNone(runtimes._expand("$NOT_A_REAL_VARIABLE/dotnet"))
+
+    def test_a_root_meant_for_another_platform_is_not_probed_on_this_one(self) -> None:
+        # A POSIX root is not absolute on Windows, it is relative to the current
+        # drive, so "/usr/share/dotnet" would become "C:\usr\share\dotnet" — a
+        # location nobody meant to search and which dfpm would run a binary from.
+        elsewhere = Runtime(
+            name="dotnet", display=".NET", commands=("dotnet",), probe=(), remediation="",
+            install_roots=("/usr/share/dotnet",),
+        )
+        for path in runtimes._installed_locations(elsewhere):
+            self.assertTrue(path.is_absolute(), f"{path} is relative to whatever drive dfpm happens to be on")
 
     def test_a_runtime_that_declares_no_install_roots_looks_nowhere(self) -> None:
         # Only runtimes with a documented install location get one. Guessing for
