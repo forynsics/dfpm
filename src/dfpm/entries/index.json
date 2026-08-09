@@ -35,7 +35,7 @@
       "file": "sqlecmd.json",
       "id": "sqlecmd",
       "version": "2026.5.0.0",
-      "sha256": "c1434928979ba5a62bd68caf28a38d7b17d7c01a991652af8b1d672d9aa13a1d"
+      "sha256": "c581c200fbd2ccbbd5238a4e05108d6d81f6c8e041a92a13ebe4907ba5a784fb"
     },
     {
       "file": "yara.json",

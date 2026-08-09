@@ -353,7 +353,7 @@
         }
       ],
       "stability": "rolling",
-      "about": "SQLECmd walks a directory or a mounted image looking for SQLite databases, identifies each one against a set of maps naming the application that wrote it, and runs the queries those maps define. Databases are matched on their structure rather than their filename, so one renamed or found somewhere unexpected is still recognised. The maps ship beside the executable and cover Windows applications alongside iOS and Android databases. Output is CSV, one file per query.",
+      "about": "SQLECmd walks a directory or a mounted image looking for SQLite databases, identifies each one against a set of maps naming the application that wrote it, and runs the queries those maps define. A database is recognised by the filename its map expects; hunting mode instead reads every file's header, which finds databases that have been renamed at the cost of examining everything. The maps ship beside the executable and cover Windows applications alongside iOS and Android databases. Output is CSV, one file per query.",
       "disciplines": [
         {
           "key": "windows-forensics",

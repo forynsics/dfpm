@@ -39,6 +39,11 @@ class Runtime:
     remediation: str
     flavors: frozenset[str] = frozenset()
     default_flavor: str | None = None
+    # Where this runtime installs itself. Being on PATH and being installed are
+    # different things, and for some runtimes a package does not need the first.
+    # An entry may begin with an environment variable and is skipped when it is
+    # unset, so one list covers every platform without branching on the system.
+    install_roots: tuple[str, ...] = ()
 
 
 KNOWN: dict[str, Runtime] = {
@@ -50,6 +55,15 @@ KNOWN: dict[str, Runtime] = {
         remediation="Install the .NET runtime from https://dotnet.microsoft.com/download",
         flavors=frozenset(DOTNET_FRAMEWORKS),
         default_flavor="base",
+        install_roots=(
+            "$DOTNET_ROOT",
+            "$ProgramFiles/dotnet",
+            "$ProgramW6432/dotnet",
+            "$ProgramFiles(x86)/dotnet",
+            "/usr/local/share/dotnet",
+            "/usr/share/dotnet",
+            "~/.dotnet",
+        ),
     ),
     "java": Runtime(
         name="java",
@@ -156,9 +170,14 @@ def _detect(runtime: Runtime, storage) -> Detection:
     packaged = _from_packages(runtime, storage)
     if packaged is not None:
         return _probe(runtime, *packaged)
-    found = [_probe(runtime, path, "path") for path in _candidates_on_path(runtime)]
+    on_path = _candidates_on_path(runtime)
+    candidates = [(path, "path") for path in on_path]
+    candidates += [(path, "install") for path in _installed_locations(runtime) if path not in on_path]
+    found = [_probe(runtime, path, source) for path, source in candidates]
     usable = [item for item in found if item.version is not None]
     if usable:
+        # Ties keep the earlier candidate, so a runtime the user put on PATH
+        # still wins over one merely found where its installer left it.
         return max(usable, key=lambda item: item.version or ())
     # Found but unreadable is a different report from not found at all.
     return found[0] if found else Detection(runtime.name, detail="not found")
@@ -188,6 +207,47 @@ def _candidates_on_path(runtime: Runtime) -> list[Path]:
         if found is not None and found not in candidates:
             candidates.append(found)
     return candidates
+
+
+def _installed_locations(runtime: Runtime) -> list[Path]:
+    """Find a runtime where its installer puts it, for a machine where it is not on PATH.
+
+    A framework-dependent .NET application resolves its runtime through the
+    platform's own install location, so such a package runs perfectly well on a
+    machine where `dotnet` is not a command at all. Looking only on PATH reports
+    that machine as missing the runtime and refuses to launch something that
+    works — and PATH is inherited when a process starts, so a shell opened
+    before the runtime was installed will not see it however long it stays open.
+
+    This is not a relaxation of the check. What is found here is still run and
+    still asked its version; it is only searched for in one more place.
+    """
+    found: list[Path] = []
+    for template in runtime.install_roots:
+        root = _expand(template)
+        if root is None or not root.is_dir():
+            continue
+        for command in runtime.commands:
+            for name in (command, f"{command}.exe"):
+                candidate = root / name
+                if candidate.is_file() and candidate not in found:
+                    found.append(candidate)
+    return found
+
+
+def _expand(template: str) -> Path | None:
+    """Resolve an install root, which may begin with an environment variable or a home directory."""
+    head, _, tail = template.partition("/")
+    if head.startswith("$"):
+        base = os.environ.get(head[1:])
+        if not base:
+            return None
+        head = base
+    try:
+        root = Path(head).expanduser()
+    except (OSError, RuntimeError):
+        return None
+    return root / tail if tail else root
 
 
 def _safe_which(command: str) -> Path | None:

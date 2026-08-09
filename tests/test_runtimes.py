@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import io
+import os
 import sys
 import tempfile
 import unittest
@@ -122,6 +123,66 @@ class InterpreterGuardTests(unittest.TestCase):
         detection = runtimes.detect("perl", storage)
         self.assertEqual(detection.path, destination / "bin" / "perl.cmd")
         self.assertTrue(detection.source.startswith("dfpm:"))
+
+
+class InstalledLocationTests(unittest.TestCase):
+    """Being on PATH and being installed are different things.
+
+    A framework-dependent .NET application finds its runtime through the
+    platform's own install location, so such a package runs perfectly well on a
+    machine where `dotnet` is not a command. Looking only on PATH reported that
+    machine as missing the runtime and refused to launch something that worked —
+    and PATH is inherited when a process starts, so a shell opened before the
+    runtime was installed never sees it however long it stays open.
+    """
+
+    def setUp(self) -> None:
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.root = self.base / "dotnet-home"
+        self.root.mkdir()
+        self.executable = self.root / ("dotnet.exe" if os.name == "nt" else "dotnet")
+        self.executable.write_bytes(b"")
+        self.enterContext(mock.patch.dict(os.environ, {"DOTNET_ROOT": str(self.root)}))
+
+    def test_a_runtime_is_found_where_its_installer_put_it(self) -> None:
+        self.assertIn(self.executable, runtimes._installed_locations(runtimes.describe("dotnet")))
+
+    def test_nothing_on_path_no_longer_means_nothing_installed(self) -> None:
+        detection = runtimes.Detection("dotnet", path=self.executable, version=(9, 0, 18))
+        with (
+            mock.patch("dfpm.runtimes._candidates_on_path", return_value=[]),
+            mock.patch("dfpm.runtimes._installed_locations", return_value=[self.executable]),
+            mock.patch("dfpm.runtimes._probe", return_value=detection),
+        ):
+            found = runtimes._detect(runtimes.describe("dotnet"), None)
+        self.assertEqual(found.path, self.executable)
+        self.assertEqual(found.version, (9, 0, 18))
+
+    def test_one_the_user_put_on_path_still_wins(self) -> None:
+        # Two installs of the same version: the one they chose to expose is the
+        # one they meant, so an install location never overrides a deliberate
+        # arrangement.
+        on_path = runtimes.Detection("dotnet", path=Path("chosen"), version=(9, 0, 18))
+        installed = runtimes.Detection("dotnet", path=self.executable, version=(9, 0, 18))
+        with (
+            mock.patch("dfpm.runtimes._candidates_on_path", return_value=[Path("chosen")]),
+            # Fixed rather than discovered: the machine running these tests may
+            # have a real runtime installed, and this is about which of two
+            # candidates wins, not about how many exist.
+            mock.patch("dfpm.runtimes._installed_locations", return_value=[self.executable]),
+            mock.patch("dfpm.runtimes._probe", side_effect=[on_path, installed]),
+        ):
+            self.assertEqual(runtimes._detect(runtimes.describe("dotnet"), None).path, Path("chosen"))
+
+    def test_an_unset_variable_is_skipped_rather_than_guessed_at(self) -> None:
+        os.environ.pop("DOTNET_ROOT", None)
+        self.assertIsNone(runtimes._expand("$DOTNET_ROOT"))
+        self.assertIsNone(runtimes._expand("$NOT_A_REAL_VARIABLE/dotnet"))
+
+    def test_a_runtime_that_declares_no_install_roots_looks_nowhere(self) -> None:
+        # Only runtimes with a documented install location get one. Guessing for
+        # the others would be inventing paths nobody has checked.
+        self.assertEqual(runtimes._installed_locations(runtimes.describe("perl")), [])
 
 
 class RequirementManifestTests(unittest.TestCase):
