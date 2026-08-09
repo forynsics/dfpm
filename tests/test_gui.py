@@ -60,6 +60,13 @@ class GuiTests(unittest.TestCase):
         status, raw = self.fetch(path, **kwargs)
         return status, json.loads(raw or b"{}")
 
+    def classify(self, **axes: list[str]) -> None:
+        """Give the synthetic package a classification, as a catalogued tool has."""
+        path = self.catalog / "example.tool.json"
+        data = json.loads(path.read_text(encoding="utf-8"))
+        data.update(axes)
+        path.write_text(json.dumps(data), encoding="utf-8")
+
     def test_serves_the_interface_with_the_session_token_substituted(self) -> None:
         status, raw = self.fetch("/", token=False)
         page = raw.decode("utf-8")
@@ -123,6 +130,22 @@ class GuiTests(unittest.TestCase):
         recorded = read_package(self.storage, "example.tool")["installed_size"]
         self.assertEqual(package["installedSize"], human_size(recorded))
         self.assertEqual(package["entrypoints"], ["example-tool"])
+
+    def test_an_installed_package_is_classified_like_a_catalog_entry(self) -> None:
+        # Both lists are searched by one function, so they have to hold the same
+        # shape. The install record stores plain keys; the interface is handed
+        # the labels too, exactly as a catalog entry carries them.
+        from dfpm.classification import VOCABULARIES
+
+        self.classify(disciplines=["windows-forensics"], evidence=["files"])
+        self.api("/api/install", body={"package": "example.tool"})
+        _, payload = self.api("/api/state")
+        package, entry = payload["packages"][0], payload["catalog"][0]
+
+        for axis in VOCABULARIES:
+            with self.subTest(axis=axis):
+                self.assertEqual(package.get(axis, []), entry.get(axis, []))
+        self.assertTrue(any(package.get(axis) for axis in VOCABULARIES), "the synthetic package is classified")
 
     def test_the_file_count_is_not_sent_to_the_interface(self) -> None:
         # It exists so the installer can refuse an archive that does not match

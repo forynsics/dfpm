@@ -17,7 +17,7 @@ from urllib.parse import urlparse
 from . import removal
 from .archive import human_size
 from .catalog import describe, load_catalog, resolve
-from .classification import vocabulary
+from .classification import VOCABULARIES, label, vocabulary
 from .doctor import inspect
 from .errors import DfpmError
 from .installer import check_destination, check_platform, install
@@ -264,7 +264,15 @@ def _summarize(package: dict[str, Any], storage: Storage) -> dict[str, Any]:
     version = package.get("version")
     size = package.get("installed_size")
     location = str(storage.package_version(package["id"], version)) if version else None
-    return {
+    # Classification is expanded to the same {key, label} shape a catalog entry
+    # uses, so one search reads both lists rather than each page needing to know
+    # which kind of record it happens to be holding.
+    classified = {
+        field: [{"key": key, "label": label(field, key)} for key in package.get(field, [])]
+        for field in VOCABULARIES
+        if package.get(field)
+    }
+    return classified | {
         "id": package["id"],
         "name": package.get("name", package["id"]),
         "kind": package.get("kind"),

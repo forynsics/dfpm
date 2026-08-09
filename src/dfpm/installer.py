@@ -90,6 +90,14 @@ def _stage(
             # describe itself on a machine that has no catalog, or whose
             # catalog has since moved on to a different version.
             "description": manifest.description,
+            # Classification travels with the install for the same reason. It
+            # is what makes a tool findable by somebody who cannot name it, and
+            # that is no less true of the tools already on the machine than of
+            # the ones in the catalog.
+            "disciplines": list(manifest.disciplines),
+            "capabilities": list(manifest.capabilities),
+            "use_cases": list(manifest.use_cases),
+            "evidence": list(manifest.evidence),
             "version": manifest.version,
             "installed_at": datetime.now(UTC).isoformat(),
             "manifest_digest": manifest.digest,

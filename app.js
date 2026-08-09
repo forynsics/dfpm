@@ -75,7 +75,10 @@ function matching(entries, query) {
 function searchText(entry) {
   if (entry._searchText === undefined) {
     const parts = [entry.id, entry.name, entry.kind, entry.description, entry.about];
-    for (const [field] of META_ROWS.concat([["disciplines"]])) {
+    // Every classification axis the vocabulary defines, rather than a list
+    // written out here. Which axes exist is the vocabulary's business, and a
+    // new one should become searchable by being added there and nowhere else.
+    for (const field of Object.keys(state.vocabulary || {})) {
       for (const item of entry[field] || []) parts.push(item.label, ...aliasesFor(field, item.key));
     }
     for (const platform of entry.platforms || []) parts.push(`${platform.os}/${platform.arch}`);
