@@ -195,6 +195,32 @@ html[data-appearance="dark"] .command-row.table-head { background: #242424; }
 .tool-card footer a:hover { text-decoration: underline; }
 html[data-appearance="dark"] .tool-card > p { color: var(--muted); }
 
+/* A page title following a block of content needs air above it; the shared
+   rule only spaces what comes after. */
+.plain-table + .page-title { margin-top: 44px; }
+
+/* ── links out of the site ────────────────────────────────────────── */
+
+/* The sidebar's only way off the page, so it sits above the status line
+   rather than competing with the navigation. */
+.repo-link {
+  display: block;
+  margin-top: 14px;
+  padding: 0 4px;
+  color: var(--muted);
+  font: 600 11px inherit;
+  text-decoration: none;
+  line-height: 1.4;
+}
+.repo-link:hover { color: var(--accent-dark); }
+
+/* Documentation cards list links, not features, so the shared tick mark
+   that suits a feature list would be misleading here. */
+.kit-card ul.doc-links li:before { content: none; }
+.kit-card ul.doc-links li { padding: 6px 0; }
+.kit-card ul.doc-links a { color: var(--blue); text-decoration: none; font-weight: 600; }
+.kit-card ul.doc-links a:hover { text-decoration: underline; }
+
 /* ── responsive ───────────────────────────────────────────────────── */
 
 @media (max-width: 1000px) {

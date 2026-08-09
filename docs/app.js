@@ -15,6 +15,7 @@ const state = { packages: [], vocabulary: null, discipline: null, error: null };
 const COMMANDS = [
   ["dfpm paths", "Show where dfpm stores files."],
   ["dfpm catalog", "List available packages."],
+  ["dfpm sync", "Update the catalog from where it is published."],
   ["dfpm install <package>", "Install a package, replacing any version already installed."],
   ["dfpm download <package>", "Download a package's release file without installing it."],
   ["dfpm uninstall <package>", "Remove installed files dfpm recorded."],
