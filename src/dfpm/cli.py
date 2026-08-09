@@ -6,7 +6,7 @@ import shutil
 import sys
 from pathlib import Path
 
-from . import __version__, cache, launcher, removal
+from . import __version__, cache, launcher, removal, runtimes
 from .archive import human_size
 from .catalog import describe, load_catalog, resolve
 from .doctor import inspect
@@ -72,7 +72,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     list_command = commands.add_parser("list", help="List installed packages.")
     list_command.add_argument("--json", action="store_true")
-    doctor = commands.add_parser("doctor", help="Check managed files without changing them.")
+    doctor = commands.add_parser("doctor", help="Check installed packages without changing them.")
+    doctor.add_argument("package", nargs="?", help="Check only this package.")
     doctor.add_argument("--json", action="store_true")
     return parser
 
@@ -121,16 +122,21 @@ def _run(args: argparse.Namespace, storage: Storage) -> int:
     if args.command == "list":
         return _list(args, storage)
     if args.command == "doctor":
-        findings = inspect(storage)
+        findings = inspect(storage, args.package)
         if args.json:
             print(json.dumps([item.__dict__ for item in findings], indent=2))
         elif not findings:
-            print("No managed packages to check.")
+            print("No installed packages to check.")
         else:
+            markers = {"passing": "PASS", "blocked": "WAIT", "failed": "FAIL"}
             for finding in findings:
-                marker = "PASS" if finding.status == "passing" else "FAIL"
+                marker = markers.get(finding.status, "FAIL")
                 print(f"{marker:<4} {finding.package} {finding.version}: {finding.detail}")
-        return 1 if any(item.status == "failed" for item in findings) else 0
+        # A machine missing a runtime is not a broken install, so it gets its
+        # own code: a script can tell "dfpm is wrong" from "this box is not ready".
+        if any(item.status == "failed" for item in findings):
+            return 1
+        return 2 if any(item.status == "blocked" for item in findings) else 0
     return 1
 
 
@@ -203,7 +209,34 @@ def _install(args: argparse.Namespace, storage: Storage) -> int:
     print(f"Installed to {destination}")
     if previous:
         print(f"Removed the previous version, {previous}.")
+    _report_readiness(storage, manifest)
     return 0
+
+
+def _report_readiness(storage: Storage, manifest) -> None:
+    """Say whether the package can actually be run, without failing the install.
+
+    Installing and being runnable are separate. dfpm does not install platform
+    runtimes, so a package can land correctly on a machine that cannot yet run
+    it, and saying nothing would leave that to be discovered later.
+    """
+    if not manifest.requires:
+        return
+    cache: dict = {}
+    unmet = []
+    for requirement in manifest.requires:
+        met, _, detail = runtimes.check(requirement, storage, cache=cache)
+        if not met:
+            unmet.append((requirement, detail))
+    if not unmet:
+        return
+    # Console output stays ASCII: a Windows console defaults to a legacy code
+    # page, where anything else is mangled or raises on the way out.
+    print("\nRuntime requirement:")
+    for requirement, detail in unmet:
+        print(f"  {requirement}: {detail}")
+        print(f"    {runtimes.describe(requirement.runtime).remediation}")
+    print(f"\nThe package is installed but cannot be run yet. Run 'dfpm doctor {manifest.id}' for details.")
 
 
 def _uninstall(args: argparse.Namespace, storage: Storage) -> int:

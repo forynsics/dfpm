@@ -21,6 +21,7 @@ def create_package(
     entries: int | None = None,
     terms_url: str | None = None,
     working_directory: str | None = None,
+    requires: list[dict] | None = None,
 ) -> tuple[Path, Path]:
     """Write a synthetic catalog entry and its artifact, returning (catalog, manifest path)."""
     catalog = base / "catalog"
@@ -56,6 +57,8 @@ def create_package(
         },
         "health_checks": [{"type": "file", "path": "data/readme.txt"}],
     }
+    if requires is not None:
+        manifest["requires"] = requires
     if terms_url is not None:
         manifest["project"] = {"license": "LicenseRef-Example-EULA", "terms_url": terms_url}
     if extracted_size is not None:

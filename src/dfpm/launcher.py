@@ -5,8 +5,10 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import shims
+from . import runtimes, shims
 from .errors import CommandNotFound, CommandNotRunnable
+from .inventory import read_package
+from .manifest import Requirement
 from .storage import Storage
 
 BATCH_SUFFIXES = frozenset({".cmd", ".bat"})
@@ -55,7 +57,7 @@ def run(storage: Storage, name: str, arguments: list[str]) -> int:
     rules or configuration relative to the working directory finds them.
     """
     resolution = resolve(storage, name)
-    _preflight(resolution, arguments)
+    _preflight(storage, resolution, arguments)
     try:
         # The recorded target is run directly rather than through the shim, so there is
         # one less layer between dfpm and the tool. Windows still routes a batch target
@@ -70,8 +72,9 @@ def run(storage: Storage, name: str, arguments: list[str]) -> int:
     return completed.returncode
 
 
-def _preflight(resolution: Resolution, arguments: list[str]) -> None:
+def _preflight(storage: Storage, resolution: Resolution, arguments: list[str]) -> None:
     """Everything that has to hold before a command can be launched."""
+    _check_requirements(storage, resolution)
     if not resolution.target.is_file():
         raise CommandNotRunnable(
             f"{resolution.package} {resolution.version} records the command '{resolution.name}', "
@@ -83,6 +86,33 @@ def _preflight(resolution: Resolution, arguments: list[str]) -> None:
             "which is missing. Run 'dfpm doctor'."
         )
     _check_deliverable(resolution, arguments)
+
+
+def _check_requirements(storage: Storage, resolution: Resolution) -> None:
+    """Refuse to launch a package whose platform runtimes are missing.
+
+    Installed and runnable are separate states: a package installs whether or
+    not the machine can run it, and this is where that is decided. Checked live,
+    because a runtime can appear or disappear long after the install.
+    """
+    state = read_package(storage, resolution.package)
+    if not state:
+        return
+    cache: dict = {}
+    unmet: list[tuple[Requirement, str]] = []
+    for item in state.get("requires", []):
+        requirement = Requirement(item["runtime"], item.get("version"), item.get("flavor"))
+        met, _, detail = runtimes.check(requirement, storage, cache=cache)
+        if not met:
+            unmet.append((requirement, detail))
+    if not unmet:
+        return
+    lines = [f"Cannot run {resolution.name}."]
+    for requirement, detail in unmet:
+        lines.append(f"  Required: {requirement}")
+        lines.append(f"  Detected: {detail}")
+        lines.append(f"  {runtimes.describe(requirement.runtime).remediation}")
+    raise CommandNotRunnable("\n".join(lines))
 
 
 def _check_deliverable(resolution: Resolution, arguments: list[str]) -> None:

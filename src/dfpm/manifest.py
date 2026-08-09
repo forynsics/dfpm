@@ -7,7 +7,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .errors import ManifestError
+from . import runtimes
+from .errors import DfpmError, ManifestError
 from .names import unsafe_reason
 from .platforms import SUPPORTED_ARCHITECTURES, SUPPORTED_SYSTEMS
 
@@ -39,6 +40,23 @@ class HealthCheck:
 
 
 @dataclass(frozen=True)
+class Requirement:
+    """A platform runtime the package needs, which dfpm detects but never installs."""
+
+    runtime: str
+    version: str | None = None
+    flavor: str | None = None
+
+    def __str__(self) -> str:
+        parts = [runtimes.describe(self.runtime).display]
+        if self.flavor:
+            parts.append(self.flavor)
+        if self.version:
+            parts.append(self.version)
+        return " ".join(parts)
+
+
+@dataclass(frozen=True)
 class Platform:
     system: str
     architecture: str
@@ -67,6 +85,7 @@ class Manifest:
     strip_components: int
     extracted_size: int | None
     entry_count: int | None
+    requires: tuple[Requirement, ...]
     entrypoints: tuple[Entrypoint, ...]
     health_checks: tuple[HealthCheck, ...]
     platform: Platform | None
@@ -152,6 +171,7 @@ class Manifest:
             strip_components=strip_components,
             extracted_size=extracted_size,
             entry_count=entry_count,
+            requires=_requirements(data.get("requires")),
             entrypoints=entrypoints,
             health_checks=health_checks,
             platform=_platform(data.get("platform")),
@@ -200,6 +220,41 @@ def _command_name(value: Any) -> str:
     if reason is not None:
         raise ManifestError(f"entrypoint.name {reason}")
     return text
+
+
+def _requirements(value: Any) -> tuple[Requirement, ...]:
+    """Read the platform runtimes a package needs to run.
+
+    A requirement never blocks installation. It decides whether the package can
+    be run once installed, which is a separate question and one that can change
+    without dfpm doing anything.
+    """
+    if value is None:
+        return ()
+    requirements = []
+    for item in _object_list(value, "requires"):
+        name = _text(item.get("runtime"), "requires.runtime").lower()
+        if name not in runtimes.KNOWN:
+            raise ManifestError(f"requires.runtime must be one of: {', '.join(sorted(runtimes.KNOWN))}")
+        runtime = runtimes.KNOWN[name]
+        version = item.get("version")
+        if version is not None:
+            version = _text(version, "requires.version")
+            try:
+                runtimes.parse_minimum(version)
+            except DfpmError as exc:
+                raise ManifestError(f"requires.version is not usable: {exc}") from exc
+        flavor = item.get("flavor")
+        if flavor is not None:
+            flavor = _text(flavor, "requires.flavor").lower()
+            if flavor not in runtime.flavors:
+                known = ", ".join(sorted(runtime.flavors)) if runtime.flavors else "none"
+                raise ManifestError(f"requires.flavor for {name} must be one of: {known}")
+        requirements.append(Requirement(name, version, flavor))
+    names = [item.runtime for item in requirements]
+    if len(names) != len(set(names)):
+        raise ManifestError("Each runtime may only be required once")
+    return tuple(requirements)
 
 
 def _working_directory(value: Any) -> str | None:

@@ -59,6 +59,15 @@ The first implemented manifest format is intentionally narrow. It supports porta
 - `artifact.source` accepts an HTTPS URL, `file` URL, or path relative to the manifest.
 - `artifact.sha256` is mandatory and must contain the expected SHA-256 digest.
 - `artifact.size` is optional but recommended.
+- `requires` is optional and lists the platform runtimes a package needs, which dfpm detects but never installs. Each entry names a `runtime` (`dotnet`, `java`, `python`, `perl`, or `powershell`), an optional `version` constraint written as `>=` and a dotted number, and an optional `flavor` for runtimes that ship as separate installs — `dotnet` has `base`, `desktop` and `aspnet`, and a tool needing the desktop framework is not satisfied by the base runtime.
+
+  ```json
+  "requires": [
+    { "runtime": "dotnet", "version": ">=8", "flavor": "desktop" }
+  ]
+  ```
+
+  A requirement never blocks installation. A package installs whether or not the machine can run it, and whether it can is checked live at run time and by `dfpm doctor`, because a runtime can appear or disappear long after the install. A runtime that reports a version dfpm cannot read does **not** satisfy a stated minimum: treating that as a pass would let banner noise stand in for a real check.
 - `install.strategy` must currently be `portable-zip`.
 - `strip_components` removes a fixed number of leading archive path components.
 - `install.extracted_size` and `install.entries` are optional non-negative integers recording what the package costs on disk once unpacked, so `dfpm install` can show the cost before fetching anything. When present they are verified after extraction. A disagreement does not mean the download was tampered with — the digest already settles that — it means the manifest's own figures were taken from a different artifact.

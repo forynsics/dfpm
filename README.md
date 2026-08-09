@@ -18,6 +18,24 @@ It installs tools straight from the releases their projects publish, pins the ex
 
 dfpm does not acquire or interpret evidence, manage cases, or run investigation workflows. It manages the tools you use to do those things, and nothing more.
 
+## What it is responsible for
+
+**dfpm installs forensic tools and provides the environment needed to invoke them. Platform requirements are detected and reported, not installed.**
+
+| | |
+| --- | --- |
+| Download a tool, verify its digest, install it | yes |
+| Know its entrypoints and run them from the right directory | yes |
+| Pass your arguments through unchanged | yes |
+| Detect a required runtime and check its version | yes |
+| Explain precisely why a tool will not run | yes |
+| Set environment for one invocation | yes |
+| Install .NET, Java, Python or any other runtime | no |
+| Change your PATH, your `JAVA_HOME`, or any other global setting | no |
+| Manage operating system components | no |
+
+That boundary buys a stronger promise than guaranteeing every dependency on a machine: **dfpm either launches a tool in the environment it expects, or tells you exactly why it cannot.** A package installs whether or not the machine can run it yet, and says which it is.
+
 ## Why it exists
 
 <img align="right" width="96" src="assets/brix-magnifier.png" alt="">
@@ -123,6 +141,8 @@ dfpm run yara rules.yar C:\evidence\collected
 It looks up the command among the installed packages, runs that exact file from the directory the package expects, and passes your arguments through as a real argument list.
 
 Its exit code is the tool's exit code, so it composes normally in scripts. dfpm's own refusals use the shell's conventions instead — **`127`** when no installed package provides the command, **`126`** when it resolved but could not be launched — so a script can tell them apart from anything the tool itself returns.
+
+`dfpm doctor` follows the same idea: **`0`** when everything is ready, **`1`** when something dfpm is responsible for is broken, **`2`** when a package is installed correctly but the machine is missing a runtime it needs. The last is not a fault dfpm can fix, and it should not read like one.
 
 **dfpm never adds arguments of its own.** What you type is what runs.
 

@@ -86,6 +86,15 @@ def _stage(
                 | ({"working_directory": item.working_directory} if item.working_directory else {})
                 for item in manifest.entrypoints
             ],
+            # Declared, not observed. Whether a runtime is present can change
+            # without dfpm doing anything, so it is checked live rather than
+            # recorded here and allowed to go stale.
+            "requires": [
+                {"runtime": item.runtime}
+                | ({"version": item.version} if item.version else {})
+                | ({"flavor": item.flavor} if item.flavor else {})
+                for item in manifest.requires
+            ],
             "health_checks": [{"type": item.type, "path": item.path} for item in manifest.health_checks],
         }
         if manifest.platform is not None:
