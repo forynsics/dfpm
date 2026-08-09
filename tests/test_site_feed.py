@@ -95,20 +95,13 @@ class PublishedIndexTests(unittest.TestCase):
 class ShippedEntriesTests(unittest.TestCase):
     """dfpm carries the reviewed entries, so installing it is enough to have something to install.
 
-    They are staged into the package by the build rather than kept in step by
-    hand, so what is checked here is that the staging happened and produced
-    something usable — not that two directories match.
+    The build stages them, so what is on disk here reflects the last build and
+    is expected to lag a catalog that has just been edited. Holding it to
+    catalog/ would put back the chore this replaced: an entry added, a test
+    failing, and a reinstall run for no reason but to quiet it. Whether a built
+    package really carries the catalog is asserted where a build has just
+    happened, in the test workflow.
     """
-
-    def test_the_build_staged_the_reviewed_entries(self) -> None:
-        reviewed = sorted(path.name for path in CATALOG.glob("*.json"))
-        shipped = sorted(path.name for path in SHIPPED.glob("*.json"))
-        self.assertEqual(
-            shipped,
-            reviewed,
-            "The entries in the package are not the reviewed ones. Reinstall dfpm to re-stage them: "
-            "pip install --editable .",
-        )
 
     def test_the_shipped_entries_load(self) -> None:
         # They are what a fresh machine reads, so a broken one is not a
