@@ -1,8 +1,9 @@
 """The controlled vocabularies a package is classified with.
 
-Three questions get asked of a forensic toolbox, and they are genuinely
+Four questions get asked of a forensic toolbox, and they are genuinely
 different questions:
 
+    domains       which part of the field is this?
     capabilities  what does this tool do?
     use_cases     when would I reach for it?
     evidence      what does it read?
@@ -12,10 +13,21 @@ does" with "when you would use it" and with attacker behaviour a tool might
 happen to detect, which reads fine for one package and turns to noise across
 fifty. Two tools can share a use case with nothing else in common.
 
-Three axes is also the limit. Adding fields for features, workflows, outputs,
-techniques and categories would each look reasonable alone and collectively
-produce a taxonomy nobody maintains. These three answer what a person actually
-searches for; anything further has to earn its place against that.
+The test for a new axis is not a count but whether it answers something the
+others cannot. Domains earns it: somebody new to the field browses by
+discipline before they know what to search for, and no combination of the
+other three yields that. A memory acquisition tool and a memory analysis tool
+share a domain and no capability; a tool reading Windows event logs and one
+reading the registry share a domain and no evidence term.
+
+Domains is not `platform`. That field says which operating system the binary
+runs on, and every package here is a Windows build. This says whose evidence
+the tool examines, and a macOS forensics tool commonly runs on Windows.
+Filtering one by the other would return nothing forever.
+
+Fields for features, workflows, outputs and techniques would each look
+reasonable alone and collectively produce a taxonomy nobody maintains. Each has
+to clear the same bar.
 
 Every vocabulary is closed, and a term outside one is refused rather than
 accepted as free text. Free tags fragment on the first synonym, and a catalog
@@ -51,6 +63,26 @@ class Term:
 def _index(*terms: Term) -> dict[str, Term]:
     return {term.key: term for term in terms}
 
+
+# Which part of the field the tool belongs to. Mirrors how the discipline is
+# taught and how somebody new to it browses, which is the point: this axis is
+# for people who cannot yet name what they are looking for.
+DOMAINS = _index(
+    Term("windows-forensics", "Windows forensics",
+         ("windows", "win", "microsoft")),
+    Term("macos-forensics", "macOS forensics",
+         ("mac", "macos", "osx", "os x", "apple", "darwin")),
+    Term("linux-forensics", "Linux forensics",
+         ("linux", "unix", "ubuntu", "debian style", "posix")),
+    Term("mobile-forensics", "Mobile forensics",
+         ("mobile", "phone", "smartphone", "ios", "android", "iphone")),
+    Term("network-forensics", "Network forensics",
+         ("network", "traffic", "packets", "wire")),
+    Term("cloud-forensics", "Cloud forensics",
+         ("cloud", "saas", "aws", "azure", "gcp", "microsoft 365")),
+    Term("memory-forensics", "Memory forensics",
+         ("memory", "ram", "volatile")),
+)
 
 # What the tool does.
 CAPABILITIES = _index(
@@ -144,11 +176,42 @@ EVIDENCE = _index(
          ("disk image", "e01", "raw image", "dd image", "vmdk")),
     Term("network-captures", "Network captures",
          ("pcap", "packet capture", "network capture", "traffic")),
+    Term("plist-files", "Property lists",
+         ("plist", "property list", "preferences")),
+    Term("fsevents", "macOS file system events",
+         ("fsevents", "fsevent", "file system events")),
+    Term("unified-logs", "macOS unified logs",
+         ("unified log", "logarchive", "log archive", "asl")),
+    Term("spotlight-metadata", "Spotlight metadata",
+         ("spotlight", "mdworker", "store.db")),
+    Term("quarantine-events", "Download quarantine records",
+         ("quarantine", "gatekeeper", "downloads")),
+    Term("syslog", "Syslog",
+         ("syslog", "var log", "messages", "auth log")),
+    Term("systemd-journal", "systemd journal",
+         ("journald", "journalctl", "systemd journal")),
+    Term("shell-history", "Shell history",
+         ("bash history", "zsh history", "shell history", "command history")),
+    Term("audit-logs", "Audit daemon logs",
+         ("auditd", "audit log", "linux audit")),
+    Term("ios-backups", "iOS backups",
+         ("ios backup", "itunes backup", "iphone backup")),
+    Term("android-images", "Android images",
+         ("android", "adb", "android image")),
+    Term("cloud-audit-logs", "Cloud audit logs",
+         ("cloudtrail", "azure activity", "unified audit log", "gcp audit", "cloud logs")),
+    Term("netflow-records", "Flow records",
+         ("netflow", "flow records", "ipfix")),
     Term("files", "Files of any kind",
          ("files", "file contents", "any file", "binaries", "executables")),
 )
 
-VOCABULARIES = {"capabilities": CAPABILITIES, "use_cases": USE_CASES, "evidence": EVIDENCE}
+VOCABULARIES = {
+    "domains": DOMAINS,
+    "capabilities": CAPABILITIES,
+    "use_cases": USE_CASES,
+    "evidence": EVIDENCE,
+}
 
 
 def checked(values, field: str) -> tuple[str, ...]:

@@ -13,7 +13,7 @@ from tests.helpers import create_package
 
 
 class VocabularyTests(unittest.TestCase):
-    """Three axes, kept apart on purpose: what it does, when you use it, what it reads."""
+    """Four axes, kept apart on purpose: which discipline, what it does, when, and what it reads."""
 
     def test_the_axes_do_not_share_terms(self) -> None:
         # A key belonging to two axes would mean the split had stopped meaning
@@ -28,6 +28,23 @@ class VocabularyTests(unittest.TestCase):
             for key, term in vocabulary.items():
                 self.assertEqual(term.key, key)
                 self.assertIn(key, matching_keys(field, key.replace("-", " ")))
+
+    def test_a_newcomer_browses_by_discipline(self) -> None:
+        # Somebody new to the field picks a discipline before they can name a
+        # tool or an artifact, which is the entire reason this axis exists.
+        self.assertIn("macos-forensics", matching_keys("domains", "mac"))
+        self.assertIn("macos-forensics", matching_keys("domains", "apple"))
+        self.assertIn("windows-forensics", matching_keys("domains", "windows"))
+        self.assertIn("memory-forensics", matching_keys("domains", "ram"))
+        self.assertIn("cloud-forensics", matching_keys("domains", "azure"))
+        self.assertIn("mobile-forensics", matching_keys("domains", "iphone"))
+
+    def test_the_evidence_vocabulary_is_not_only_windows(self) -> None:
+        # It was, which is how a gap this obvious survived: every catalogued
+        # package happened to be a Windows tool.
+        for query in ("plist", "fsevents", "unified log", "syslog", "journald",
+                      "cloudtrail", "itunes backup", "netflow"):
+            self.assertTrue(matching_keys("evidence", query), f"nothing reads {query!r}")
 
     def test_people_find_things_by_the_words_they_use(self) -> None:
         self.assertIn("windows-event-logs", matching_keys("evidence", "evtx"))
@@ -68,6 +85,21 @@ class ManifestClassificationTests(unittest.TestCase):
         manifest_path.write_text(json.dumps(data), encoding="utf-8")
         return Manifest.load(manifest_path)
 
+    def test_a_domain_is_not_the_platform_the_binary_runs_on(self) -> None:
+        # A macOS forensics tool commonly ships as a Windows build. Deriving one
+        # from the other would make that package unfindable.
+        manifest = self.load(
+            domains=["macos-forensics"],
+            platform={"os": "windows", "arch": "x64"},
+        )
+        self.assertEqual(manifest.domains, ("macos-forensics",))
+        self.assertEqual(manifest.platform.system, "windows")
+
+    def test_a_package_may_belong_to_no_single_domain(self) -> None:
+        # A cross-cutting tool genuinely belongs to none of them, which is
+        # information rather than an omission.
+        self.assertEqual(self.load(capabilities=["signature-scanning"]).domains, ())
+
     def test_a_classified_package_is_read(self) -> None:
         manifest = self.load(
             about="A longer plain-English explanation of what this is for.",
@@ -97,6 +129,8 @@ class ManifestClassificationTests(unittest.TestCase):
             self.load(evidence=["threat-hunting"])
         with self.assertRaises(ManifestError):
             self.load(use_cases=["timeline-generation"])
+        with self.assertRaises(ManifestError):
+            self.load(domains=["registry-hives"])
 
     def test_a_repeated_term_is_rejected(self) -> None:
         with self.assertRaises(ManifestError) as caught:

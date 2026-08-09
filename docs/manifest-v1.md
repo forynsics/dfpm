@@ -53,21 +53,29 @@ The first implemented manifest format is intentionally narrow. It supports porta
 - `kind` may be `tool`, `runtime`, `ruleset`, `artifact-pack`, `parser-pack`, `integration`, or `config-pack`.
 - `description` is one line, used wherever packages are listed.
 - `about` is optional and longer: a short plain-English paragraph explaining what the tool is for and when an investigator reaches for it. It is what someone reads when deciding whether this is the thing they need, so it should answer that rather than restate the name.
-- `capabilities`, `use_cases` and `evidence` classify the package on three closed vocabularies defined in `src/dfpm/classification.py`. They answer three different questions and are kept apart on purpose:
+- `domains`, `capabilities`, `use_cases` and `evidence` classify the package on four closed vocabularies defined in `src/dfpm/classification.py`. They answer four different questions and are kept apart on purpose:
 
   | field | question | examples |
   | --- | --- | --- |
+  | `domains` | which part of the field is this? | `windows-forensics`, `macos-forensics`, `network-forensics` |
   | `capabilities` | what does it do? | `event-log-parsing`, `timeline-generation`, `signature-scanning` |
   | `use_cases` | when would I reach for it? | `incident-response`, `forensic-triage`, `threat-hunting` |
   | `evidence` | what does it read? | `windows-event-logs`, `registry-hives`, `onedrive-logs` |
 
   ```json
+  "domains": ["windows-forensics"],
   "capabilities": ["event-log-parsing", "timeline-generation"],
   "use_cases": ["incident-response"],
   "evidence": ["windows-event-logs"]
   ```
 
-  A single list would blur them. Two tools can share a use case with nothing else in common, and an earlier version of this schema mixed what a tool does with when you would use it and with attacker behaviour it might happen to detect — which reads fine for one package and turns to noise across fifty. Three is also the limit: fields for features, workflows, outputs and techniques would each look reasonable alone and collectively produce a taxonomy nobody maintains.
+  A single list would blur them. Two tools can share a use case with nothing else in common, and an earlier version of this schema mixed what a tool does with when you would use it and with attacker behaviour it might happen to detect — which reads fine for one package and turns to noise across fifty.
+
+  **`domains` is not `platform`.** `platform` says which operating system the binary runs on; `domains` says whose evidence it examines. A macOS forensics tool commonly ships as a Windows build, so deriving one from the other would make that package permanently unfindable. The axis exists because somebody new to the field browses by discipline before they can name a tool or an artifact, and no combination of the other three yields it: a memory acquisition tool and a memory analysis tool share a domain and no capability.
+
+  A package may legitimately belong to **no** domain. A scanner that reads files from any operating system is not a Windows tool or a macOS tool, and saying so is information rather than an omission — an interface browsing by domain needs somewhere to show those rather than hiding them.
+
+  A new axis has to clear the same bar: it must answer something the others cannot. Fields for features, workflows, outputs and techniques would each look reasonable alone and collectively produce a taxonomy nobody maintains.
 
   A term outside a vocabulary is refused rather than accepted as free text. Free tags fragment on the first synonym, and a catalog where `evtx`, `event log` and `eventlog` are three unrelated tags is worse than one with no tags at all. Each term carries aliases so a search matches however it is phrased, and those aliases are synonyms for the idea — never the name of a tool or a rule format, which belong to the package that implements them. A format genuinely worth searching for earns its own term instead, which is why `sigma-detection` is a capability rather than an alias on a broader one. Adding a term is a deliberate change reviewed alongside the package that needs it.
 - `platform` is optional. When present, `platform.os` must be `windows`, `linux`, or `macos`, and `platform.arch` must be `x86`, `x64`, or `arm64`. dfpm refuses to install a package whose platform does not match the machine, which is what keeps a 32-bit or non-Windows build of the same tool from being installed by mistake.
