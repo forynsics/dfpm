@@ -13,7 +13,8 @@ from pathlib import Path
 from . import __version__, cache, classification, launcher, progress, removal, runtimes
 from .archive import human_size
 from . import platforms
-from .catalog import describe, load_catalog, resolve
+from .catalog import SHIPPED, describe, load_catalog, resolve
+from .catalog import newer_than_installed as catalog_updates
 from .catalog import newest as catalog_newest
 from .catalog import version_key as catalog_version_key
 from .doctor import inspect
@@ -104,16 +105,26 @@ def build_parser() -> argparse.ArgumentParser:
 def catalog_directory(chosen: Path | None, storage: Storage, environ: Mapping[str, str] | None = None) -> Path:
     """Where to read package entries from, most explicit choice first.
 
-    The flag beats the environment, which beats this machine's own catalog.
-    The environment variable exists because working on dfpm itself means
-    reading the catalog in the source tree rather than the installed one, and
-    saying so once is better than repeating it on every command.
+    The flag beats the environment, which beats this machine's own catalog,
+    which beats the entries dfpm shipped with. The environment variable exists
+    because working on dfpm itself means reading the catalog in the source tree
+    rather than the installed one, and saying so once is better than repeating
+    it on every command.
+
+    Falling back to the shipped entries is what makes a fresh install usable:
+    otherwise dfpm arrives with an empty directory and no way to fill it.
+    Nothing is copied anywhere — an empty catalog directory is read straight
+    past, so a machine that has curated one is never second-guessed, and one
+    that has not is never written to without being asked.
     """
     if chosen is not None:
         return chosen
     environ = os.environ if environ is None else environ
     configured = environ.get("DFPM_CATALOG")
-    return Path(configured) if configured else storage.catalog
+    if configured:
+        return Path(configured)
+    curated = storage.catalog.is_dir() and any(storage.catalog.glob("*.json"))
+    return storage.catalog if curated else SHIPPED
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -309,7 +320,7 @@ def _install(args: argparse.Namespace, storage: Storage) -> int:
     # Which catalog made this claim. The digest proves the bytes match what the
     # entry said; it says nothing about whether that entry should be believed,
     # and the entry is what names the URL. So the plan says where it came from.
-    if args.catalog != storage.catalog:
+    if args.catalog not in (storage.catalog, SHIPPED):
         print(f"  Entry from:  {args.catalog}")
         print("               Not this machine's catalog. Install only from entries you trust.")
     print(f"  Source:      {manifest.package_url()}")
@@ -583,14 +594,26 @@ def _which(args: argparse.Namespace, storage: Storage) -> int:
 
 def _list(args: argparse.Namespace, storage: Storage) -> int:
     packages = list_packages(storage)
+    updates = catalog_updates(args.catalog, packages)
     if args.json:
-        print(json.dumps(packages, indent=2, sort_keys=True))
+        print(json.dumps(
+            [package | {"update_available": updates[package["id"]]} if package["id"] in updates else package
+             for package in packages],
+            indent=2,
+            sort_keys=True,
+        ))
         return 0
     if not packages:
         print("No packages are installed.")
         return 0
     for package in packages:
-        print(f"{package['id']:<28} {package.get('version', '-'):<14} {package.get('name', '')}")
+        newer = updates.get(package["id"])
+        note = f"  ({newer} available)" if newer else ""
+        print(f"{package['id']:<28} {package.get('version', '-'):<14} {package.get('name', '')}{note}")
+    if updates:
+        names = ", ".join(sorted(updates))
+        print(f"\nThe catalog has a newer version of: {names}")
+        print("Installing one replaces the version you have: dfpm install <package-id>")
     return 0
 
 

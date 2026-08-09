@@ -4,6 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from dfpm.catalog import SHIPPED
 from dfpm.cli import catalog_directory
 from dfpm.storage import Storage
 
@@ -59,10 +60,23 @@ class CatalogLocationTests(unittest.TestCase):
     def test_the_machine_has_a_catalog_of_its_own(self) -> None:
         self.assertEqual(self.storage.catalog, self.storage.root / "catalog")
 
-    def test_it_falls_back_to_that_catalog(self) -> None:
+    def test_a_curated_catalog_is_used(self) -> None:
         # Without this, dfpm can only install from a directory that happens to
         # sit beside the working directory.
+        self.storage.catalog.mkdir(parents=True)
+        (self.storage.catalog / "example.tool.json").write_text("{}", encoding="utf-8")
         self.assertEqual(catalog_directory(None, self.storage, {}), self.storage.catalog)
+
+    def test_a_machine_with_no_catalog_reads_the_entries_dfpm_shipped(self) -> None:
+        # A fresh install would otherwise have an empty directory and nothing
+        # to install from, which is the state every new user starts in.
+        self.assertEqual(catalog_directory(None, self.storage, {}), SHIPPED)
+
+    def test_an_empty_catalog_directory_is_read_straight_past(self) -> None:
+        # Existing but empty is what a directory looks like before anyone has
+        # put anything in it, and is not a decision to have no packages.
+        self.storage.catalog.mkdir(parents=True)
+        self.assertEqual(catalog_directory(None, self.storage, {}), SHIPPED)
 
     def test_the_environment_overrides_the_machine_catalog(self) -> None:
         chosen = catalog_directory(None, self.storage, {"DFPM_CATALOG": str(self.base / "source")})

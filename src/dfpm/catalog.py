@@ -9,6 +9,14 @@ from .errors import ManifestError
 from .manifest import Build, Manifest, Platform, Tool
 
 
+# The entries reviewed at the time this version of dfpm was released. They are
+# what a machine reads before anyone has curated a catalog of its own, so
+# installing dfpm is enough to have something to install. Upgrading dfpm brings
+# whatever had been reviewed by then; a catalog in the dfpm root takes over
+# entirely once one exists.
+SHIPPED = Path(__file__).resolve().parent / "entries"
+
+
 def load_catalog(directory: Path) -> list[Tool]:
     """Every tool in the catalog, in the order a listing should show them."""
     if not directory.is_dir():
@@ -64,6 +72,34 @@ def _requested_platform(text: str) -> tuple[str, str]:
     if len(parts) != 2 or not all(part.strip() for part in parts):
         raise ManifestError(f"Platform must be written as os/arch, for example windows/x64: {text!r}")
     return parts[0].strip().lower(), parts[1].strip().lower()
+
+
+def newer_than_installed(directory: Path, packages: list[dict[str, Any]]) -> dict[str, str]:
+    """Which installed packages the catalog now offers a newer version of.
+
+    This is a comparison and never a merge. The catalog says what is available
+    and moves as projects publish releases; a record says what is installed and
+    does not move at all. Reporting the difference is the whole point of
+    keeping them apart.
+
+    Selection runs through resolve, so a release that only ships for other
+    platforms is not offered as an update to a machine that could not run it.
+    A catalog that cannot be read yields nothing rather than failing: not
+    knowing about an update is a smaller problem than being unable to list what
+    is installed.
+    """
+    updates: dict[str, str] = {}
+    for package in packages:
+        installed = package.get("version")
+        if not installed:
+            continue
+        try:
+            candidate = resolve(directory, package["id"])
+        except ManifestError:
+            continue
+        if version_key(candidate.version) > version_key(installed):
+            updates[package["id"]] = candidate.version
+    return updates
 
 
 def newest(tool: Tool) -> Build:

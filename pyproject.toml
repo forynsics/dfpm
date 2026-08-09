@@ -20,5 +20,5 @@ dfpm = "dfpm.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-dfpm = ["web/*.html", "web/*.js", "web/*.css", "web/*.png"]
+dfpm = ["web/*.html", "web/*.js", "web/*.css", "web/*.png", "entries/*.json"]
 

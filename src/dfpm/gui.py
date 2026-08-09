@@ -16,7 +16,7 @@ from urllib.parse import urlparse
 
 from . import removal
 from .archive import human_size
-from .catalog import describe, load_catalog, resolve
+from .catalog import describe, load_catalog, newer_than_installed, resolve
 from .classification import VOCABULARIES, label, vocabulary
 from .doctor import inspect
 from .errors import DfpmError
@@ -194,6 +194,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def _state(self) -> dict[str, Any]:
         storage = self.session.storage
+        installed = list_packages(storage)
+        updates = newer_than_installed(self.session.catalog, installed)
         catalog: list[dict[str, Any]] = []
         catalog_error: str | None = None
         try:
@@ -209,7 +211,15 @@ class Handler(BaseHTTPRequestHandler):
                 "state": str(storage.state / "packages"),
                 "catalog": str(self.session.catalog),
             },
-            "packages": [_summarize(package, storage) for package in list_packages(storage)],
+            # The catalog moves as projects publish releases and a record does
+            # not move at all, so the difference between them is worth saying
+            # rather than leaving somebody to compare two screens.
+            "packages": [
+                _summarize(package, storage) | (
+                    {"updateAvailable": updates[package["id"]]} if package["id"] in updates else {}
+                )
+                for package in installed
+            ],
             "catalog": catalog,
             "catalogError": catalog_error,
             # Sent alongside the packages for the same reason the command line

@@ -4,7 +4,7 @@ import json
 import unittest
 from pathlib import Path
 
-from dfpm.catalog import describe, load_catalog
+from dfpm.catalog import SHIPPED, describe, load_catalog
 from dfpm.classification import vocabulary
 
 REPOSITORY = Path(__file__).resolve().parents[1]
@@ -52,6 +52,27 @@ class SiteFeedTests(unittest.TestCase):
                     self.assertEqual(set(platform), {"os", "arch"})
                 for item in package.get("disciplines", []):
                     self.assertEqual(set(item), {"key", "label"})
+
+
+class ShippedEntriesTests(unittest.TestCase):
+    """dfpm carries the reviewed entries, so installing it is enough to have something to install."""
+
+    def test_the_shipped_entries_match_the_reviewed_ones(self) -> None:
+        reviewed = {path.name: path.read_bytes() for path in (REPOSITORY / "catalog").glob("*.json")}
+        shipped = {path.name: path.read_bytes() for path in SHIPPED.glob("*.json")}
+        self.assertEqual(
+            sorted(shipped),
+            sorted(reviewed),
+            "The entries shipped with dfpm have drifted from catalog/. Copy catalog/*.json over src/dfpm/entries/.",
+        )
+        for name, content in reviewed.items():
+            with self.subTest(entry=name):
+                self.assertEqual(shipped[name], content, f"src/dfpm/entries/{name} differs from catalog/{name}")
+
+    def test_the_shipped_entries_load(self) -> None:
+        # They are what a fresh machine reads, so a broken one is not a
+        # cosmetic problem: nothing would be installable at all.
+        self.assertTrue(load_catalog(SHIPPED))
 
 
 if __name__ == "__main__":

@@ -250,6 +250,19 @@ state\packages\               Records of what was installed
 
 dfpm reads entries from `catalog\` rather than from wherever you happen to be standing. `--catalog <dir>` overrides it for one command, and `DFPM_CATALOG` for a session.
 
+**A fresh install is not empty.** dfpm carries the entries that had been reviewed when that version was released, and reads those until `catalog\` has something in it — so installing dfpm is enough to have something to install, and upgrading dfpm brings whatever had been reviewed by then. Nothing is copied into `catalog\` behind your back: put entries there and they take over completely.
+
+**When a project publishes a new release,** the entry is updated to describe it and nothing under `state\` changes. `dfpm list` then says so:
+
+```text
+yara                         4.5.5          YARA  (4.6.0 available)
+
+The catalog has a newer version of: yara
+Installing one replaces the version you have: dfpm install <package-id>
+```
+
+That comparison runs the same platform selection an install would, so a release that only ships for other systems is never offered to a machine that could not run it. It needs no network — the catalog is already on disk.
+
 ## Project status
 
 <img align="right" width="96" src="assets/brix-sleeping.png" alt="">

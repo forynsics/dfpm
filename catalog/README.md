@@ -17,6 +17,7 @@ The steps below describe doing it by hand, which is how it works until that tool
 7. If the tool needs particular arguments to work at all — some resolve their own rules or configuration relative to the working directory — record the working invocation in the review notes below. dfpm does not supply arguments on a tool's behalf, so this is documentation for whoever installs it, not configuration.
 8. Run `dfpm catalog`, which loads and validates every manifest in this directory and fails on a malformed one. Then install it and confirm the tool actually runs.
 9. Regenerate the site's feed with `dfpm catalog --json > catalog.json` from the repository root. The public site is a static page and cannot run dfpm, so that file is how a reviewed package reaches it. The test suite fails if the two disagree, which is the reminder rather than the requirement.
+10. Copy the entries over `src/dfpm/entries/`, which is what dfpm ships with and what a machine reads before anyone has curated a catalog of its own. A reviewed entry that never reaches there is one a new install cannot see. The test suite fails if these drift too.
 
 ## Review notes
 

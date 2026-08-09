@@ -219,6 +219,9 @@ function renderInstalled() {
         runBlock(pack.entrypoints || []),
         el("div", { className: "tags" }, [
           healthChip(problems),
+          // What is installed does not change; what the catalog offers does.
+          // Saying so here is the whole reason the two are kept apart.
+          pack.updateAvailable ? chip(`${pack.updateAvailable} available`, "accent") : null,
           pack.platform ? chip(`${pack.platform.os}/${pack.platform.arch}`) : null,
           pack.project && pack.project.license ? chip(pack.project.license) : null,
         ]),
