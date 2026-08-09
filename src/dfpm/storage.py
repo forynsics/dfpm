@@ -125,6 +125,21 @@ class Storage:
     def bin(self) -> Path:
         return self.root / "bin"
 
+    @property
+    def catalog(self) -> Path:
+        """Where this machine keeps the entries it knows about.
+
+        The catalog is a location like the others rather than something the
+        caller has to know how to find. Without it, dfpm could only install
+        from a directory that happened to be beside the working directory,
+        which is to say from a checkout of its own source.
+
+        It holds what is available, not what is installed. Those move
+        independently: a new release changes what is here without touching a
+        thing under state, which is the point of keeping them apart.
+        """
+        return self.root / "catalog"
+
     def package_version(self, package_id: str, version: str) -> Path:
         return self.tools / checked_package_id(package_id) / checked_version(version)
 

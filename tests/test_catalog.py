@@ -137,7 +137,10 @@ class CatalogTests(unittest.TestCase):
     def test_missing_catalog_directory_is_reported(self) -> None:
         with self.assertRaises(ManifestError) as caught:
             load_catalog(self.base / "nowhere")
-        self.assertIn("does not exist", str(caught.exception))
+        message = str(caught.exception)
+        self.assertIn("No catalog on this machine", message)
+        # A fresh install has no catalog, so the message has to say what fixes it.
+        self.assertIn("--catalog", message)
 
     def test_describe_omits_optional_sections_that_are_absent(self) -> None:
         _, manifest_path = create_package(self.base)

@@ -239,11 +239,16 @@ There are two web surfaces and they share one visual system. `src/dfpm/web/` is 
 The default Windows data locations are rooted in `%LOCALAPPDATA%\dfpm`:
 
 ```text
+catalog\                      Entries this machine can install from
 tools\<package-id>\<version>\  The installed version
 cache\sha256\                 Verified downloaded artifacts
 bin\                          Command shortcuts
-state\packages\               Managed-file records
+state\packages\               Records of what was installed
 ```
+
+`catalog\` holds what is **available**; `state\packages\` records what is **installed**. They move independently and on purpose: when a project publishes a new release, the entry changes to describe it, and nothing under `state\` is touched. That is what lets dfpm show you 4.1.0 in the catalog while correctly reporting that 4.0.0 is the version you are running.
+
+dfpm reads entries from `catalog\` rather than from wherever you happen to be standing. `--catalog <dir>` overrides it for one command, and `DFPM_CATALOG` for a session.
 
 ## Project status
 

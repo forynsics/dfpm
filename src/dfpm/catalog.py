@@ -12,7 +12,14 @@ from .manifest import Build, Manifest, Platform, Tool
 def load_catalog(directory: Path) -> list[Tool]:
     """Every tool in the catalog, in the order a listing should show them."""
     if not directory.is_dir():
-        raise ManifestError(f"Catalog directory does not exist: {directory}")
+        # A machine with no catalog is the ordinary state of a fresh install
+        # rather than a fault, so say what would fix it. Nothing is fetched
+        # automatically: where entries come from is the operator's choice.
+        raise ManifestError(
+            f"No catalog on this machine: {directory}\n"
+            f"Put reviewed package entries there, or point dfpm at a directory of them "
+            f"with --catalog or the DFPM_CATALOG environment variable."
+        )
     return [Tool.load(path) for path in sorted(directory.glob("*.json"))]
 
 

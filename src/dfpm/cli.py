@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
 import sys
 import textwrap
+from collections.abc import Mapping
 from pathlib import Path
 
 from . import __version__, cache, classification, launcher, progress, removal, runtimes
@@ -27,7 +29,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="dfpm", description="A package manager for digital forensics tools.")
     parser.add_argument("--version", action="version", version=f"dfpm {__version__}")
     parser.add_argument("--root", type=Path, help="Override the dfpm data directory.")
-    parser.add_argument("--catalog", type=Path, default=Path("catalog"), help="Directory containing package manifests.")
+    parser.add_argument(
+        "--catalog",
+        type=Path,
+        default=None,
+        help="Directory containing package manifests. Defaults to DFPM_CATALOG, then the catalog in the dfpm root.",
+    )
     commands = parser.add_subparsers(dest="command", required=True)
 
     commands.add_parser("paths", help="Show where dfpm stores files.")
@@ -94,9 +101,25 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def catalog_directory(chosen: Path | None, storage: Storage, environ: Mapping[str, str] | None = None) -> Path:
+    """Where to read package entries from, most explicit choice first.
+
+    The flag beats the environment, which beats this machine's own catalog.
+    The environment variable exists because working on dfpm itself means
+    reading the catalog in the source tree rather than the installed one, and
+    saying so once is better than repeating it on every command.
+    """
+    if chosen is not None:
+        return chosen
+    environ = os.environ if environ is None else environ
+    configured = environ.get("DFPM_CATALOG")
+    return Path(configured) if configured else storage.catalog
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     storage = Storage(args.root.resolve()) if args.root else Storage.default()
+    args.catalog = catalog_directory(args.catalog, storage)
     try:
         return _run(args, storage)
     except DfpmError as exc:
@@ -112,6 +135,7 @@ def _run(args: argparse.Namespace, storage: Storage) -> int:
         print(f"Tools:              {storage.tools}")
         print(f"Verified downloads: {storage.cache}")
         print(f"Command shortcuts:  {storage.bin}")
+        print(f"Catalog:            {args.catalog}")
         print(f"Package records:    {storage.state / 'packages'}")
         return 0
     if args.command == "catalog":

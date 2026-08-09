@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import tempfile
 import unittest
 from pathlib import Path
 
+from dfpm.cli import catalog_directory
 from dfpm.storage import Storage
 
 
@@ -45,3 +47,33 @@ class DefaultRootTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CatalogLocationTests(unittest.TestCase):
+    """Where entries are read from, now that it is a location rather than a guess."""
+
+    def setUp(self) -> None:
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.storage = Storage(self.base / "data")
+
+    def test_the_machine_has_a_catalog_of_its_own(self) -> None:
+        self.assertEqual(self.storage.catalog, self.storage.root / "catalog")
+
+    def test_it_falls_back_to_that_catalog(self) -> None:
+        # Without this, dfpm can only install from a directory that happens to
+        # sit beside the working directory.
+        self.assertEqual(catalog_directory(None, self.storage, {}), self.storage.catalog)
+
+    def test_the_environment_overrides_the_machine_catalog(self) -> None:
+        chosen = catalog_directory(None, self.storage, {"DFPM_CATALOG": str(self.base / "source")})
+        self.assertEqual(chosen, self.base / "source")
+
+    def test_the_flag_beats_everything(self) -> None:
+        chosen = catalog_directory(self.base / "explicit", self.storage, {"DFPM_CATALOG": str(self.base / "source")})
+        self.assertEqual(chosen, self.base / "explicit")
+
+    def test_the_catalog_is_not_under_state(self) -> None:
+        # What is available and what is installed move independently, which is
+        # only true if they are not in each other's directories.
+        self.assertNotIn(self.storage.state, self.storage.catalog.parents)
+        self.assertNotIn(self.storage.catalog, self.storage.state.parents)
