@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 from dfpm.catalog import load_catalog
-from dfpm.classification import VOCABULARIES, matching_keys
+from dfpm.classification import VOCABULARIES, matching_keys, vocabulary
 from dfpm.errors import ManifestError
 from dfpm.manifest import Manifest
 from tests.helpers import create_package
@@ -217,3 +217,25 @@ class VocabularyFeedTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class VocabularyPublishingTests(unittest.TestCase):
+    def test_aliases_travel_with_the_vocabulary(self) -> None:
+        # An interface searching the catalog cannot know that "evtx" means the
+        # same as "Windows event logs" unless it is told.
+        published = vocabulary()
+        evidence = {term["key"]: term for term in published["evidence"]}
+        self.assertIn("evtx", evidence["windows-event-logs"]["aliases"])
+        for terms in published.values():
+            for term in terms:
+                self.assertEqual(set(term), {"key", "label", "aliases"})
+                self.assertIsInstance(term["aliases"], list)
+
+    def test_no_alias_names_a_tool(self) -> None:
+        # Aliases are synonyms for an idea. A tool name belongs to the package
+        # that implements it, not to the vocabulary describing what it does.
+        catalogued = {tool.id for tool in load_catalog(Path(__file__).resolve().parents[1] / "catalog")}
+        for terms in vocabulary().values():
+            for term in terms:
+                for alias in term["aliases"]:
+                    self.assertNotIn(alias.lower(), catalogued, f"{term['key']} aliases a tool name")

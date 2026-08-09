@@ -144,257 +144,611 @@
     "disciplines": [
       {
         "key": "windows-forensics",
-        "label": "Windows forensics"
+        "label": "Windows forensics",
+        "aliases": [
+          "windows",
+          "win",
+          "microsoft"
+        ]
       },
       {
         "key": "macos-forensics",
-        "label": "macOS forensics"
+        "label": "macOS forensics",
+        "aliases": [
+          "mac",
+          "macos",
+          "osx",
+          "os x",
+          "apple",
+          "darwin"
+        ]
       },
       {
         "key": "linux-forensics",
-        "label": "Linux forensics"
+        "label": "Linux forensics",
+        "aliases": [
+          "linux",
+          "unix",
+          "ubuntu",
+          "debian style",
+          "posix"
+        ]
       },
       {
         "key": "smartphone-forensics",
-        "label": "Smartphone forensics"
+        "label": "Smartphone forensics",
+        "aliases": [
+          "smartphone",
+          "mobile",
+          "phone",
+          "ios",
+          "android",
+          "iphone",
+          "handset"
+        ]
       },
       {
         "key": "network-forensics",
-        "label": "Network forensics"
+        "label": "Network forensics",
+        "aliases": [
+          "network",
+          "traffic",
+          "packets",
+          "wire"
+        ]
       },
       {
         "key": "cloud-forensics",
-        "label": "Cloud forensics"
+        "label": "Cloud forensics",
+        "aliases": [
+          "cloud",
+          "saas",
+          "aws",
+          "azure",
+          "gcp",
+          "microsoft 365"
+        ]
       },
       {
         "key": "memory-forensics",
-        "label": "Memory forensics"
+        "label": "Memory forensics",
+        "aliases": [
+          "memory",
+          "ram",
+          "volatile"
+        ]
       },
       {
         "key": "malware-analysis",
-        "label": "Malware analysis"
+        "label": "Malware analysis",
+        "aliases": [
+          "malware",
+          "virus",
+          "reverse engineering",
+          "sample analysis",
+          "rem"
+        ]
       }
     ],
     "capabilities": [
       {
         "key": "signature-scanning",
-        "label": "Signature scanning"
+        "label": "Signature scanning",
+        "aliases": [
+          "signatures",
+          "pattern matching",
+          "byte patterns",
+          "scanning"
+        ]
       },
       {
         "key": "sigma-detection",
-        "label": "Sigma rule detection"
+        "label": "Sigma rule detection",
+        "aliases": [
+          "sigma",
+          "sigma rules",
+          "detection rules"
+        ]
       },
       {
         "key": "event-log-parsing",
-        "label": "Event log parsing"
+        "label": "Event log parsing",
+        "aliases": [
+          "parse event logs",
+          "evtx parsing",
+          "log parsing"
+        ]
       },
       {
         "key": "timeline-generation",
-        "label": "Timeline generation"
+        "label": "Timeline generation",
+        "aliases": [
+          "timeline",
+          "supertimeline",
+          "chronology"
+        ]
       },
       {
         "key": "registry-parsing",
-        "label": "Registry parsing"
+        "label": "Registry parsing",
+        "aliases": [
+          "parse registry",
+          "hive parsing"
+        ]
       },
       {
         "key": "file-system-parsing",
-        "label": "File system parsing"
+        "label": "File system parsing",
+        "aliases": [
+          "parse ntfs",
+          "filesystem parsing",
+          "mft parsing"
+        ]
       },
       {
         "key": "memory-analysis",
-        "label": "Memory analysis"
+        "label": "Memory analysis",
+        "aliases": [
+          "analyse memory",
+          "analyze memory",
+          "volatile analysis"
+        ]
       },
       {
         "key": "file-carving",
-        "label": "File carving"
+        "label": "File carving",
+        "aliases": [
+          "carving",
+          "carve",
+          "recover deleted",
+          "unallocated"
+        ]
       },
       {
         "key": "string-extraction",
-        "label": "String extraction"
+        "label": "String extraction",
+        "aliases": [
+          "strings",
+          "extract strings"
+        ]
       },
       {
         "key": "hash-matching",
-        "label": "Hash matching"
+        "label": "Hash matching",
+        "aliases": [
+          "hashing",
+          "hash sets",
+          "known files"
+        ]
       },
       {
         "key": "evidence-collection",
-        "label": "Evidence collection"
+        "label": "Evidence collection",
+        "aliases": [
+          "collection",
+          "acquire",
+          "acquisition",
+          "capture"
+        ]
       },
       {
         "key": "decryption",
-        "label": "Decryption"
+        "label": "Decryption",
+        "aliases": [
+          "decrypt",
+          "encrypted",
+          "password recovery"
+        ]
       },
       {
         "key": "data-export",
-        "label": "Data export"
+        "label": "Data export",
+        "aliases": [
+          "export",
+          "csv",
+          "json output",
+          "convert"
+        ]
       },
       {
         "key": "visualisation",
-        "label": "Visualisation"
+        "label": "Visualisation",
+        "aliases": [
+          "visualisation",
+          "visualization",
+          "charts",
+          "graphs",
+          "viewer"
+        ]
       }
     ],
     "use_cases": [
       {
         "key": "incident-response",
-        "label": "Incident response"
+        "label": "Incident response",
+        "aliases": [
+          "incident response",
+          "ir",
+          "breach",
+          "compromise"
+        ]
       },
       {
         "key": "forensic-triage",
-        "label": "Forensic triage"
+        "label": "Forensic triage",
+        "aliases": [
+          "triage",
+          "first response",
+          "quick look"
+        ]
       },
       {
         "key": "threat-hunting",
-        "label": "Threat hunting"
+        "label": "Threat hunting",
+        "aliases": [
+          "hunting",
+          "hunt",
+          "proactive"
+        ]
       },
       {
         "key": "compromise-assessment",
-        "label": "Compromise assessment"
+        "label": "Compromise assessment",
+        "aliases": [
+          "compromise assessment",
+          "health check",
+          "assessment"
+        ]
       },
       {
         "key": "evidence-review",
-        "label": "Evidence review and reporting"
+        "label": "Evidence review and reporting",
+        "aliases": [
+          "review",
+          "reporting",
+          "report",
+          "presentation"
+        ]
       }
     ],
     "evidence": [
       {
         "key": "windows-event-logs",
-        "label": "Windows event logs"
+        "label": "Windows event logs",
+        "aliases": [
+          "evtx",
+          "event log",
+          "eventlog",
+          "winevt",
+          "security log",
+          "sysmon"
+        ]
       },
       {
         "key": "registry-hives",
-        "label": "Windows registry hives"
+        "label": "Windows registry hives",
+        "aliases": [
+          "registry",
+          "hive",
+          "ntuser",
+          "regf",
+          "software hive",
+          "system hive"
+        ]
       },
       {
         "key": "master-file-table",
-        "label": "NTFS master file table"
+        "label": "NTFS master file table",
+        "aliases": [
+          "mft",
+          "master file table",
+          "$mft",
+          "ntfs"
+        ]
       },
       {
         "key": "usn-journal",
-        "label": "NTFS change journal"
+        "label": "NTFS change journal",
+        "aliases": [
+          "usn",
+          "journal",
+          "$j",
+          "change journal"
+        ]
       },
       {
         "key": "prefetch-files",
-        "label": "Prefetch files"
+        "label": "Prefetch files",
+        "aliases": [
+          "prefetch",
+          "pf"
+        ]
       },
       {
         "key": "amcache",
-        "label": "Amcache"
+        "label": "Amcache",
+        "aliases": [
+          "amcache",
+          "amcache.hve"
+        ]
       },
       {
         "key": "shimcache",
-        "label": "Shimcache"
+        "label": "Shimcache",
+        "aliases": [
+          "shimcache",
+          "appcompatcache",
+          "application compatibility"
+        ]
       },
       {
         "key": "shellbags",
-        "label": "Shellbags"
+        "label": "Shellbags",
+        "aliases": [
+          "shellbags",
+          "shellbag",
+          "folder access"
+        ]
       },
       {
         "key": "jump-lists",
-        "label": "Jump lists"
+        "label": "Jump lists",
+        "aliases": [
+          "jump list",
+          "jumplist",
+          "automaticdestinations"
+        ]
       },
       {
         "key": "shortcut-files",
-        "label": "Shortcut files"
+        "label": "Shortcut files",
+        "aliases": [
+          "lnk",
+          "shortcut",
+          "link file"
+        ]
       },
       {
         "key": "recycle-bin",
-        "label": "Recycle bin"
+        "label": "Recycle bin",
+        "aliases": [
+          "recycle bin",
+          "recyclebin",
+          "deleted items"
+        ]
       },
       {
         "key": "srum-database",
-        "label": "System resource usage database"
+        "label": "System resource usage database",
+        "aliases": [
+          "srum",
+          "srudb",
+          "resource usage"
+        ]
       },
       {
         "key": "scheduled-tasks",
-        "label": "Scheduled tasks"
+        "label": "Scheduled tasks",
+        "aliases": [
+          "scheduled task",
+          "task scheduler",
+          "at job"
+        ]
       },
       {
         "key": "browser-history",
-        "label": "Browser history"
+        "label": "Browser history",
+        "aliases": [
+          "browser",
+          "history",
+          "chrome",
+          "firefox",
+          "edge",
+          "cookies"
+        ]
       },
       {
         "key": "email-stores",
-        "label": "Email stores"
+        "label": "Email stores",
+        "aliases": [
+          "email",
+          "mail",
+          "pst",
+          "ost",
+          "mbox",
+          "outlook"
+        ]
       },
       {
         "key": "onedrive-logs",
-        "label": "OneDrive sync logs"
+        "label": "OneDrive sync logs",
+        "aliases": [
+          "onedrive",
+          "odl",
+          "sync log",
+          "one drive"
+        ]
       },
       {
         "key": "sqlite-databases",
-        "label": "SQLite databases"
+        "label": "SQLite databases",
+        "aliases": [
+          "sqlite",
+          "database"
+        ]
       },
       {
         "key": "volume-shadow-copies",
-        "label": "Volume shadow copies"
+        "label": "Volume shadow copies",
+        "aliases": [
+          "shadow copy",
+          "vss",
+          "volume shadow"
+        ]
       },
       {
         "key": "memory-images",
-        "label": "Memory images"
+        "label": "Memory images",
+        "aliases": [
+          "memory image",
+          "ram dump",
+          "memory dump",
+          "raw memory"
+        ]
       },
       {
         "key": "disk-images",
-        "label": "Disk images"
+        "label": "Disk images",
+        "aliases": [
+          "disk image",
+          "e01",
+          "raw image",
+          "dd image",
+          "vmdk"
+        ]
       },
       {
         "key": "network-captures",
-        "label": "Network captures"
+        "label": "Network captures",
+        "aliases": [
+          "pcap",
+          "packet capture",
+          "network capture",
+          "traffic"
+        ]
       },
       {
         "key": "plist-files",
-        "label": "Property lists"
+        "label": "Property lists",
+        "aliases": [
+          "plist",
+          "property list",
+          "preferences"
+        ]
       },
       {
         "key": "fsevents",
-        "label": "macOS file system events"
+        "label": "macOS file system events",
+        "aliases": [
+          "fsevents",
+          "fsevent",
+          "file system events"
+        ]
       },
       {
         "key": "unified-logs",
-        "label": "macOS unified logs"
+        "label": "macOS unified logs",
+        "aliases": [
+          "unified log",
+          "logarchive",
+          "log archive",
+          "asl"
+        ]
       },
       {
         "key": "spotlight-metadata",
-        "label": "Spotlight metadata"
+        "label": "Spotlight metadata",
+        "aliases": [
+          "spotlight",
+          "mdworker",
+          "store.db"
+        ]
       },
       {
         "key": "quarantine-events",
-        "label": "Download quarantine records"
+        "label": "Download quarantine records",
+        "aliases": [
+          "quarantine",
+          "gatekeeper",
+          "downloads"
+        ]
       },
       {
         "key": "syslog",
-        "label": "Syslog"
+        "label": "Syslog",
+        "aliases": [
+          "syslog",
+          "var log",
+          "messages",
+          "auth log"
+        ]
       },
       {
         "key": "systemd-journal",
-        "label": "systemd journal"
+        "label": "systemd journal",
+        "aliases": [
+          "journald",
+          "journalctl",
+          "systemd journal"
+        ]
       },
       {
         "key": "shell-history",
-        "label": "Shell history"
+        "label": "Shell history",
+        "aliases": [
+          "bash history",
+          "zsh history",
+          "shell history",
+          "command history"
+        ]
       },
       {
         "key": "audit-logs",
-        "label": "Audit daemon logs"
+        "label": "Audit daemon logs",
+        "aliases": [
+          "auditd",
+          "audit log",
+          "linux audit"
+        ]
       },
       {
         "key": "ios-backups",
-        "label": "iOS backups"
+        "label": "iOS backups",
+        "aliases": [
+          "ios backup",
+          "itunes backup",
+          "iphone backup"
+        ]
       },
       {
         "key": "android-images",
-        "label": "Android images"
+        "label": "Android images",
+        "aliases": [
+          "android",
+          "adb",
+          "android image"
+        ]
       },
       {
         "key": "cloud-audit-logs",
-        "label": "Cloud audit logs"
+        "label": "Cloud audit logs",
+        "aliases": [
+          "cloudtrail",
+          "azure activity",
+          "unified audit log",
+          "gcp audit",
+          "cloud logs"
+        ]
       },
       {
         "key": "netflow-records",
-        "label": "Flow records"
+        "label": "Flow records",
+        "aliases": [
+          "netflow",
+          "flow records",
+          "ipfix"
+        ]
       },
       {
         "key": "files",
-        "label": "Files of any kind"
+        "label": "Files of any kind",
+        "aliases": [
+          "files",
+          "file contents",
+          "any file",
+          "binaries",
+          "executables"
+        ]
       }
     ]
   }

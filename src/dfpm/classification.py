@@ -239,9 +239,14 @@ def vocabulary() -> dict[str, list[dict[str, str]]]:
     disciplines nothing is catalogued under yet, or its buttons appear and
     vanish as the catalog grows. Reading it from here rather than hard-coding it
     is what stops the two drifting apart.
+
+    Aliases travel too. They exist so a search matches however somebody phrases
+    it, which is no use at all if only this module can see them: an interface
+    searching the catalog would have to guess that "evtx" means the same as
+    "Windows event logs", and would guess wrong.
     """
     return {
-        field: [{"key": term.key, "label": term.label} for term in terms.values()]
+        field: [{"key": term.key, "label": term.label, "aliases": list(term.aliases)} for term in terms.values()]
         for field, terms in VOCABULARIES.items()
     }
 

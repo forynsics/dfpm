@@ -62,6 +62,36 @@ const META_ROWS = [
   ["use_cases", "Used for"],
 ];
 
+/* One matcher, matching what the local interface matches. A package is found
+   by the obvious things and also by the aliases the vocabulary carries, so
+   "evtx" reaches a tool classified against Windows event logs without anybody
+   having typed that phrase. */
+function matching(entries, query) {
+  const wanted = (query || "").trim().toLowerCase();
+  if (!wanted) return entries;
+  return entries.filter((entry) => searchText(entry).includes(wanted));
+}
+
+function searchText(entry) {
+  if (entry._searchText === undefined) {
+    const parts = [entry.id, entry.name, entry.kind, entry.description, entry.about];
+    for (const [field] of META_ROWS.concat([["disciplines"]])) {
+      for (const item of entry[field] || []) parts.push(item.label, ...aliasesFor(field, item.key));
+    }
+    for (const platform of entry.platforms || []) parts.push(`${platform.os}/${platform.arch}`);
+    for (const command of entry.commands || []) parts.push(command);
+    if (entry.project && entry.project.license) parts.push(entry.project.license);
+    entry._searchText = parts.filter(Boolean).join(" ").toLowerCase();
+  }
+  return entry._searchText;
+}
+
+function aliasesFor(field, key) {
+  const terms = (state.vocabulary && state.vocabulary[field]) || [];
+  const term = terms.find((item) => item.key === key);
+  return term && term.aliases ? term.aliases : [];
+}
+
 function metaRows(entry) {
   const rows = [];
   for (const [field, label] of META_ROWS) {
@@ -150,11 +180,12 @@ function renderCatalog() {
     return;
   }
 
-  const showing = state.discipline
+  const chosen = state.discipline
     ? state.packages.filter((entry) => (entry.disciplines || []).some((item) => item.key === state.discipline))
     : state.packages;
+  const showing = matching(chosen, $("#catalog-search").value);
   if (!showing.length) {
-    container.append(el("div", { className: "empty-state", text: "No package in the catalog covers that discipline." }));
+    container.append(el("div", { className: "empty-state", text: "Nothing in the catalog matches that." }));
     return;
   }
 
@@ -283,6 +314,8 @@ document.addEventListener("click", (event) => {
 $("#theme-button").addEventListener("click", () => {
   applyAppearance(document.documentElement.dataset.appearance === "dark" ? "light" : "dark");
 });
+
+$("#catalog-search").addEventListener("input", () => renderCatalog());
 
 applyAppearance(localStorage.getItem("dfpm-appearance") || "light");
 loadCatalog();

@@ -38,6 +38,10 @@
           </div>
           <button class="pixel-button" id="refresh" type="button">Refresh</button>
         </div>
+        <div class="list-search">
+          <span aria-hidden="true">⌕</span>
+          <input id="installed-search" type="search" autocomplete="off" placeholder="Search installed tools">
+        </div>
         <div class="tool-grid list" id="installed-list"></div>
       </section>
 
@@ -46,6 +50,10 @@
           <p class="kicker">Available packages</p>
           <h1>Catalog</h1>
           <p>Each entry pins the exact artifact a project released, along with its digest. dfpm checks that digest on every install and refuses anything that does not match.</p>
+        </div>
+        <div class="list-search">
+          <span aria-hidden="true">⌕</span>
+          <input id="catalog-search" type="search" autocomplete="off" placeholder="Search the catalog, by name or by what it reads">
         </div>
         <div class="filter-bar" id="catalog-filters" role="group" aria-label="Filter the catalog by forensic discipline"></div>
         <div class="tool-grid list" id="catalog-list"></div>
