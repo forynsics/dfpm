@@ -84,6 +84,18 @@ class ManifestTests(unittest.TestCase):
             self.assertIsNone(manifest.platform)
             self.assertIsNone(manifest.project)
 
+    def test_rejects_verify_that_repeats_an_entrypoint(self) -> None:
+        # Entrypoints are checked at install and by doctor whether or not they
+        # are listed again, so repeating one only makes the manifest look like
+        # it is asserting something it is not.
+        self.assertRaisesManifestError({"verify": [{"type": "file", "path": "bin/example-tool.cmd"}]})
+
+    def test_verify_still_accepts_a_file_that_is_not_an_entrypoint(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            _, manifest_path = create_package(Path(temporary))
+            manifest = Manifest.load(manifest_path)
+            self.assertEqual([check.path for check in manifest.verify], ["data/readme.txt"])
+
     def test_rejects_unknown_install_strategy(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             _, manifest_path = create_package(Path(temporary))

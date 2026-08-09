@@ -310,6 +310,14 @@ def _build(data: dict[str, Any]) -> Build:
     )
     if any(check.type != "file" for check in verify):
         raise ManifestError("Only file checks are currently supported in verify")
+    # Every entrypoint is already required to exist, at install and by doctor.
+    # Repeating one here adds nothing and suggests verify has been read as "the
+    # list of important files" rather than "what else has to be there".
+    duplicated = {check.path for check in verify} & {item.path for item in entrypoints}
+    if duplicated:
+        raise ManifestError(
+            f"verify repeats an entrypoint, which is already checked: {', '.join(sorted(duplicated))}"
+        )
 
     return Build(
         version=_version(data.get("version")),

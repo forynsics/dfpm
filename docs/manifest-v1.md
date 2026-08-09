@@ -36,7 +36,7 @@ A file describes **one tool** and **every build of it dfpm can install**. Those 
         ]
       },
       "verify": [
-        { "type": "file", "path": "bin/example-tool.exe" }
+        { "type": "file", "path": "config/default_profile.yaml" }
       ]
     }
   ]
@@ -101,7 +101,8 @@ A file describes **one tool** and **every build of it dfpm can install**. Those 
 - `working_directory` is optional and says where an entrypoint runs from, relative to the package root, with `.` meaning the root itself. Omitted, it is the directory holding the executable. Many tools resolve their own rules or configuration against the working directory and fail when launched from anywhere else, so this is what lets them be run from a case folder without any per-tool arrangement. It is also what someone opening a terminal beside the binary would get.
 - A manifest cannot supply **arguments** of its own, and that is deliberate. Inserting them was tried and abandoned: the command you typed and the command that ran would differ, which is precisely what `dfpm which` exists to prevent; an injected option lands in the same command line as the user's own, and duplicate options resolve differently in every argument parser, including by silently using both values; and the per-tool knowledge would not have stopped at arguments.
 - The difference between the two is worth being precise about, because they look similar. A working directory is a single process attribute with nothing to collide with — the user cannot also have passed one. An argument joins the list the user is already writing, where it can be duplicated, reordered or misread. One is a property of launching a process; the other is an edit to what the user asked for.
-- `build.verify` lists what must be true for an install to count as successful. Only file checks are supported today, and each names a path that has to exist. It is `verify` rather than `health_checks` because nothing here is checking whether a running service is healthy — it is confirming the install produced what the manifest said it would. Together with the entrypoints, these are the only paths `dfpm doctor` looks at: everything else inside a package's directory belongs to the package, and a tool that updates its own rule set or fetches data on first run is working normally rather than drifting.
+- `build.verify` lists what must be true for an install to count as successful, beyond the entrypoints. Only file checks are supported today, and each names a path that has to exist. It is `verify` rather than `health_checks` because nothing here is checking whether a running service is healthy — it is confirming the install produced what the manifest said it would. Together with the entrypoints, these are the only paths `dfpm doctor` looks at: everything else inside a package's directory belongs to the package, and a tool that updates its own rule set or fetches data on first run is working normally rather than drifting.
+- Entrypoints are already checked, at install and by `dfpm doctor`, so listing one in `verify` asserts nothing new and is rejected. What belongs there is the supporting files a tool needs but does not name as a command: a configuration file, a bundled rule set. Those catch the case where the archive extracted at the wrong depth and the executable is still reachable while everything beside it is not. A build whose entrypoints are the whole package needs no `verify` at all, and the field is optional.
 
 All paths inside packages must be relative and stay within the package installation directory.
 

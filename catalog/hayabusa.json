@@ -54,10 +54,6 @@
       "verify": [
         {
           "type": "file",
-          "path": "hayabusa-4.0.0-win-x64.exe"
-        },
-        {
-          "type": "file",
           "path": "config/default_profile.yaml"
         },
         {
@@ -92,10 +88,6 @@
       "verify": [
         {
           "type": "file",
-          "path": "hayabusa-4.0.0-lin-x64-gnu"
-        },
-        {
-          "type": "file",
           "path": "config/default_profile.yaml"
         },
         {
@@ -128,10 +120,6 @@
         ]
       },
       "verify": [
-        {
-          "type": "file",
-          "path": "hayabusa-4.0.0-mac-aarch64"
-        },
         {
           "type": "file",
           "path": "config/default_profile.yaml"

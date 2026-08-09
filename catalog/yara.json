@@ -52,17 +52,7 @@
             "path": "yarac64.exe"
           }
         ]
-      },
-      "verify": [
-        {
-          "type": "file",
-          "path": "yara64.exe"
-        },
-        {
-          "type": "file",
-          "path": "yarac64.exe"
-        }
-      ]
+      }
     }
   ]
 }
