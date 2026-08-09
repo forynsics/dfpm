@@ -77,6 +77,7 @@ python -m venv .venv
 dfpm paths
 dfpm catalog [<package-id>]
 dfpm install <package-id> [--package-version <version>]
+dfpm download <package-id> [--platform <os/arch>] [--to <dir>]
 dfpm uninstall <package-id>
 dfpm run <command> [arguments...]
 dfpm which <command>
@@ -108,6 +109,21 @@ Continue? [y/N]
 ```
 
 A package that declares a platform is refused outright on a machine that does not match it. Use `--yes` only when the plan has already been reviewed.
+
+**Getting a build for a different machine.** Installing one here would be meaningless — a Linux binary behind a Windows command shortcut is a broken tool — but wanting the file is perfectly reasonable. `dfpm download` saves the release itself and does nothing else with it:
+
+```powershell
+dfpm download hayabusa --platform macos/arm64 --to D:\staging
+```
+
+```text
+Downloading Hayabusa 4.0.0 for macos/arm64, 43.3 MiB
+  from https://github.com/Yamato-Security/hayabusa/releases/download/v4.0.0/hayabusa-4.0.0-mac-aarch64.zip
+  to   D:\staging\hayabusa-4.0.0-mac-aarch64.zip
+Saved D:\staging\hayabusa-4.0.0-mac-aarch64.zip
+```
+
+The file keeps the name its project published it under, and lands where you asked. It is checked against the digest the catalog pinned, and discarded if it does not match, but beyond that dfpm does not get involved: nothing is cached, unpacked, recorded or installed. Whatever the machine it is meant for does with it is that machine's business.
 
 A few tools carry terms restricting who may use them, or for what purpose. Those packages record the terms URL, dfpm shows it in the plan, and `--yes` on its own will not install them — confirming a plan and asserting that restricted terms permit your use are different claims, and only you can make the second one. Answering the prompt covers it interactively; a scripted install needs `--accept-terms`.
 
@@ -235,7 +251,7 @@ state\packages\               Managed-file records
 
 dfpm is in early development. Interfaces, manifests and behaviour remain subject to change, and the command line ships only what is actually implemented.
 
-**Working today:** manifest validation, verified local and HTTPS artifacts, contained portable ZIP installation with a free-space check, an install plan that shows what a package costs before it is fetched, replacing installs, directory-scoped removal, a manageable download cache, command shortcuts and `dfpm run`, a loopback management interface, and read-only health checks.
+**Working today:** manifest validation, verified local and HTTPS artifacts, contained portable ZIP installation with a free-space check, an install plan that shows what a package costs before it is fetched, replacing installs, directory-scoped removal, a manageable download cache, plain downloads of builds for other machines, command shortcuts and `dfpm run`, a loopback management interface, and read-only health checks.
 
 **Not built yet:** lockfile export, repair, release discovery, executable health checks, a `dfpm search` command, and packages that need an interpreter such as Python, Perl or Java. Linux and macOS support, private and offline registries, signed repository snapshots and organisation policy are longer-term.
 

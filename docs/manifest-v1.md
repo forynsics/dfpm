@@ -128,7 +128,7 @@ Fixed byte ceilings and a compression-ratio limit were removed deliberately. Aga
 
 `dfpm install <tool>` picks the newest version with a build for this machine. Platform is filtered before version, because two builds of one version differ only in what they run on, and taking whichever sorted last would put a Linux binary on a Windows machine without saying so. `--package-version` narrows to one version and the same platform rule then applies. A tool with no build for this machine is refused with the platforms it does ship for.
 
-Fetching another platform's build in order to stage a machine you are not sitting at is a cache concern rather than an install one, and is not built yet. Installing one would put a foreign binary in the tools directory behind a command shortcut that cannot run it.
+Installing another platform's build would put a foreign binary in the tools directory behind a command shortcut that cannot run it, so it stays refused. Getting hold of that build is a separate and much smaller thing: `dfpm download <tool> --platform <os/arch>` saves the release file itself, and what the machine it is meant for does with it is that machine's business.
 
 ## Installation behavior
 

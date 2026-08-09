@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import sys
 import textwrap
@@ -14,6 +15,7 @@ from .catalog import describe, load_catalog, resolve
 from .catalog import newest as catalog_newest
 from .catalog import version_key as catalog_version_key
 from .doctor import inspect
+from .downloads import retrieve
 from .errors import DfpmError
 from .gui import serve
 from .installer import check_destination, check_platform, install
@@ -43,6 +45,15 @@ def build_parser() -> argparse.ArgumentParser:
         dest="accept_terms",
         help="Assert that the package's usage terms permit your use. Never implied by --yes.",
     )
+
+    download_command = commands.add_parser(
+        "download",
+        help="Download a package's release file without installing it, for a machine that is not this one.",
+    )
+    download_command.add_argument("package")
+    download_command.add_argument("--package-version", dest="package_version", help="Download this version instead of the newest.")
+    download_command.add_argument("--platform", help="Download the build for this os/arch, written as os/arch.")
+    download_command.add_argument("--to", dest="destination", type=Path, help="Directory to save into. Defaults to the current one.")
 
     uninstall_command = commands.add_parser("uninstall", help="Remove installed files dfpm recorded.")
     uninstall_command.add_argument("package")
@@ -107,6 +118,8 @@ def _run(args: argparse.Namespace, storage: Storage) -> int:
         return _catalog(args)
     if args.command == "install":
         return _install(args, storage)
+    if args.command == "download":
+        return _download(args)
     if args.command == "uninstall":
         return _uninstall(args, storage)
     if args.command == "cache":
@@ -335,6 +348,43 @@ def _report_readiness(storage: Storage, manifest) -> None:
         print(f"  {requirement}: {detail}")
         print(f"    {runtimes.describe(requirement.runtime).remediation}")
     print(f"\nThe package is installed but cannot be run yet. Run 'dfpm doctor {manifest.id}' for details.")
+
+
+def _download(args: argparse.Namespace) -> int:
+    """Save a package's release file, for a machine dfpm is not running on.
+
+    Installing a build this machine cannot run would be meaningless, but there
+    is nothing wrong with wanting the file itself. This is that and nothing
+    more: the release, under the name its project gave it, in a directory of
+    your choosing. Whatever the other machine does with it is its own business.
+    """
+    manifest = resolve(args.catalog, args.package, args.package_version, args.platform)
+    directory = args.destination or Path.cwd()
+    if not directory.is_dir():
+        raise DfpmError(f"Not a directory: {directory}")
+    target = directory / _released_filename(manifest)
+
+    size = f", {human_size(manifest.package.size)}" if manifest.package.size else ""
+    print(f"Downloading {manifest.name} {manifest.version} for {manifest.platform or 'any platform'}{size}")
+    print(f"  from {manifest.package_url()}")
+    print(f"  to   {target}")
+
+    reporter = progress.reporter()
+    try:
+        retrieve(manifest.package, manifest.package_url(), target, reporter)
+    finally:
+        if reporter is not None:
+            reporter.close()
+    print(f"Saved {target}")
+    print(f"  sha256 {manifest.package.sha256}, which is what the catalog pinned")
+    return 0
+
+
+def _released_filename(manifest) -> str:
+    """The name the project published the file under, made safe to join to a directory."""
+    tail = manifest.package.url.replace("\\", "/").rstrip("/").rsplit("/", 1)[-1]
+    cleaned = re.sub(r"[^A-Za-z0-9._-]", "_", tail).lstrip(".")
+    return cleaned or f"{manifest.id}-{manifest.version}"
 
 
 def _uninstall(args: argparse.Namespace, storage: Storage) -> int:
