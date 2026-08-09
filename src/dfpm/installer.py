@@ -14,17 +14,24 @@ from .artifacts import acquire
 from .errors import InstallError
 from .inventory import forget_package, read_package, write_package
 from .manifest import Manifest
+from .progress import Reporter
 from .storage import Storage, remove_tree
 
 
-def install(manifest: Manifest, storage: Storage, *, limits: ArchiveLimits = DEFAULT_LIMITS) -> Path:
+def install(
+    manifest: Manifest,
+    storage: Storage,
+    *,
+    limits: ArchiveLimits = DEFAULT_LIMITS,
+    on_progress: Reporter | None = None,
+) -> Path:
     """Install a package, replacing whatever version of it was installed before."""
     check_platform(manifest)
     previous = check_destination(manifest, storage)
     storage.initialize()
     destination = storage.package_version(manifest.id, manifest.version)
-    artifact = acquire(manifest.artifact, manifest.artifact_source(), storage)
-    record = _stage(manifest, artifact, storage, destination, limits)
+    artifact = acquire(manifest.artifact, manifest.artifact_source(), storage, on_progress)
+    record = _stage(manifest, artifact, storage, destination, limits, on_progress)
     _publish(manifest, storage, destination, record, previous)
     return destination
 
@@ -61,13 +68,16 @@ def _stage(
     storage: Storage,
     destination: Path,
     limits: ArchiveLimits,
+    on_progress: Reporter | None = None,
 ) -> dict[str, Any]:
     """Extract and validate into a staging directory, then move it into place atomically."""
     staging_parent = storage.root / "staging"
     staging_parent.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix=f"{manifest.id}-{manifest.version}-", dir=staging_parent))
     try:
-        managed_files = extract_zip(artifact, staging, manifest.strip_components, limits, manifest.extracted_size)
+        managed_files = extract_zip(
+            artifact, staging, manifest.strip_components, limits, manifest.extracted_size, on_progress
+        )
         check_path_lengths(destination, managed_files, limits)
         _check_recorded_extraction(manifest, managed_files)
         _validate_expected_paths(staging, manifest)

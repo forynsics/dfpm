@@ -10,6 +10,7 @@ from pathlib import Path, PurePosixPath
 
 from .errors import InstallError
 from .names import unsafe_reason
+from .progress import Reporter
 
 CHUNK_SIZE = 1024 * 1024
 
@@ -97,6 +98,7 @@ def extract_zip(
     strip_components: int,
     limits: ArchiveLimits = DEFAULT_LIMITS,
     expected_size: int | None = None,
+    on_progress: Reporter | None = None,
 ) -> list[dict[str, str | int]]:
     """Extract *archive* into *destination*, returning a record of every file written.
 
@@ -116,6 +118,7 @@ def extract_zip(
             )
         declared = sum(info.file_size for info in entries)
         budget = _space_budget(destination, declared if expected_size is None else expected_size, limits)
+        expected_entries = sum(1 for info in entries if not info.filename.replace("\\", "/").endswith("/"))
         claimed: dict[str, tuple[str, bool]] = {}
         files: list[dict[str, str | int]] = []
         extracted = 0
@@ -135,6 +138,8 @@ def extract_zip(
             size = _write_entry(source, info, target, extracted, budget)
             extracted += size
             files.append({"path": str(PurePosixPath(*stripped)), "size": size})
+            if on_progress is not None:
+                on_progress("extract", len(files), expected_entries)
     if not files:
         raise InstallError(
             "Archive did not contain any installable files. Check whether install.strip_components is set too high."

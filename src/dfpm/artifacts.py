@@ -8,12 +8,13 @@ from pathlib import Path
 
 from .errors import VerificationError
 from .manifest import Artifact
+from .progress import Reporter
 from .storage import Storage
 
 CHUNK_SIZE = 1024 * 1024
 
 
-def acquire(artifact: Artifact, source: str, storage: Storage) -> Path:
+def acquire(artifact: Artifact, source: str, storage: Storage, on_progress: Reporter | None = None) -> Path:
     storage.cache.mkdir(parents=True, exist_ok=True)
     destination = storage.cache / artifact.sha256
     if destination.exists():
@@ -32,7 +33,7 @@ def acquire(artifact: Artifact, source: str, storage: Storage) -> Path:
             with urllib.request.urlopen(request, timeout=30) as response, partial.open("wb") as target:
                 if urllib.parse.urlparse(response.geturl()).scheme != "https":
                     raise VerificationError("HTTPS artifact redirected to an insecure source")
-                shutil.copyfileobj(response, target, CHUNK_SIZE)
+                _stream(response, target, artifact.size or _declared_length(response), on_progress)
         elif parsed.scheme == "file":
             shutil.copyfile(urllib.request.url2pathname(parsed.path), partial)
         elif not parsed.scheme:
@@ -51,6 +52,31 @@ def acquire(artifact: Artifact, source: str, storage: Storage) -> Path:
         partial.unlink(missing_ok=True)
         raise
     return destination
+
+
+def _declared_length(response) -> int | None:
+    """The size the server claims, used only to draw a bar against."""
+    try:
+        return int(response.headers.get("Content-Length"))
+    except (TypeError, ValueError):
+        return None
+
+
+def _stream(response, target, total: int | None, on_progress: Reporter | None) -> None:
+    """Copy the body across, reporting as it goes.
+
+    The size here is only for drawing a bar. Whether the bytes are the right
+    ones is settled afterwards by the digest, which is the only thing that
+    decides an artifact is acceptable.
+    """
+    done = 0
+    if on_progress is not None:
+        on_progress("download", 0, total)
+    while chunk := response.read(CHUNK_SIZE):
+        target.write(chunk)
+        done += len(chunk)
+        if on_progress is not None:
+            on_progress("download", done, total)
 
 
 def verify(path: Path, artifact: Artifact) -> None:

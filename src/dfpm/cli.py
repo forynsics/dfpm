@@ -6,7 +6,7 @@ import shutil
 import sys
 from pathlib import Path
 
-from . import __version__, cache, launcher, removal, runtimes
+from . import __version__, cache, launcher, progress, removal, runtimes
 from .archive import human_size
 from .catalog import describe, load_catalog, resolve
 from .doctor import inspect
@@ -205,7 +205,12 @@ def _install(args: argparse.Namespace, storage: Storage) -> int:
         if answer not in {"y", "yes"}:
             print("No changes made.")
             return 2
-    destination = install(manifest, storage)
+    reporter = progress.reporter()
+    try:
+        destination = install(manifest, storage, on_progress=reporter)
+    finally:
+        if reporter is not None:
+            reporter.close()
     print(f"Installed to {destination}")
     if previous:
         print(f"Removed the previous version, {previous}.")
