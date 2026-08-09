@@ -150,7 +150,8 @@ function renderCatalog() {
         el("div", { className: "tags" }, [
           alreadyInstalled ? chip("Installed", "ok") : null,
           replaces ? chip(`replaces ${replaces}`) : null,
-          entry.platform ? chip(`${entry.platform.os}/${entry.platform.arch}`) : null,
+          ...(entry.disciplines || []).map((item) => chip(item.label, "accent")),
+          ...(entry.platforms || []).map((item) => chip(`${item.os}/${item.arch}`)),
           entry.project && entry.project.license ? chip(entry.project.license) : null,
         ]),
         el("div", { className: "card-actions" }, [

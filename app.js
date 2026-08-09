@@ -1,28 +1,22 @@
 "use strict";
 
-/* Landing site for dfpm. Everything shown here is real: the catalog mirrors
-   catalog/*.json in the repository, and the commands mirror `dfpm --help`. */
+/* Landing site for dfpm. Everything shown here is real: the catalog is read
+   from catalog.json, which is what `dfpm catalog --json` prints for the
+   manifests in this repository, and the commands mirror `dfpm --help`.
 
-const CATALOG = [
-  {
-    id: "yara",
-    name: "YARA",
-    version: "4.5.5",
-    kind: "tool",
-    letter: "Y",
-    tone: "gold",
-    plain: "Investigators write rules describing suspicious strings and byte patterns. YARA checks files or memory and reports what matches.",
-    platform: "windows/x64",
-    license: "BSD-3-Clause",
-    project: "https://github.com/VirusTotal/yara",
-    commands: ["yara", "yarac"],
-  },
-];
+   The feed is fetched rather than written out here so this page and the local
+   interface describe a package the same way. A copy kept by hand is a copy
+   that goes stale the first time a manifest changes. */
+
+const CATALOG_FEED = "catalog.json";
+
+const state = { packages: [], error: null };
 
 const COMMANDS = [
   ["dfpm paths", "Show where dfpm stores files."],
   ["dfpm catalog", "List available packages."],
   ["dfpm install <package>", "Install a package, replacing any version already installed."],
+  ["dfpm download <package>", "Download a package's release file without installing it."],
   ["dfpm uninstall <package>", "Remove installed files dfpm recorded."],
   ["dfpm cache", "Inspect and clean the verified download cache."],
   ["dfpm run <command>", "Run a command from an installed package."],
@@ -46,27 +40,86 @@ function el(tag, options = {}, children = []) {
 
 /* ---------- content ---------- */
 
+function chip(text, tone) {
+  return el("span", { className: tone || "", text });
+}
+
+function badge(name, tone) {
+  return el("div", { className: `tool-badge ${tone}`, text: (name[0] || "?").toUpperCase() });
+}
+
+/* Tones are decoration and belong to the page, not to the catalog. Picking one
+   from the name keeps a tool the same colour between visits without a manifest
+   having to carry a field about how a website looks. */
+const TONES = ["navy", "gold", "silver"];
+
+function tone(entry) {
+  let total = 0;
+  for (const character of entry.id) total = (total + character.codePointAt(0)) % 1024;
+  return TONES[total % TONES.length];
+}
+
+function renderCatalogCount() {
+  // Counted from the feed rather than written into the page, so adding a
+  // manifest does not leave a number behind that quietly stops being true.
+  const total = state.packages.length;
+  $("#catalog-count").textContent = state.error
+    ? "Catalog unavailable"
+    : `${total} package${total === 1 ? "" : "s"} available`;
+}
+
+async function loadCatalog() {
+  try {
+    const response = await fetch(CATALOG_FEED, { cache: "no-cache" });
+    if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+    const feed = await response.json();
+    state.packages = feed.packages || [];
+  } catch (error) {
+    // Opening the file straight from disk trips this, because a browser will
+    // not fetch alongside a file:// page. Say what to do rather than leaving
+    // an empty panel that looks like an empty catalog.
+    state.error = `The catalog could not be loaded (${error.message}). This page reads ${CATALOG_FEED} and needs to be served over HTTP.`;
+  }
+  renderCatalog();
+}
+
 function renderCatalog() {
+  renderCatalogCount();
   const container = $("#catalog-list");
   container.replaceChildren();
-  for (const entry of CATALOG) {
+
+  if (state.error) {
+    container.append(el("div", { className: "empty-state", text: state.error }));
+    return;
+  }
+  if (!state.packages.length) {
+    container.append(el("div", { className: "empty-state", text: "The catalog holds no packages yet." }));
+    return;
+  }
+
+  for (const entry of state.packages) {
+    const project = entry.project || {};
+    const platforms = (entry.platforms || []).map((item) => `${item.os}/${item.arch}`);
+    const disciplines = entry.disciplines || [];
     container.append(
       el("article", { className: "tool-card" }, [
         el("header", {}, [
-          el("div", { className: `tool-badge ${entry.tone}`, text: entry.letter }),
+          badge(entry.name, tone(entry)),
           el("div", {}, [
             el("h3", { text: `${entry.name} ${entry.version}` }),
-            el("small", { text: `${entry.id} · ${entry.kind} · ${entry.platform}` }),
+            el("small", { text: `${entry.id} · ${entry.kind}` }),
           ]),
         ]),
-        el("p", { text: entry.plain }),
+        el("p", { text: entry.about || entry.description }),
         el("div", { className: "tags" }, [
-          el("span", { text: entry.license }),
-          ...entry.commands.map((command) => el("span", { text: command })),
+          ...disciplines.map((item) => chip(item.label, "accent")),
+          ...platforms.map((item) => chip(item)),
+          project.license ? chip(project.license) : null,
+          ...(entry.commands || []).map((command) => chip(command)),
         ]),
         el("footer", {}, [
-          el("span", { text: "Digest pinned and verified" }),
-          el("a", { text: "Project site →", href: entry.project }),
+          el("span", { text: platforms.length > 1 ? `${platforms.length} builds, each digest pinned` : "Digest pinned and verified" }),
+          project.repository ? el("a", { text: "Project site →", href: project.repository }) : null,
         ]),
       ])
     );
@@ -170,7 +223,7 @@ $("#theme-button").addEventListener("click", () => {
 });
 
 applyAppearance(localStorage.getItem("dfpm-appearance") || "light");
-renderCatalog();
+loadCatalog();
 renderCommands();
 wireCopyButtons();
 loadAssets();

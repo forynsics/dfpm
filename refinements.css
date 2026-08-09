@@ -59,6 +59,9 @@ body { font-family: Arial, "Helvetica Neue", Helvetica, sans-serif; color: var(-
 .tool-badge.silver { background:#e5e5e5; }
 .tool-badge.navy { background:#d9e0ec; }
 .tags span { border-radius: 0; font-family: var(--mono); }
+/* A discipline says which part of the field a tool belongs to, which is what
+   somebody browsing without a tool in mind is reading for. It leads the row. */
+.tags span.accent { background: var(--accent-soft); border-color: #d1a24c; color: var(--accent-dark); }
 .kit-card { border-color: var(--text); border-radius: 0; box-shadow: 4px 4px 0 var(--accent); }
 .kit-card:nth-child(2) { box-shadow: 4px 4px 0 var(--blue); }
 .kit-card:nth-child(3) { box-shadow: 4px 4px 0 #9ba5b8; }
@@ -95,6 +98,7 @@ html[data-appearance="dark"] .nav-link.active { background:#1d1d1d; }
 html[data-appearance="dark"] .search-box input { color:var(--text); }
 html[data-appearance="dark"] .filter-bar button.active { background:#2a2418; color:#fff; border-color:var(--accent); }
 html[data-appearance="dark"] .tags span, html[data-appearance="dark"] code, html[data-appearance="dark"] .table-head { background:#242424; color:var(--text); }
+html[data-appearance="dark"] .tags span.accent { background:#2a2418; border-color:var(--accent); color:#ffc45d; }
 html[data-appearance="dark"] .tool-card footer button, html[data-appearance="dark"] .learn-grid button, html[data-appearance="dark"] .quick-searches button { color:#ffc45d; }
 html[data-appearance="dark"] .local-banner { background:#3c2d13; color:#fff4d7; border-color:#8c681f; }
 html[data-appearance="dark"] .local-banner p { color:#e1d2ac; }

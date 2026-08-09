@@ -1,0 +1,401 @@
+{
+  "packages": [
+    {
+      "id": "hayabusa",
+      "name": "Hayabusa",
+      "kind": "tool",
+      "description": "Analyze Windows event logs, build forensic timelines, and apply Sigma-based detections.",
+      "version": "4.0.0",
+      "versions": [
+        "4.0.0"
+      ],
+      "platforms": [
+        {
+          "os": "windows",
+          "arch": "x64"
+        },
+        {
+          "os": "linux",
+          "arch": "x64"
+        },
+        {
+          "os": "macos",
+          "arch": "arm64"
+        }
+      ],
+      "about": "Hayabusa reads a directory of Windows .evtx files and produces a single consolidated timeline, applying bundled Sigma detection rules as it goes so that matching activity is labelled with a severity. It supports the Sigma specification including v2 correlation rules, and can output to CSV, JSON and several other formats for review in other tools. The detection rules ship with the release and can be updated separately from the binary.",
+      "disciplines": [
+        {
+          "key": "windows-forensics",
+          "label": "Windows forensics"
+        }
+      ],
+      "capabilities": [
+        {
+          "key": "event-log-parsing",
+          "label": "Event log parsing"
+        },
+        {
+          "key": "timeline-generation",
+          "label": "Timeline generation"
+        },
+        {
+          "key": "sigma-detection",
+          "label": "Sigma rule detection"
+        },
+        {
+          "key": "data-export",
+          "label": "Data export"
+        }
+      ],
+      "use_cases": [
+        {
+          "key": "forensic-triage",
+          "label": "Forensic triage"
+        },
+        {
+          "key": "incident-response",
+          "label": "Incident response"
+        },
+        {
+          "key": "threat-hunting",
+          "label": "Threat hunting"
+        }
+      ],
+      "evidence": [
+        {
+          "key": "windows-event-logs",
+          "label": "Windows event logs"
+        }
+      ],
+      "commands": [
+        "hayabusa"
+      ],
+      "project": {
+        "homepage": "https://yamato-security.github.io/hayabusa/",
+        "repository": "https://github.com/Yamato-Security/hayabusa",
+        "license": "AGPL-3.0-only AND LicenseRef-DRL-1.1"
+      }
+    },
+    {
+      "id": "yara",
+      "name": "YARA",
+      "kind": "tool",
+      "description": "Scan files and memory for rules describing textual or binary patterns.",
+      "version": "4.5.5",
+      "versions": [
+        "4.5.5"
+      ],
+      "platforms": [
+        {
+          "os": "windows",
+          "arch": "x64"
+        }
+      ],
+      "about": "YARA matches files, directories and running processes against rules that describe the strings and byte sequences a family of software contains. Each match is reported with the rule that fired and where in the file it occurred. Rules are plain text and portable, so detections written by one team can be applied unchanged by another, and the same rule set can be run over collected files or over a memory image.",
+      "disciplines": [
+        {
+          "key": "malware-analysis",
+          "label": "Malware analysis"
+        }
+      ],
+      "capabilities": [
+        {
+          "key": "signature-scanning",
+          "label": "Signature scanning"
+        },
+        {
+          "key": "string-extraction",
+          "label": "String extraction"
+        }
+      ],
+      "use_cases": [
+        {
+          "key": "threat-hunting",
+          "label": "Threat hunting"
+        },
+        {
+          "key": "incident-response",
+          "label": "Incident response"
+        }
+      ],
+      "evidence": [
+        {
+          "key": "files",
+          "label": "Files of any kind"
+        },
+        {
+          "key": "memory-images",
+          "label": "Memory images"
+        }
+      ],
+      "commands": [
+        "yara",
+        "yarac"
+      ],
+      "project": {
+        "homepage": "https://virustotal.github.io/yara/",
+        "repository": "https://github.com/VirusTotal/yara",
+        "license": "BSD-3-Clause"
+      }
+    }
+  ],
+  "vocabulary": {
+    "disciplines": [
+      {
+        "key": "windows-forensics",
+        "label": "Windows forensics"
+      },
+      {
+        "key": "macos-forensics",
+        "label": "macOS forensics"
+      },
+      {
+        "key": "linux-forensics",
+        "label": "Linux forensics"
+      },
+      {
+        "key": "smartphone-forensics",
+        "label": "Smartphone forensics"
+      },
+      {
+        "key": "network-forensics",
+        "label": "Network forensics"
+      },
+      {
+        "key": "cloud-forensics",
+        "label": "Cloud forensics"
+      },
+      {
+        "key": "memory-forensics",
+        "label": "Memory forensics"
+      },
+      {
+        "key": "malware-analysis",
+        "label": "Malware analysis"
+      }
+    ],
+    "capabilities": [
+      {
+        "key": "signature-scanning",
+        "label": "Signature scanning"
+      },
+      {
+        "key": "sigma-detection",
+        "label": "Sigma rule detection"
+      },
+      {
+        "key": "event-log-parsing",
+        "label": "Event log parsing"
+      },
+      {
+        "key": "timeline-generation",
+        "label": "Timeline generation"
+      },
+      {
+        "key": "registry-parsing",
+        "label": "Registry parsing"
+      },
+      {
+        "key": "file-system-parsing",
+        "label": "File system parsing"
+      },
+      {
+        "key": "memory-analysis",
+        "label": "Memory analysis"
+      },
+      {
+        "key": "file-carving",
+        "label": "File carving"
+      },
+      {
+        "key": "string-extraction",
+        "label": "String extraction"
+      },
+      {
+        "key": "hash-matching",
+        "label": "Hash matching"
+      },
+      {
+        "key": "evidence-collection",
+        "label": "Evidence collection"
+      },
+      {
+        "key": "decryption",
+        "label": "Decryption"
+      },
+      {
+        "key": "data-export",
+        "label": "Data export"
+      },
+      {
+        "key": "visualisation",
+        "label": "Visualisation"
+      }
+    ],
+    "use_cases": [
+      {
+        "key": "incident-response",
+        "label": "Incident response"
+      },
+      {
+        "key": "forensic-triage",
+        "label": "Forensic triage"
+      },
+      {
+        "key": "threat-hunting",
+        "label": "Threat hunting"
+      },
+      {
+        "key": "compromise-assessment",
+        "label": "Compromise assessment"
+      },
+      {
+        "key": "evidence-review",
+        "label": "Evidence review and reporting"
+      }
+    ],
+    "evidence": [
+      {
+        "key": "windows-event-logs",
+        "label": "Windows event logs"
+      },
+      {
+        "key": "registry-hives",
+        "label": "Windows registry hives"
+      },
+      {
+        "key": "master-file-table",
+        "label": "NTFS master file table"
+      },
+      {
+        "key": "usn-journal",
+        "label": "NTFS change journal"
+      },
+      {
+        "key": "prefetch-files",
+        "label": "Prefetch files"
+      },
+      {
+        "key": "amcache",
+        "label": "Amcache"
+      },
+      {
+        "key": "shimcache",
+        "label": "Shimcache"
+      },
+      {
+        "key": "shellbags",
+        "label": "Shellbags"
+      },
+      {
+        "key": "jump-lists",
+        "label": "Jump lists"
+      },
+      {
+        "key": "shortcut-files",
+        "label": "Shortcut files"
+      },
+      {
+        "key": "recycle-bin",
+        "label": "Recycle bin"
+      },
+      {
+        "key": "srum-database",
+        "label": "System resource usage database"
+      },
+      {
+        "key": "scheduled-tasks",
+        "label": "Scheduled tasks"
+      },
+      {
+        "key": "browser-history",
+        "label": "Browser history"
+      },
+      {
+        "key": "email-stores",
+        "label": "Email stores"
+      },
+      {
+        "key": "onedrive-logs",
+        "label": "OneDrive sync logs"
+      },
+      {
+        "key": "sqlite-databases",
+        "label": "SQLite databases"
+      },
+      {
+        "key": "volume-shadow-copies",
+        "label": "Volume shadow copies"
+      },
+      {
+        "key": "memory-images",
+        "label": "Memory images"
+      },
+      {
+        "key": "disk-images",
+        "label": "Disk images"
+      },
+      {
+        "key": "network-captures",
+        "label": "Network captures"
+      },
+      {
+        "key": "plist-files",
+        "label": "Property lists"
+      },
+      {
+        "key": "fsevents",
+        "label": "macOS file system events"
+      },
+      {
+        "key": "unified-logs",
+        "label": "macOS unified logs"
+      },
+      {
+        "key": "spotlight-metadata",
+        "label": "Spotlight metadata"
+      },
+      {
+        "key": "quarantine-events",
+        "label": "Download quarantine records"
+      },
+      {
+        "key": "syslog",
+        "label": "Syslog"
+      },
+      {
+        "key": "systemd-journal",
+        "label": "systemd journal"
+      },
+      {
+        "key": "shell-history",
+        "label": "Shell history"
+      },
+      {
+        "key": "audit-logs",
+        "label": "Audit daemon logs"
+      },
+      {
+        "key": "ios-backups",
+        "label": "iOS backups"
+      },
+      {
+        "key": "android-images",
+        "label": "Android images"
+      },
+      {
+        "key": "cloud-audit-logs",
+        "label": "Cloud audit logs"
+      },
+      {
+        "key": "netflow-records",
+        "label": "Flow records"
+      },
+      {
+        "key": "files",
+        "label": "Files of any kind"
+      }
+    ]
+  }
+}

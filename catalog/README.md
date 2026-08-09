@@ -16,6 +16,7 @@ The steps below describe doing it by hand, which is how it works until that tool
 6. Record the upstream project and its license once, at the tool level. The platform belongs to each build; the platforms a tool supports are read from its builds rather than stated again. `license` takes an SPDX expression, so an artifact under more than one license says so directly (`AGPL-3.0-only AND LicenseRef-DRL-1.1`). If the tool restricts who may use it or for what purpose, record `project.terms_url`; that alone makes dfpm refuse to install it from a script without `--accept-terms`.
 7. If the tool needs particular arguments to work at all — some resolve their own rules or configuration relative to the working directory — record the working invocation in the review notes below. dfpm does not supply arguments on a tool's behalf, so this is documentation for whoever installs it, not configuration.
 8. Run `dfpm catalog`, which loads and validates every manifest in this directory and fails on a malformed one. Then install it and confirm the tool actually runs.
+9. Regenerate the site's feed with `dfpm catalog --json > catalog.json` from the repository root. The public site is a static page and cannot run dfpm, so that file is how a reviewed package reaches it. The test suite fails if the two disagree, which is the reminder rather than the requirement.
 
 ## Review notes
 
