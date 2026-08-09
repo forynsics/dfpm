@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from . import classification
 from .errors import ManifestError
 from .manifest import Manifest
 
@@ -25,7 +26,12 @@ def resolve(directory: Path, package_id: str, version: str | None = None) -> Man
 
 
 def describe(manifest: Manifest) -> dict[str, Any]:
-    """Summarize a manifest for listings, omitting optional sections that are absent."""
+    """Summarize a manifest for listings, omitting optional sections that are absent.
+
+    This is the one shape both interfaces read, so a package reads the same way
+    wherever it is shown. Classification carries its human labels alongside the
+    keys, because a page should not have to know the vocabulary to display it.
+    """
     entry: dict[str, Any] = {
         "id": manifest.id,
         "name": manifest.name,
@@ -33,6 +39,14 @@ def describe(manifest: Manifest) -> dict[str, Any]:
         "kind": manifest.kind,
         "description": manifest.description,
     }
+    if manifest.about:
+        entry["about"] = manifest.about
+    for field in ("capabilities", "use_cases", "evidence"):
+        keys = getattr(manifest, field)
+        if keys:
+            entry[field] = [{"key": key, "label": classification.label(field, key)} for key in keys]
+    if manifest.entrypoints:
+        entry["commands"] = [item.name for item in manifest.entrypoints]
     if manifest.platform is not None:
         entry["platform"] = {"os": manifest.platform.system, "arch": manifest.platform.architecture}
     if manifest.project is not None:

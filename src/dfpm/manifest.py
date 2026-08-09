@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from . import runtimes
-from .classification import checked_artifacts, checked_solves
+from . import classification
 from .errors import DfpmError, ManifestError
 from .names import unsafe_reason
 from .platforms import SUPPORTED_ARCHITECTURES, SUPPORTED_SYSTEMS
@@ -21,8 +21,11 @@ SUPPORTED_KINDS = {"tool", "runtime", "ruleset", "artifact-pack", "parser-pack",
 
 
 @dataclass(frozen=True)
-class Artifact:
-    source: str
+class Package:
+    """The file dfpm downloads. Named for what it is, not for what it holds:
+    "artifact" in this catalog means a forensic artifact."""
+
+    url: str
     sha256: str
     size: int | None = None
 
@@ -35,7 +38,9 @@ class Entrypoint:
 
 
 @dataclass(frozen=True)
-class HealthCheck:
+class Check:
+    """One thing that must be true for the install to count as successful."""
+
     type: str
     path: str
 
@@ -69,7 +74,7 @@ class Platform:
 @dataclass(frozen=True)
 class Project:
     homepage: str | None
-    source: str | None
+    repository: str | None
     license: str | None
     terms_url: str | None = None
 
@@ -83,15 +88,16 @@ class Manifest:
     kind: str
     description: str
     about: str | None
-    solves: tuple[str, ...]
-    artifacts: tuple[str, ...]
-    artifact: Artifact
+    capabilities: tuple[str, ...]
+    use_cases: tuple[str, ...]
+    evidence: tuple[str, ...]
+    package: Package
     strip_components: int
     extracted_size: int | None
     entry_count: int | None
     requires: tuple[Requirement, ...]
     entrypoints: tuple[Entrypoint, ...]
-    health_checks: tuple[HealthCheck, ...]
+    verify: tuple[Check, ...]
     platform: Platform | None
     project: Project | None
     source_path: Path
@@ -112,7 +118,7 @@ class Manifest:
 
     @classmethod
     def _from_dict(cls, data: dict[str, Any], path: Path, digest: str) -> "Manifest":
-        required = ("schema_version", "id", "name", "version", "kind", "description", "artifact", "install")
+        required = ("schema_version", "id", "name", "version", "kind", "description", "package", "install")
         missing = [key for key in required if key not in data]
         if missing:
             raise ManifestError(f"Missing required fields: {', '.join(missing)}")
@@ -125,14 +131,14 @@ class Manifest:
         if kind not in SUPPORTED_KINDS:
             raise ManifestError(f"Unsupported package kind: {kind}")
 
-        artifact_data = _object(data["artifact"], "artifact")
-        artifact_source = _text(artifact_data.get("source"), "artifact.source")
-        artifact_hash = _text(artifact_data.get("sha256"), "artifact.sha256").lower()
-        if not SHA256.fullmatch(artifact_hash):
-            raise ManifestError("artifact.sha256 must be exactly 64 hexadecimal characters")
-        size = artifact_data.get("size")
+        package_data = _object(data["package"], "package")
+        package_url = _text(package_data.get("url"), "package.url")
+        package_hash = _text(package_data.get("sha256"), "package.sha256").lower()
+        if not SHA256.fullmatch(package_hash):
+            raise ManifestError("package.sha256 must be exactly 64 hexadecimal characters")
+        size = package_data.get("size")
         if size is not None and (not isinstance(size, int) or isinstance(size, bool) or size < 0):
-            raise ManifestError("artifact.size must be a non-negative integer")
+            raise ManifestError("package.size must be a non-negative integer")
 
         install = _object(data["install"], "install")
         if install.get("strategy") != "portable-zip":
@@ -157,12 +163,12 @@ class Manifest:
         if len(names) != len(set(names)):
             raise ManifestError("Entrypoint names must be unique")
 
-        health_checks = tuple(
-            HealthCheck(_text(item.get("type"), "health_check.type"), _relative_path(item.get("path"), "health_check.path"))
-            for item in _object_list(data.get("health_checks", []), "health_checks")
+        verify = tuple(
+            Check(_text(item.get("type"), "verify.type"), _relative_path(item.get("path"), "verify.path"))
+            for item in _object_list(data.get("verify", []), "verify")
         )
-        if any(check.type != "file" for check in health_checks):
-            raise ManifestError("Only file health checks are currently supported")
+        if any(check.type != "file" for check in verify):
+            raise ManifestError("Only file checks are currently supported in verify")
 
         return cls(
             schema_version=1,
@@ -172,25 +178,26 @@ class Manifest:
             kind=kind,
             description=_text(data["description"], "description"),
             about=None if data.get("about") is None else _text(data["about"], "about"),
-            solves=checked_solves(data.get("solves")),
-            artifacts=checked_artifacts(data.get("artifacts")),
-            artifact=Artifact(artifact_source, artifact_hash, size),
+            capabilities=classification.checked(data.get("capabilities"), "capabilities"),
+            use_cases=classification.checked(data.get("use_cases"), "use_cases"),
+            evidence=classification.checked(data.get("evidence"), "evidence"),
+            package=Package(package_url, package_hash, size),
             strip_components=strip_components,
             extracted_size=extracted_size,
             entry_count=entry_count,
             requires=_requirements(data.get("requires")),
             entrypoints=entrypoints,
-            health_checks=health_checks,
+            verify=verify,
             platform=_platform(data.get("platform")),
             project=_project(data.get("project")),
             source_path=path,
             digest=digest,
         )
 
-    def artifact_source(self) -> str:
-        if "://" in self.artifact.source:
-            return self.artifact.source
-        return str((self.source_path.parent / self.artifact.source).resolve())
+    def package_url(self) -> str:
+        if "://" in self.package.url:
+            return self.package.url
+        return str((self.source_path.parent / self.package.url).resolve())
 
 
 def _optional_count(value: Any, field: str) -> int | None:
@@ -301,7 +308,7 @@ def _project(value: Any) -> Project | None:
     fields = _object(value, "project")
     return Project(
         homepage=_optional_url(fields.get("homepage"), "project.homepage"),
-        source=_optional_url(fields.get("source"), "project.source"),
+        repository=_optional_url(fields.get("repository"), "project.repository"),
         license=None if fields.get("license") is None else _text(fields.get("license"), "project.license"),
         terms_url=_optional_url(fields.get("terms_url"), "project.terms_url"),
     )

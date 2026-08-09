@@ -171,15 +171,15 @@ def _install(args: argparse.Namespace, storage: Storage) -> int:
     if manifest.project is not None:
         if manifest.project.license:
             print(f"  License:     {manifest.project.license}")
-        if manifest.project.source:
-            print(f"  Project:     {manifest.project.source}")
+        if manifest.project.repository:
+            print(f"  Project:     {manifest.project.repository}")
         if manifest.project.terms_url:
             print(f"  Terms:       {manifest.project.terms_url}")
             print("               Acceptance required. dfpm cannot judge whether they permit your use.")
-    print(f"  Source:      {manifest.artifact_source()}")
-    print(f"  SHA-256:     {manifest.artifact.sha256}")
-    if manifest.artifact.size is not None:
-        print(f"  Download:    {human_size(manifest.artifact.size)}")
+    print(f"  Source:      {manifest.package_url()}")
+    print(f"  SHA-256:     {manifest.package.sha256}")
+    if manifest.package.size is not None:
+        print(f"  Download:    {human_size(manifest.package.size)}")
     if manifest.extracted_size is not None:
         installed = human_size(manifest.extracted_size)
         if manifest.entry_count is not None:

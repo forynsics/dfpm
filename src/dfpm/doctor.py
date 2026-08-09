@@ -84,7 +84,7 @@ def _file_problems(storage: Storage, package: dict[str, Any]) -> list[str]:
     for entrypoint in package.get("entrypoints", []):
         if not (root / entrypoint["path"]).is_file():
             problems.append(f"Missing entrypoint: {entrypoint['path']}")
-    for check in package.get("health_checks", []):
+    for check in package.get("verify", []):
         if check["type"] == "file" and not (root / check["path"]).is_file():
             problems.append(f"Health check failed: {check['path']}")
     return problems

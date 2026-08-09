@@ -16,7 +16,7 @@ class ManifestTests(unittest.TestCase):
             catalog, manifest_path = create_package(Path(temporary))
             manifest = Manifest.load(manifest_path)
             self.assertEqual(manifest.id, "example.tool")
-            self.assertEqual(Path(manifest.artifact_source()), catalog / "artifacts" / "example.tool-1.0.0.zip")
+            self.assertEqual(Path(manifest.package_url()), catalog / "artifacts" / "example.tool-1.0.0.zip")
 
     def test_rejects_parent_path_entrypoint(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -56,7 +56,7 @@ class ManifestTests(unittest.TestCase):
                 self.assertRaisesManifestError({"platform": platform})
 
     def test_rejects_project_links_that_are_not_https(self) -> None:
-        for project in ({"source": "http://example.org/tool"}, {"homepage": "ftp://example.org/tool"}):
+        for project in ({"repository": "http://example.org/tool"}, {"homepage": "ftp://example.org/tool"}):
             with self.subTest(project=project):
                 self.assertRaisesManifestError({"project": project})
 

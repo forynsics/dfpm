@@ -19,11 +19,11 @@ LEGACY_RECORD = {
     "activation_history": [{"version": "4.5.5", "activated_at": "2026-08-08T17:23:32+00:00"}],
     "versions": {
         "4.5.5": {
-            "artifact_sha256": "3" * 64,
+            "package_sha256": "3" * 64,
             "manifest_digest": "4" * 64,
             "installed_at": "2026-08-08T17:23:32+00:00",
             "entrypoints": [{"name": "yara", "path": "yara64.exe"}],
-            "health_checks": [],
+            "verify": [],
             "file_count": 1,
             "platform": {"os": "windows", "arch": "x64"},
         }
@@ -45,7 +45,7 @@ class LegacyRecordTests(unittest.TestCase):
         record = read_package(self.storage, "yara")
         self.assertEqual(record["version"], "4.5.5")
         self.assertEqual(record["name"], "YARA")
-        self.assertEqual(record["artifact_sha256"], "3" * 64)
+        self.assertEqual(record["package_sha256"], "3" * 64)
         self.assertEqual(record["platform"], {"os": "windows", "arch": "x64"})
         self.assertNotIn("versions", record)
         self.assertNotIn("activation_history", record)
@@ -74,6 +74,35 @@ class LegacyRecordTests(unittest.TestCase):
         current = {"id": "other", "name": "Other", "version": "1.0.0", "entrypoints": [], "file_count": 0}
         write_package(self.storage, "other", current)
         self.assertEqual(read_package(self.storage, "other"), current)
+
+
+
+
+class RenamedFieldTests(unittest.TestCase):
+    """Records written before the artifact/package rename must keep working."""
+
+    def test_an_old_record_is_read_under_the_new_names(self) -> None:
+        from dfpm.inventory import _normalize
+
+        old = {
+            "id": "yara", "name": "YARA", "version": "4.5.5",
+            "artifact_sha256": "3" * 64,
+            "health_checks": [{"type": "file", "path": "yara64.exe"}],
+            "entrypoints": [{"name": "yara", "path": "yara64.exe"}],
+        }
+        record = _normalize(old)
+        # Without this the cache would think the file yara needs is unused, and
+        # doctor would find nothing left to check.
+        self.assertEqual(record["package_sha256"], "3" * 64)
+        self.assertEqual(record["verify"], [{"type": "file", "path": "yara64.exe"}])
+        self.assertNotIn("artifact_sha256", record)
+        self.assertNotIn("health_checks", record)
+
+    def test_a_current_record_is_left_alone(self) -> None:
+        from dfpm.inventory import _normalize
+
+        current = {"id": "yara", "version": "4.5.5", "package_sha256": "a" * 64, "verify": []}
+        self.assertEqual(_normalize(dict(current)), current)
 
 
 if __name__ == "__main__":

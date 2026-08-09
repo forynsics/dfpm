@@ -5,44 +5,56 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from dfpm.classification import ARTIFACTS, SOLVES, matching_keys
+from dfpm.catalog import load_catalog
+from dfpm.classification import VOCABULARIES, matching_keys
 from dfpm.errors import ManifestError
 from dfpm.manifest import Manifest
 from tests.helpers import create_package
 
 
 class VocabularyTests(unittest.TestCase):
-    """A closed vocabulary is the point: free tags fragment on the first synonym."""
+    """Three axes, kept apart on purpose: what it does, when you use it, what it reads."""
 
-    def test_the_two_axes_do_not_overlap(self) -> None:
-        # What you are trying to find out and what you are looking at are
-        # different questions, and a key belonging to both would blur them.
-        self.assertEqual(set(SOLVES) & set(ARTIFACTS), set())
+    def test_the_axes_do_not_share_terms(self) -> None:
+        # A key belonging to two axes would mean the split had stopped meaning
+        # anything, which is exactly what the single list before it suffered from.
+        keys = [set(vocabulary) for vocabulary in VOCABULARIES.values()]
+        for index, first in enumerate(keys):
+            for second in keys[index + 1:]:
+                self.assertEqual(first & second, set())
 
     def test_every_term_is_reachable_by_its_own_key(self) -> None:
-        for vocabulary in (SOLVES, ARTIFACTS):
+        for field, vocabulary in VOCABULARIES.items():
             for key, term in vocabulary.items():
                 self.assertEqual(term.key, key)
-                self.assertIn(key, matching_keys(vocabulary, key.replace("-", " ")))
+                self.assertIn(key, matching_keys(field, key.replace("-", " ")))
 
     def test_people_find_things_by_the_words_they_use(self) -> None:
-        self.assertIn("windows-event-log", matching_keys(ARTIFACTS, "evtx"))
-        self.assertIn("windows-event-log", matching_keys(ARTIFACTS, "event log"))
-        self.assertIn("mft", matching_keys(ARTIFACTS, "master file table"))
-        self.assertIn("mft", matching_keys(ARTIFACTS, "ntfs"))
-        self.assertIn("onedrive", matching_keys(ARTIFACTS, "sync log"))
-        self.assertIn("memory-image", matching_keys(ARTIFACTS, "ram dump"))
-        self.assertIn("malware-identification", matching_keys(SOLVES, "malware"))
-        self.assertIn("deleted-file-recovery", matching_keys(SOLVES, "carving"))
+        self.assertIn("windows-event-logs", matching_keys("evidence", "evtx"))
+        self.assertIn("windows-event-logs", matching_keys("evidence", "event log"))
+        self.assertIn("master-file-table", matching_keys("evidence", "mft"))
+        self.assertIn("master-file-table", matching_keys("evidence", "ntfs"))
+        self.assertIn("onedrive-logs", matching_keys("evidence", "sync log"))
+        self.assertIn("memory-images", matching_keys("evidence", "ram dump"))
+        self.assertIn("malware-analysis", matching_keys("use_cases", "malware"))
+        self.assertIn("incident-response", matching_keys("use_cases", "breach"))
+        self.assertIn("file-carving", matching_keys("capabilities", "recover deleted"))
 
-    def test_a_tool_or_format_name_is_never_a_concept_alias(self) -> None:
-        # Putting "sigma" on threat hunting would make every hunting tool answer
-        # to a search for one rule language. Those names belong on the package.
-        for name in ("sigma", "yara", "volatility", "plaso", "onedrive"):
-            self.assertEqual(matching_keys(SOLVES, name), set(), f"{name!r} leaked into a solves alias")
+    def test_a_tool_name_is_never_an_alias(self) -> None:
+        # An alias is a synonym for the idea. A product name belongs to the
+        # package that implements it, or it makes every peer answer to it.
+        for name in ("yara", "volatility", "plaso", "hayabusa", "autopsy"):
+            for field in VOCABULARIES:
+                self.assertEqual(matching_keys(field, name), set(), f"{name!r} leaked into {field}")
+
+    def test_a_format_worth_finding_gets_its_own_term_not_an_alias(self) -> None:
+        # Sigma is a real capability that discriminates between tools, so it is
+        # a term. What it must not be is an alias on a broader detection term,
+        # which would make every detection tool answer to it.
+        self.assertEqual(matching_keys("capabilities", "sigma"), {"sigma-detection"})
 
     def test_an_empty_query_matches_nothing(self) -> None:
-        self.assertEqual(matching_keys(SOLVES, "   "), set())
+        self.assertEqual(matching_keys("capabilities", "   "), set())
 
 
 class ManifestClassificationTests(unittest.TestCase):
@@ -59,49 +71,59 @@ class ManifestClassificationTests(unittest.TestCase):
     def test_a_classified_package_is_read(self) -> None:
         manifest = self.load(
             about="A longer plain-English explanation of what this is for.",
-            solves=["malware-identification", "threat-hunting"],
-            artifacts=["file-contents"],
+            capabilities=["signature-scanning"],
+            use_cases=["malware-analysis", "threat-hunting"],
+            evidence=["files"],
         )
-        self.assertEqual(manifest.solves, ("malware-identification", "threat-hunting"))
-        self.assertEqual(manifest.artifacts, ("file-contents",))
+        self.assertEqual(manifest.capabilities, ("signature-scanning",))
+        self.assertEqual(manifest.use_cases, ("malware-analysis", "threat-hunting"))
+        self.assertEqual(manifest.evidence, ("files",))
         self.assertTrue(manifest.about.startswith("A longer"))
 
     def test_classification_is_optional(self) -> None:
         _, manifest_path = create_package(self.base)
         manifest = Manifest.load(manifest_path)
-        self.assertEqual((manifest.solves, manifest.artifacts, manifest.about), ((), (), None))
+        self.assertEqual((manifest.capabilities, manifest.use_cases, manifest.evidence, manifest.about), ((), (), (), None))
 
     def test_an_invented_term_is_rejected(self) -> None:
         with self.assertRaises(ManifestError) as caught:
-            self.load(solves=["vibes"])
+            self.load(capabilities=["vibes"])
         self.assertIn("does not recognise", str(caught.exception))
 
     def test_a_term_from_the_wrong_axis_is_rejected(self) -> None:
         with self.assertRaises(ManifestError):
-            self.load(solves=["windows-event-log"])
+            self.load(capabilities=["windows-event-logs"])
         with self.assertRaises(ManifestError):
-            self.load(artifacts=["threat-hunting"])
+            self.load(evidence=["threat-hunting"])
+        with self.assertRaises(ManifestError):
+            self.load(use_cases=["timeline-generation"])
 
     def test_a_repeated_term_is_rejected(self) -> None:
         with self.assertRaises(ManifestError) as caught:
-            self.load(artifacts=["registry", "registry"])
+            self.load(evidence=["registry-hives", "registry-hives"])
         self.assertIn("twice", str(caught.exception))
 
     def test_it_must_be_a_list_of_strings(self) -> None:
         with self.assertRaises(ManifestError):
-            self.load(solves="malware-identification")
+            self.load(capabilities="signature-scanning")
 
 
 class CataloguedPackageTests(unittest.TestCase):
     """The shipped catalog is classified, or the vocabulary is decoration."""
 
     def test_every_catalogued_package_is_classified(self) -> None:
-        from dfpm.catalog import load_catalog
-
         for manifest in load_catalog(Path("catalog")):
             self.assertTrue(manifest.about, f"{manifest.id} has no longer description")
-            self.assertTrue(manifest.solves, f"{manifest.id} says nothing about what it solves")
-            self.assertTrue(manifest.artifacts, f"{manifest.id} says nothing about what it reads")
+            self.assertTrue(manifest.capabilities, f"{manifest.id} says nothing about what it does")
+            self.assertTrue(manifest.use_cases, f"{manifest.id} says nothing about when to use it")
+            self.assertTrue(manifest.evidence, f"{manifest.id} says nothing about what it reads")
+
+    def test_the_axes_actually_discriminate(self) -> None:
+        # If every package carried the same terms the classification would be
+        # decoration. Two packages sharing every axis is the warning sign.
+        packages = load_catalog(Path("catalog"))
+        signatures = {(p.capabilities, p.use_cases, p.evidence) for p in packages}
+        self.assertEqual(len(signatures), len(packages), "two packages are classified identically")
 
 
 if __name__ == "__main__":

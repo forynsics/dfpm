@@ -4,15 +4,20 @@
   "name": "YARA",
   "version": "4.5.5",
   "kind": "tool",
-  "description": "Scan files and memory for rules that describe textual or binary patterns.",
-  "about": "Investigators write rules describing the strings and byte patterns a family of malware leaves behind. YARA checks files, directories or a running process against those rules and reports every match with the rule that fired and where in the file it hit. It is the standard way to answer \"have I seen this before, anywhere else in the estate\" once one sample is understood, and rules travel between teams, so a detection written by someone else usually just works.",
-  "solves": [
-    "malware-identification",
-    "threat-hunting"
+  "description": "Scan files and memory for rules describing textual or binary patterns.",
+  "about": "YARA matches files, directories and running processes against rules that describe the strings and byte sequences a family of software contains. Each match is reported with the rule that fired and where in the file it occurred. Rules are plain text and portable, so detections written by one team can be applied unchanged by another, and the same rule set can be run over collected files or over a memory image.",
+  "capabilities": [
+    "signature-scanning",
+    "string-extraction"
   ],
-  "artifacts": [
-    "file-contents",
-    "memory-image"
+  "use_cases": [
+    "malware-analysis",
+    "threat-hunting",
+    "incident-response"
+  ],
+  "evidence": [
+    "files",
+    "memory-images"
   ],
   "platform": {
     "os": "windows",
@@ -20,11 +25,11 @@
   },
   "project": {
     "homepage": "https://virustotal.github.io/yara/",
-    "source": "https://github.com/VirusTotal/yara",
+    "repository": "https://github.com/VirusTotal/yara",
     "license": "BSD-3-Clause"
   },
-  "artifact": {
-    "source": "https://github.com/VirusTotal/yara/releases/download/v4.5.5/yara-4.5.5-2368-win64.zip",
+  "package": {
+    "url": "https://github.com/VirusTotal/yara/releases/download/v4.5.5/yara-4.5.5-2368-win64.zip",
     "sha256": "352396c8a3d9b31b157a4820abd3b9347fc934a2314cdda8a4f566a5570163e4",
     "size": 2232629
   },
@@ -44,7 +49,7 @@
       }
     ]
   },
-  "health_checks": [
+  "verify": [
     {
       "type": "file",
       "path": "yara64.exe"

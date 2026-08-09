@@ -52,7 +52,7 @@ That boundary buys a stronger promise than guaranteeing every dependency on a ma
 
 Every install follows the same five steps. If any of them fails, the step before it is left exactly as it was.
 
-1. **The package points at an official release.** An entry names the artifact the project itself published and records its SHA-256, alongside the license and the platform it was built for. dfpm never repackages, rebuilds or mirrors anything.
+1. **The package points at an official release.** An entry names the file the project itself published and records its SHA-256, alongside the license and the platform it was built for. dfpm never repackages, rebuilds or mirrors anything.
 2. **The artifact is fetched and checked.** Downloaded over HTTPS into a content-addressed cache and re-hashed against the digest the entry recorded. Anything else is refused, as is a redirect that drops out of HTTPS.
 3. **The archive stays inside the directory it was given.** Path traversal, absolute paths, drive letters, symlinks, encrypted entries, reserved device names and case collisions are all rejected outright. Extraction is refused if the result would not fit the volume, with a reserve kept back so a successful install never leaves you at zero bytes free.
 4. **The result is checked before it counts.** Files land in a staging directory first. The expected entrypoints and health-check files must be present, and the size and file count must match what the manifest recorded, or the whole install is discarded and nothing is installed.
@@ -119,7 +119,7 @@ Both plans show the path, the file count and the size before anything happens, a
 
 <img align="right" width="100" src="assets/brix-box.png" alt="">
 
-The `catalog/` directory holds the manifests dfpm can install from. Each one names the release artifact its project published, records that artifact's SHA-256, and records the upstream project, its license and the platform it was built for. The download size and the size on disk are recorded too — not as a second integrity check, since the digest already settles what the bytes are, but so the plan can tell you the cost before you agree to it.
+The `catalog/` directory holds the manifests dfpm can install from. Each one names the release file its project published, records its SHA-256, and records the upstream project, its license and the platform it was built for. The download size and the size on disk are recorded too — not as a second integrity check, since the digest already settles what the bytes are, but so the plan can tell you the cost before you agree to it.
 
 It currently contains **YARA 4.5.5** and **Hayabusa 4.0.0**, both for Windows x64. dfpm is in early development, so the catalog is still being built out. See [catalog/README.md](catalog/README.md) for what goes into an entry, and the review notes recorded for each package.
 

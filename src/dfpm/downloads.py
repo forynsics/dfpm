@@ -7,18 +7,18 @@ import urllib.request
 from pathlib import Path
 
 from .errors import VerificationError
-from .manifest import Artifact
+from .manifest import Package
 from .progress import Reporter
 from .storage import Storage
 
 CHUNK_SIZE = 1024 * 1024
 
 
-def acquire(artifact: Artifact, source: str, storage: Storage, on_progress: Reporter | None = None) -> Path:
+def acquire(package: Package, source: str, storage: Storage, on_progress: Reporter | None = None) -> Path:
     storage.cache.mkdir(parents=True, exist_ok=True)
-    destination = storage.cache / artifact.sha256
+    destination = storage.cache / package.sha256
     if destination.exists():
-        verify(destination, artifact)
+        verify(destination, package)
         return destination
 
     partial = destination.with_suffix(".partial")
@@ -32,22 +32,22 @@ def acquire(artifact: Artifact, source: str, storage: Storage, on_progress: Repo
             request = urllib.request.Request(source, headers={"User-Agent": "dfpm/0.1"})
             with urllib.request.urlopen(request, timeout=30) as response, partial.open("wb") as target:
                 if urllib.parse.urlparse(response.geturl()).scheme != "https":
-                    raise VerificationError("HTTPS artifact redirected to an insecure source")
-                _stream(response, target, artifact.size or _declared_length(response), on_progress)
+                    raise VerificationError("An HTTPS download redirected to an insecure source")
+                _stream(response, target, package.size or _declared_length(response), on_progress)
         elif parsed.scheme == "file":
             shutil.copyfile(urllib.request.url2pathname(parsed.path), partial)
         elif not parsed.scheme:
             shutil.copyfile(source_path, partial)
         else:
             raise VerificationError("Artifact sources must use HTTPS, file URLs, or local paths")
-        verify(partial, artifact)
+        verify(partial, package)
         partial.replace(destination)
     except VerificationError:
         partial.unlink(missing_ok=True)
         raise
     except (OSError, ValueError) as exc:
         partial.unlink(missing_ok=True)
-        raise VerificationError(f"Could not acquire artifact: {exc}") from exc
+        raise VerificationError(f"Could not download the package: {exc}") from exc
     except Exception:
         partial.unlink(missing_ok=True)
         raise
@@ -67,7 +67,7 @@ def _stream(response, target, total: int | None, on_progress: Reporter | None) -
 
     The size here is only for drawing a bar. Whether the bytes are the right
     ones is settled afterwards by the digest, which is the only thing that
-    decides an artifact is acceptable.
+    decides a download is acceptable.
     """
     done = 0
     if on_progress is not None:
@@ -79,15 +79,15 @@ def _stream(response, target, total: int | None, on_progress: Reporter | None) -
             on_progress("download", done, total)
 
 
-def verify(path: Path, artifact: Artifact) -> None:
+def verify(path: Path, package: Package) -> None:
     try:
         digest, size = _digest_and_size(path)
     except OSError as exc:
-        raise VerificationError(f"Could not read artifact: {path}") from exc
-    if artifact.size is not None and size != artifact.size:
-        raise VerificationError(f"Artifact size mismatch: expected {artifact.size}, received {size}")
-    if digest != artifact.sha256:
-        raise VerificationError("Artifact SHA-256 digest does not match the manifest")
+        raise VerificationError(f"Could not read the downloaded file: {path}") from exc
+    if package.size is not None and size != package.size:
+        raise VerificationError(f"Artifact size mismatch: expected {package.size}, received {size}")
+    if digest != package.sha256:
+        raise VerificationError("The download's SHA-256 does not match the one the manifest records")
 
 
 def file_digest(path: Path) -> str:

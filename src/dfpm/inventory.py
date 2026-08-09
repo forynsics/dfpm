@@ -32,12 +32,25 @@ def list_packages(storage: Storage) -> list[dict[str, Any]]:
 
 
 def _normalize(record: dict[str, Any]) -> dict[str, Any]:
-    """Read records written before dfpm settled on one installed version per package.
+    """Read records written by earlier versions of dfpm.
 
-    Those held a map of versions plus an active one. Flattening them here keeps an
+    Records written before "artifact" became "package" throughout the schema are
+    read under the new names. Both matter: without the first, an existing install
+    would stop being checked; without the second, the cache would think the file
+    that package needs is unused and offer to delete it.
+
+    Older ones again held a map of versions plus an active one, from before dfpm
+    settled on one installed version per package. Flattening them here keeps an
     existing install working, and the record is rewritten in the current shape the next
     time the package is installed or removed.
     """
+    if "artifact_sha256" in record and "package_sha256" not in record:
+        record = dict(record)
+        record["package_sha256"] = record.pop("artifact_sha256")
+    if "health_checks" in record:
+        record = dict(record)
+        record.setdefault("verify", record.pop("health_checks"))
+        record.pop("health_checks", None)
     if "version" in record or "versions" not in record:
         return record
     versions = record.get("versions") or {}

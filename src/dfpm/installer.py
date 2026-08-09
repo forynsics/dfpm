@@ -10,7 +10,7 @@ from typing import Any
 
 from . import platforms, shims
 from .archive import DEFAULT_LIMITS, ArchiveLimits, check_path_lengths, extract_zip
-from .artifacts import acquire
+from .downloads import acquire
 from .errors import InstallError
 from .inventory import forget_package, read_package, write_package
 from .manifest import Manifest
@@ -30,7 +30,7 @@ def install(
     previous = check_destination(manifest, storage)
     storage.initialize()
     destination = storage.package_version(manifest.id, manifest.version)
-    artifact = acquire(manifest.artifact, manifest.artifact_source(), storage, on_progress)
+    artifact = acquire(manifest.package, manifest.package_url(), storage, on_progress)
     record = _stage(manifest, artifact, storage, destination, limits, on_progress)
     _publish(manifest, storage, destination, record, previous)
     return destination
@@ -88,7 +88,7 @@ def _stage(
             "version": manifest.version,
             "installed_at": datetime.now(UTC).isoformat(),
             "manifest_digest": manifest.digest,
-            "artifact_sha256": manifest.artifact.sha256,
+            "package_sha256": manifest.package.sha256,
             "file_count": len(managed_files),
             "installed_size": sum(int(item["size"]) for item in managed_files),
             "entrypoints": [
@@ -105,7 +105,7 @@ def _stage(
                 | ({"flavor": item.flavor} if item.flavor else {})
                 for item in manifest.requires
             ],
-            "health_checks": [{"type": item.type, "path": item.path} for item in manifest.health_checks],
+            "verify": [{"type": item.type, "path": item.path} for item in manifest.verify],
         }
         if manifest.platform is not None:
             record["platform"] = {"os": manifest.platform.system, "arch": manifest.platform.architecture}
@@ -172,6 +172,6 @@ def _check_recorded_extraction(manifest: Manifest, files: list[dict[str, Any]]) 
 
 
 def _validate_expected_paths(root: Path, manifest: Manifest) -> None:
-    for item in (*manifest.entrypoints, *manifest.health_checks):
+    for item in (*manifest.entrypoints, *manifest.verify):
         if not (root / item.path).is_file():
             raise InstallError(f"Expected installed file is missing: {item.path}")

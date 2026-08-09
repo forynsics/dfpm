@@ -4,17 +4,21 @@
   "name": "Hayabusa",
   "version": "4.0.0",
   "kind": "tool",
-  "description": "Generate forensic timelines from Windows event logs and hunt with Sigma detection rules.",
-  "about": "Windows event logs hold the record of what happened on a machine, spread across dozens of channels in a format nobody reads directly. Hayabusa walks a folder of .evtx files and produces a single timeline, applying thousands of bundled Sigma detection rules as it goes so suspicious activity is flagged with a severity rather than left to be spotted by eye. It is normally the first thing pointed at a compromised host, because it turns hours of log triage into one sorted file.",
-  "solves": [
-    "log-analysis",
-    "timeline-building",
-    "threat-hunting",
-    "lateral-movement",
-    "execution-evidence"
+  "description": "Analyze Windows event logs, build forensic timelines, and apply Sigma-based detections.",
+  "about": "Hayabusa reads a directory of Windows .evtx files and produces a single consolidated timeline, applying bundled Sigma detection rules as it goes so that matching activity is labelled with a severity. It supports the Sigma specification including v2 correlation rules, and can output to CSV, JSON and several other formats for review in other tools. The detection rules ship with the release and can be updated separately from the binary.",
+  "capabilities": [
+    "event-log-parsing",
+    "timeline-generation",
+    "sigma-detection",
+    "data-export"
   ],
-  "artifacts": [
-    "windows-event-log"
+  "use_cases": [
+    "forensic-triage",
+    "incident-response",
+    "threat-hunting"
+  ],
+  "evidence": [
+    "windows-event-logs"
   ],
   "platform": {
     "os": "windows",
@@ -22,11 +26,11 @@
   },
   "project": {
     "homepage": "https://yamato-security.github.io/hayabusa/",
-    "source": "https://github.com/Yamato-Security/hayabusa",
+    "repository": "https://github.com/Yamato-Security/hayabusa",
     "license": "AGPL-3.0-only AND LicenseRef-DRL-1.1"
   },
-  "artifact": {
-    "source": "https://github.com/Yamato-Security/hayabusa/releases/download/v4.0.0/hayabusa-4.0.0-win-x64.zip",
+  "package": {
+    "url": "https://github.com/Yamato-Security/hayabusa/releases/download/v4.0.0/hayabusa-4.0.0-win-x64.zip",
     "sha256": "6e173c9fd1fa8ee4d95931ea1e1997723330c4779f4f83a96dcd3f1b00d31ff5",
     "size": 44165228
   },
@@ -42,7 +46,7 @@
       }
     ]
   },
-  "health_checks": [
+  "verify": [
     {
       "type": "file",
       "path": "hayabusa-4.0.0-win-x64.exe"

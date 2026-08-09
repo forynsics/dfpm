@@ -71,7 +71,7 @@ class InstallTests(unittest.TestCase):
     def test_wrong_digest_never_creates_an_install_directory(self) -> None:
         _, manifest_path = create_package(self.base)
         data = json.loads(manifest_path.read_text(encoding="utf-8"))
-        data["artifact"]["sha256"] = "0" * 64
+        data["package"]["sha256"] = "0" * 64
         manifest_path.write_text(json.dumps(data), encoding="utf-8")
         with self.assertRaises(VerificationError):
             install(Manifest.load(manifest_path), self.storage)
@@ -96,8 +96,8 @@ class InstallTests(unittest.TestCase):
             output.writestr("../outside.txt", "unsafe")
         data = json.loads(manifest_path.read_text(encoding="utf-8"))
         payload = archive.read_bytes()
-        data["artifact"]["sha256"] = hashlib.sha256(payload).hexdigest()
-        data["artifact"]["size"] = len(payload)
+        data["package"]["sha256"] = hashlib.sha256(payload).hexdigest()
+        data["package"]["size"] = len(payload)
         manifest_path.write_text(json.dumps(data), encoding="utf-8")
         with self.assertRaises(InstallError):
             install(Manifest.load(manifest_path), self.storage)
@@ -119,13 +119,13 @@ class InstallTests(unittest.TestCase):
         _, manifest_path = create_package(self.base)
         data = json.loads(manifest_path.read_text(encoding="utf-8"))
         data["platform"] = {"os": system, "arch": architecture}
-        data["project"] = {"source": "https://example.org/tool", "license": "BSD-3-Clause"}
+        data["project"] = {"repository": "https://example.org/tool", "license": "BSD-3-Clause"}
         manifest_path.write_text(json.dumps(data), encoding="utf-8")
         install(Manifest.load(manifest_path), self.storage)
 
         state = read_package(self.storage, "example.tool")
         self.assertEqual(state["platform"], {"os": system, "arch": architecture})
-        self.assertEqual(state["project"], {"source": "https://example.org/tool", "license": "BSD-3-Clause"})
+        self.assertEqual(state["project"], {"repository": "https://example.org/tool", "license": "BSD-3-Clause"})
 
     def test_install_refuses_to_replace_an_unmanaged_command(self) -> None:
         self.storage.initialize()

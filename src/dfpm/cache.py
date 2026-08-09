@@ -5,7 +5,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
-from .artifacts import file_digest
+from .downloads import file_digest
 from .catalog import load_catalog
 from .errors import DfpmError
 from .inventory import list_packages
@@ -152,7 +152,7 @@ def human(size: float) -> str:
 def _installed_references(storage: Storage) -> dict[str, list[str]]:
     references: dict[str, list[str]] = defaultdict(list)
     for package in list_packages(storage):
-        digest = package.get("artifact_sha256")
+        digest = package.get("package_sha256")
         if digest:
             references[digest].append(f"{package['id']} {package.get('version', '')}".strip())
     return references
@@ -168,5 +168,5 @@ def _catalog_references(catalog: Path | None) -> tuple[dict[str, list[str]], boo
         return {}, False, str(exc)
     references: dict[str, list[str]] = defaultdict(list)
     for manifest in manifests:
-        references[manifest.artifact.sha256].append(f"{manifest.id} {manifest.version}")
+        references[manifest.package.sha256].append(f"{manifest.id} {manifest.version}")
     return references, True, None

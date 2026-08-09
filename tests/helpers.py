@@ -41,8 +41,8 @@ def create_package(
         "version": version,
         "kind": "tool",
         "description": "A synthetic package used to verify dfpm safely.",
-        "artifact": {
-            "source": f"artifacts/{archive.name}",
+        "package": {
+            "url": f"artifacts/{archive.name}",
             "sha256": hashlib.sha256(artifact_bytes).hexdigest(),
             "size": len(artifact_bytes),
         },
@@ -55,7 +55,7 @@ def create_package(
                 for command in commands
             ],
         },
-        "health_checks": [{"type": "file", "path": "data/readme.txt"}],
+        "verify": [{"type": "file", "path": "data/readme.txt"}],
     }
     if requires is not None:
         manifest["requires"] = requires

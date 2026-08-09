@@ -18,11 +18,11 @@ The first implemented manifest format is intentionally narrow. It supports porta
   },
   "project": {
     "homepage": "https://example.org/",
-    "source": "https://github.com/example/example-tool",
+    "repository": "https://github.com/example/example-tool",
     "license": "BSD-3-Clause"
   },
-  "artifact": {
-    "source": "https://example.org/example-tool-1.0.0.zip",
+  "package": {
+    "url": "https://example.org/example-tool-1.0.0.zip",
     "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
     "size": 1048576
   },
@@ -36,7 +36,7 @@ The first implemented manifest format is intentionally narrow. It supports porta
       }
     ]
   },
-  "health_checks": [
+  "verify": [
     {
       "type": "file",
       "path": "bin/example-tool.exe"
@@ -53,22 +53,31 @@ The first implemented manifest format is intentionally narrow. It supports porta
 - `kind` may be `tool`, `runtime`, `ruleset`, `artifact-pack`, `parser-pack`, `integration`, or `config-pack`.
 - `description` is one line, used wherever packages are listed.
 - `about` is optional and longer: a short plain-English paragraph explaining what the tool is for and when an investigator reaches for it. It is what someone reads when deciding whether this is the thing they need, so it should answer that rather than restate the name.
-- `solves` and `artifacts` classify the package on two closed vocabularies, defined in `src/dfpm/classification.py`. They answer different questions and are deliberately kept apart: **`solves`** is what forensic question the package helps answer (`malware-identification`, `timeline-building`, `lateral-movement`), and **`artifacts`** is what data it reads (`windows-event-log`, `registry`, `mft`, `onedrive`). Someone searching for "malware" wants a scanner; someone searching for "onedrive" wants whatever reads a sync log. One list of tags would blur the two.
+- `capabilities`, `use_cases` and `evidence` classify the package on three closed vocabularies defined in `src/dfpm/classification.py`. They answer three different questions and are kept apart on purpose:
+
+  | field | question | examples |
+  | --- | --- | --- |
+  | `capabilities` | what does it do? | `event-log-parsing`, `timeline-generation`, `signature-scanning` |
+  | `use_cases` | when would I reach for it? | `incident-response`, `forensic-triage`, `threat-hunting` |
+  | `evidence` | what does it read? | `windows-event-logs`, `registry-hives`, `onedrive-logs` |
 
   ```json
-  "solves": ["log-analysis", "timeline-building"],
-  "artifacts": ["windows-event-log"]
+  "capabilities": ["event-log-parsing", "timeline-generation"],
+  "use_cases": ["incident-response"],
+  "evidence": ["windows-event-logs"]
   ```
 
-  A term outside the vocabulary is refused rather than accepted as free text. Free tags fragment on the first synonym, and a catalog where `evtx`, `event log` and `eventlog` are three unrelated tags is worse than one with no tags at all. Each term carries aliases so a search matches however someone phrases it, and those aliases are synonyms for the idea — never the name of a tool or a rule format, which belong to the package that implements them. Adding a term is a deliberate change, reviewed alongside the package that needs it.
+  A single list would blur them. Two tools can share a use case with nothing else in common, and an earlier version of this schema mixed what a tool does with when you would use it and with attacker behaviour it might happen to detect — which reads fine for one package and turns to noise across fifty. Three is also the limit: fields for features, workflows, outputs and techniques would each look reasonable alone and collectively produce a taxonomy nobody maintains.
+
+  A term outside a vocabulary is refused rather than accepted as free text. Free tags fragment on the first synonym, and a catalog where `evtx`, `event log` and `eventlog` are three unrelated tags is worse than one with no tags at all. Each term carries aliases so a search matches however it is phrased, and those aliases are synonyms for the idea — never the name of a tool or a rule format, which belong to the package that implements them. A format genuinely worth searching for earns its own term instead, which is why `sigma-detection` is a capability rather than an alias on a broader one. Adding a term is a deliberate change reviewed alongside the package that needs it.
 - `platform` is optional. When present, `platform.os` must be `windows`, `linux`, or `macos`, and `platform.arch` must be `x86`, `x64`, or `arm64`. dfpm refuses to install a package whose platform does not match the machine, which is what keeps a 32-bit or non-Windows build of the same tool from being installed by mistake.
-- `project` is optional and records upstream provenance. `project.homepage`, `project.source` and `project.terms_url` must be HTTPS URLs.
+- `project` is optional and records upstream provenance. `project.homepage`, `project.repository` and `project.terms_url` must be HTTPS URLs. It is `repository` rather than `source` because source can mean source code, a download source or a package source, and only one of those is meant.
 - `project.license` is a single string holding an SPDX **expression**, so an artifact under more than one license needs no extra field: Hayabusa ships as `AGPL-3.0-only AND LicenseRef-DRL-1.1`, the binary being AGPL and the bundled rules DRL. Terms with no SPDX identifier use a `LicenseRef-` value. dfpm displays this string and does not parse it; validating an expression would mean carrying the SPDX license list to catch typos in a field whose only job is to be read.
 - `project.terms_url` marks a package whose terms restrict *who* may use it, or for what purpose, beyond what a license identifier conveys. Its presence is the whole trigger: dfpm prints the URL in the install plan, and `--yes` alone will no longer install the package, because confirming a plan and asserting that restricted terms permit your use are different claims. An interactive install needs nothing extra — the existing confirmation already puts the terms in front of a person. A scripted one needs `--accept-terms`. The local interface applies the same rule.
 - `platform` and `project` are both recorded in the package state, so what is installed says where it came from and under what license.
-- `artifact.source` accepts an HTTPS URL, `file` URL, or path relative to the manifest.
-- `artifact.sha256` is mandatory and must contain the expected SHA-256 digest.
-- `artifact.size` is optional but recommended.
+- `package.url` accepts an HTTPS URL, `file` URL, or path relative to the manifest. It is `package` rather than `artifact` deliberately: in a forensics catalog an artifact is a forensic artifact, and using the same word for the download would guarantee confusion.
+- `package.sha256` is mandatory and must contain the expected SHA-256 digest.
+- `package.size` is optional but recommended.
 - `requires` is optional and lists the platform runtimes a package needs, which dfpm detects but never installs. Each entry names a `runtime` (`dotnet`, `java`, `python`, `perl`, or `powershell`), an optional `version` constraint written as `>=` and a dotted number, and an optional `flavor` for runtimes that ship as separate installs — `dotnet` has `base`, `desktop` and `aspnet`, and a tool needing the desktop framework is not satisfied by the base runtime.
 
   ```json
@@ -85,7 +94,7 @@ The first implemented manifest format is intentionally narrow. It supports porta
 - `working_directory` is optional and says where an entrypoint runs from, relative to the package root, with `.` meaning the root itself. Omitted, it is the directory holding the executable. Many tools resolve their own rules or configuration against the working directory and fail when launched from anywhere else, so this is what lets them be run from a case folder without any per-tool arrangement. It is also what someone opening a terminal beside the binary would get.
 - A manifest cannot supply **arguments** of its own, and that is deliberate. Inserting them was tried and abandoned: the command you typed and the command that ran would differ, which is precisely what `dfpm which` exists to prevent; an injected option lands in the same command line as the user's own, and duplicate options resolve differently in every argument parser, including by silently using both values; and the per-tool knowledge would not have stopped at arguments.
 - The difference between the two is worth being precise about, because they look similar. A working directory is a single process attribute with nothing to collide with — the user cannot also have passed one. An argument joins the list the user is already writing, where it can be duplicated, reordered or misread. One is a property of launching a process; the other is an edit to what the user asked for.
-- File health checks verify that required files remain present. Together with the entrypoints, they are the only paths `dfpm doctor` looks at: everything else inside a package's directory belongs to the package, and a tool that updates its own rule set or fetches data on first run is working normally rather than drifting.
+- `verify` lists what must be true for an install to count as successful. Only file checks are supported today, and each names a path that has to exist. It is `verify` rather than `health_checks` because nothing here is checking whether a running service is healthy — it is confirming the install produced what the manifest said it would. Together with the entrypoints, these are the only paths `dfpm doctor` looks at: everything else inside a package's directory belongs to the package, and a tool that updates its own rule set or fetches data on first run is working normally rather than drifting.
 
 All paths inside packages must be relative and stay within the package installation directory.
 
