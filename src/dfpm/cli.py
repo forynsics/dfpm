@@ -306,6 +306,12 @@ def _install(args: argparse.Namespace, storage: Storage) -> int:
         if manifest.project.terms_url:
             print(f"  Terms:       {manifest.project.terms_url}")
             print("               Acceptance required. dfpm cannot judge whether they permit your use.")
+    # Which catalog made this claim. The digest proves the bytes match what the
+    # entry said; it says nothing about whether that entry should be believed,
+    # and the entry is what names the URL. So the plan says where it came from.
+    if args.catalog != storage.catalog:
+        print(f"  Entry from:  {args.catalog}")
+        print("               Not this machine's catalog. Install only from entries you trust.")
     print(f"  Source:      {manifest.package_url()}")
     print(f"  SHA-256:     {manifest.package.sha256}")
     if manifest.package.size is not None:
