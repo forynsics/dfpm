@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import stat
 import tempfile
 import unittest
 from pathlib import Path
@@ -104,9 +106,38 @@ class RemovalTests(unittest.TestCase):
             self.assertRaises(InstallError) as caught,
         ):
             removal.execute(self.storage, plan)
-        self.assertIn("holding a file open", str(caught.exception))
+        self.assertIn("still in use", str(caught.exception))
         # The record survives, so the package is not silently forgotten.
         self.assertIsNotNone(read_package(self.storage, "example.tool"))
+
+
+class ReadOnlyFileTests(unittest.TestCase):
+    """Real packages ship read-only files, and Windows will not delete those."""
+
+    def setUp(self) -> None:
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.storage = Storage(self.base / "dfpm-data")
+
+    def test_a_read_only_file_does_not_block_removal(self) -> None:
+        _, manifest_path = create_package(self.base)
+        destination = install(Manifest.load(manifest_path), self.storage)
+        # Stands in for a version control pack file, which is marked read-only
+        # because it is immutable. No amount of waiting makes it deletable, so
+        # retrying around it never succeeds; the flag has to be cleared.
+        os.chmod(destination / "data" / "readme.txt", stat.S_IREAD)
+
+        plan = removal.plan(self.storage, "example.tool")
+        removal.execute(self.storage, plan)
+        self.assertFalse(destination.exists())
+
+    def test_a_read_only_file_does_not_block_a_replacement_either(self) -> None:
+        _, first = create_package(self.base, version="1.0.0")
+        old = install(Manifest.load(first), self.storage)
+        os.chmod(old / "data" / "readme.txt", stat.S_IREAD)
+
+        _, second = create_package(self.base, version="1.1.0")
+        install(Manifest.load(second), self.storage)
+        self.assertFalse(old.exists(), "the superseded version is still removed")
 
 
 if __name__ == "__main__":

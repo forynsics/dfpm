@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import os
 import shutil
+import stat
+import sys
 import time
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -10,19 +12,43 @@ from pathlib import Path
 TREE_REMOVAL_DELAYS = (0, 0.1, 0.3, 1.0)
 
 
-def remove_tree(path: Path) -> bool:
-    """Delete a directory tree, retrying briefly before giving up.
+def _make_writable(action, path: str, _exception) -> None:
+    """Clear a read-only flag and try the delete again.
 
-    Windows holds a short lock on a freshly written executable while antivirus
-    or the search indexer reads it, so a delete issued in that window fails for
-    a reason that clears on its own a moment later. Reports whether the
-    directory actually went, rather than swallowing the failure.
+    Read-only files are common inside real packages — git marks its pack files
+    that way because they are immutable, so any tool shipping a checkout brings
+    some along. On Windows a read-only file cannot be deleted at all, and no
+    amount of waiting changes that, so the flag has to be cleared rather than
+    retried around.
+    """
+    try:
+        os.chmod(path, stat.S_IWRITE)
+    except OSError:
+        return
+    action(path)
+
+
+def _rmtree(path: Path) -> None:
+    if sys.version_info >= (3, 12):
+        shutil.rmtree(path, onexc=_make_writable)
+    else:  # pragma: no cover - onexc replaced onerror in 3.12
+        shutil.rmtree(path, onerror=lambda action, name, info: _make_writable(action, name, info[1]))
+
+
+def remove_tree(path: Path) -> bool:
+    """Delete a directory tree, clearing read-only flags and retrying briefly.
+
+    Two different things stop a delete on Windows and they need different
+    answers. A read-only file never becomes deletable on its own, so the flag is
+    cleared. A file being read by antivirus or the search indexer becomes
+    deletable a moment later, so that one is worth waiting out. Reports whether
+    the directory actually went rather than swallowing the failure.
     """
     for delay in TREE_REMOVAL_DELAYS:
         if delay:
             time.sleep(delay)
         try:
-            shutil.rmtree(path)
+            _rmtree(path)
             return True
         except FileNotFoundError:
             return True

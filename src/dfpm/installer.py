@@ -56,8 +56,8 @@ def check_destination(manifest: Manifest, storage: Storage) -> str | None:
     destination = storage.package_version(manifest.id, manifest.version)
     if destination.exists():
         raise InstallError(
-            f"{destination} still holds files dfpm preserved during removal, so this version cannot be installed over them. "
-            "Review and move that directory, then install again."
+            f"{destination} already exists, which means an earlier removal did not finish. "
+            f"Run 'dfpm uninstall {manifest.id}' to clear it, then install again."
         )
     return current
 

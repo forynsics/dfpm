@@ -64,8 +64,9 @@ def execute(storage: Storage, removal_plan: RemovalPlan) -> None:
     """Remove the version directory, then the command shortcuts it owned."""
     if removal_plan.root.exists() and not remove_tree(removal_plan.root):
         raise InstallError(
-            f"Could not remove {removal_plan.root}. Something is holding a file open there; "
-            "close it and run the removal again."
+            f"Could not remove {removal_plan.root}. A file there is still in use by another program. "
+            "Close anything reading from that directory and run the removal again; "
+            "everything already deleted stays deleted, so running it again picks up where it stopped."
         )
     forget_package(storage, removal_plan.package)
     shims.reconcile(storage)
