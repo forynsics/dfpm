@@ -137,12 +137,31 @@ def detect(name: str, storage=None, *, cache: dict | None = None) -> Detection:
     """Find a runtime, preferring one dfpm installed over one on PATH."""
     if cache is not None and name in cache:
         return cache[name]
-    runtime = describe(name)
-    found = _from_packages(runtime, storage) or _from_path(runtime)
-    result = _probe(runtime, *found) if found else Detection(name, detail="not found")
+    result = _detect(describe(name), storage)
     if cache is not None:
         cache[name] = result
     return result
+
+
+def _detect(runtime: Runtime, storage) -> Detection:
+    """Probe every candidate and keep the best answer.
+
+    A runtime can go by more than one name, and which name is the real one
+    differs by platform: `python3` is the safe choice where `python` might be a
+    much older release, and on Windows it is usually a stub that offers to
+    install Python rather than being one. Asking each candidate what version it
+    is and taking the highest answers that without dfpm having to encode which
+    platform prefers which name.
+    """
+    packaged = _from_packages(runtime, storage)
+    if packaged is not None:
+        return _probe(runtime, *packaged)
+    found = [_probe(runtime, path, "path") for path in _candidates_on_path(runtime)]
+    usable = [item for item in found if item.version is not None]
+    if usable:
+        return max(usable, key=lambda item: item.version or ())
+    # Found but unreadable is a different report from not found at all.
+    return found[0] if found else Detection(runtime.name, detail="not found")
 
 
 def _from_packages(runtime: Runtime, storage) -> tuple[Path, str] | None:
@@ -162,28 +181,37 @@ def _from_packages(runtime: Runtime, storage) -> tuple[Path, str] | None:
     return None
 
 
-def _from_path(runtime: Runtime) -> tuple[Path, str] | None:
+def _candidates_on_path(runtime: Runtime) -> list[Path]:
+    candidates: list[Path] = []
     for command in runtime.commands:
         found = _safe_which(command)
-        if found is not None:
-            return found, "path"
-    return None
+        if found is not None and found not in candidates:
+            candidates.append(found)
+    return candidates
 
 
 def _safe_which(command: str) -> Path | None:
     """Find a command on PATH without ever returning dfpm's own interpreter.
 
-    An activated virtual environment puts its Scripts directory first on PATH,
-    so an unguarded lookup for `python` returns the interpreter dfpm is running
-    on. A packaged tool must never be handed that. This is the only place in
-    dfpm that names sys.executable.
+    dfpm runs on Python, and when it is installed into a virtual environment of
+    its own that environment's scripts directory sits at the front of PATH. An
+    unguarded lookup for `python` therefore answers with the interpreter dfpm
+    happens to be running on, which describes how dfpm was installed rather than
+    anything about this machine.
+
+    Only that environment is excluded, and only when there is one. The Python it
+    was built from is the machine's own and a perfectly good answer. So is a
+    virtual environment the user activated, which is what `python` means in
+    their shell right now — excluding it would override a choice they made
+    deliberately. This is the only place in dfpm that names sys.executable.
     """
-    blocked = set()
-    for candidate in (sys.prefix, sys.base_prefix, str(Path(sys.executable).parent)):
-        try:
-            blocked.add(Path(candidate).resolve())
-        except OSError:
-            continue
+    blocked: set[Path] = set()
+    if sys.prefix != sys.base_prefix:
+        for candidate in (sys.prefix, str(Path(sys.executable).parent)):
+            try:
+                blocked.add(Path(candidate).resolve())
+            except OSError:
+                continue
     entries = []
     for entry in os.environ.get("PATH", "").split(os.pathsep):
         if not entry:
@@ -199,11 +227,14 @@ def _safe_which(command: str) -> Path | None:
     if found is None:
         return None
     path = Path(found)
-    try:
-        if path.resolve() == Path(sys.executable).resolve():
-            return None
-    except OSError:
-        pass
+    if blocked:
+        # Catches an interpreter reached through a link from outside the
+        # environment, which the directory filter above would not see.
+        try:
+            if path.resolve() == Path(sys.executable).resolve():
+                return None
+        except OSError:
+            pass
     return path
 
 

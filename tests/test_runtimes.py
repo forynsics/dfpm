@@ -80,12 +80,38 @@ class DotnetFlavorTests(unittest.TestCase):
 
 class InterpreterGuardTests(unittest.TestCase):
     def test_dfpms_own_interpreter_is_never_selected(self) -> None:
-        # An activated virtual environment puts its Scripts directory first on
-        # PATH. A packaged tool must never be handed the interpreter dfpm runs on.
+        # dfpm's virtual environment puts its scripts directory first on PATH.
+        # A packaged tool must never be handed the interpreter dfpm runs on.
         found = runtimes._safe_which("python")
         if found is not None:
             self.assertNotEqual(found.resolve(), Path(sys.executable).resolve())
             self.assertNotEqual(found.parent.resolve(), Path(sys.executable).parent.resolve())
+
+    def test_the_python_dfpm_was_built_from_is_still_a_valid_answer(self) -> None:
+        # Excluding the base installation too would hide the machine's own
+        # Python, and make the answer depend on how dfpm happened to be
+        # installed rather than on what is actually present.
+        if sys.prefix == sys.base_prefix:
+            self.skipTest("dfpm is not running inside a virtual environment here")
+        base = Path(sys.base_prefix).resolve()
+        entries = [Path(part) for part in __import__("os").environ.get("PATH", "").split(";") if part]
+        if not any(entry.resolve() == base for entry in entries if entry.exists()):
+            self.skipTest("the base installation is not on PATH here")
+        found = runtimes._safe_which("python")
+        self.assertIsNotNone(found)
+        self.assertEqual(found.parent.resolve(), base)
+
+    def test_the_highest_reported_version_wins_between_candidates(self) -> None:
+        # python3 on Windows is often a stub that offers to install Python.
+        # Asking each candidate what it is avoids encoding that per platform.
+        runtime = runtimes.describe("python")
+        stub = runtimes.Detection("python", path=Path("stub"), version=None)
+        real = runtimes.Detection("python", path=Path("real"), version=(3, 14, 6))
+        with (
+            mock.patch("dfpm.runtimes._candidates_on_path", return_value=[Path("stub"), Path("real")]),
+            mock.patch("dfpm.runtimes._probe", side_effect=[stub, real]),
+        ):
+            self.assertEqual(runtimes._detect(runtime, None).path, Path("real"))
 
     def test_a_runtime_dfpm_installed_wins_over_one_on_path(self) -> None:
         base = Path(self.enterContext(tempfile.TemporaryDirectory()))
@@ -145,7 +171,7 @@ class BlockedPackageTests(unittest.TestCase):
         self.catalog, manifest_path = create_package(self.base, requires=JAVA, body="@exit /b 0\r\n")
         self.manifest_path = manifest_path
         # Nothing named java exists, so the requirement cannot be met.
-        self.missing = mock.patch("dfpm.runtimes._from_path", return_value=None)
+        self.missing = mock.patch("dfpm.runtimes._candidates_on_path", return_value=[])
 
     def test_installing_succeeds_even_though_it_cannot_run(self) -> None:
         with self.missing:
