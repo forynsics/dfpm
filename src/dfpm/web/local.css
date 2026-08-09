@@ -33,6 +33,12 @@ html[data-appearance="dark"] { --danger: #f2837a; --danger-soft: #2e1917; }
 
 .tags span.ok { color: var(--green); border-color: var(--green); }
 .tags span.bad { color: var(--danger); border-color: var(--danger); background: var(--danger-soft); }
+/* Installed but unable to run is neither of the above, and saying so plainly
+   is the point: the files are fine, the machine is missing something. */
+.tags span.warn { color: var(--accent-dark); border-color: #d1a24c; background: var(--accent-soft); }
+
+/* The list layout gives a card three columns; these span the prose one. */
+.tool-grid.list .run-row, .tool-grid.list .install-facts { grid-column: 2; }
 
 .finding-row {
   display: grid;

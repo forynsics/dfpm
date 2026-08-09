@@ -108,6 +108,29 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(payload["vocabulary"], vocabulary())
         self.assertTrue(payload["vocabulary"]["disciplines"])
 
+    def test_an_installed_package_carries_what_the_interface_shows(self) -> None:
+        self.api("/api/install", body={"package": "example.tool"})
+        _, payload = self.api("/api/state")
+        package = payload["packages"][0]
+
+        # What somebody looking at an installed tool would act on.
+        self.assertEqual(package["description"], "A synthetic package used to verify dfpm safely.")
+        self.assertEqual(package["location"], str(self.storage.package_version("example.tool", "1.0.0")))
+        # Formatted server-side, so it reads the same as the command line does.
+        from dfpm.archive import human_size
+        from dfpm.inventory import read_package
+
+        recorded = read_package(self.storage, "example.tool")["installed_size"]
+        self.assertEqual(package["installedSize"], human_size(recorded))
+        self.assertEqual(package["entrypoints"], ["example-tool"])
+
+    def test_the_file_count_is_not_sent_to_the_interface(self) -> None:
+        # It exists so the installer can refuse an archive that does not match
+        # its manifest. Nobody reading a list of installed tools acts on it.
+        self.api("/api/install", body={"package": "example.tool"})
+        _, payload = self.api("/api/state")
+        self.assertNotIn("files", payload["packages"][0])
+
     def test_install_update_and_uninstall_through_the_api(self) -> None:
         status, payload = self.api("/api/install/plan", body={"package": "example.tool"})
         self.assertEqual(status, 200)

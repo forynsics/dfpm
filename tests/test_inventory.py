@@ -107,3 +107,29 @@ class RenamedFieldTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RecordedDescriptionTests(unittest.TestCase):
+    """What is installed should be able to describe itself with no catalog present."""
+
+    def test_the_description_is_written_into_the_record(self) -> None:
+        from dfpm.catalog import resolve as resolve_manifest
+        from dfpm.installer import install
+        from dfpm.storage import Storage
+        from tests.helpers import create_package
+
+        base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        catalog, _ = create_package(base)
+        storage = Storage(base / "data")
+        install(resolve_manifest(catalog, "example.tool"), storage)
+
+        record = read_package(storage, "example.tool")
+        self.assertEqual(record["description"], "A synthetic package used to verify dfpm safely.")
+
+    def test_a_record_written_before_descriptions_still_reads(self) -> None:
+        # Nothing is repaired retroactively; the field is simply absent, and
+        # everything that reads a record has to cope with that.
+        from dfpm.inventory import _normalize
+
+        record = _normalize({"id": "yara", "version": "4.5.5", "package_sha256": "a" * 64, "verify": []})
+        self.assertIsNone(record.get("description"))

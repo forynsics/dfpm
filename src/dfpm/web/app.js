@@ -113,25 +113,95 @@ function render() {
   renderLocations();
 }
 
-function failuresFor(packageId, version) {
-  return state.findings.filter((item) => item.package === packageId && item.version === version && item.status === "failed");
+function findingsFor(packageId, version) {
+  return state.findings.filter(
+    (item) => item.package === packageId && item.version === version && item.status !== "passing"
+  );
+}
+
+/* One matcher for both lists. A package matches on the obvious things, and
+   also on the aliases the vocabulary carries, so "evtx" reaches a tool
+   classified against Windows event logs without anybody having typed that. */
+function matching(entries, query) {
+  const wanted = (query || "").trim().toLowerCase();
+  if (!wanted) return entries;
+  return entries.filter((entry) => searchText(entry).includes(wanted));
+}
+
+function searchText(entry) {
+  if (entry._searchText === undefined) {
+    const parts = [entry.id, entry.name, entry.kind, entry.description, entry.about];
+    for (const [field] of META_ROWS.concat([["disciplines"]])) {
+      for (const item of entry[field] || []) parts.push(item.label, ...aliasesFor(field, item.key));
+    }
+    for (const platform of entry.platforms || []) parts.push(`${platform.os}/${platform.arch}`);
+    if (entry.platform) parts.push(`${entry.platform.os}/${entry.platform.arch}`);
+    for (const command of entry.commands || entry.entrypoints || []) parts.push(command);
+    if (entry.project && entry.project.license) parts.push(entry.project.license);
+    entry._searchText = parts.filter(Boolean).join(" ").toLowerCase();
+  }
+  return entry._searchText;
+}
+
+function aliasesFor(field, key) {
+  const terms = (state && state.vocabulary && state.vocabulary[field]) || [];
+  const term = terms.find((item) => item.key === key);
+  return term && term.aliases ? term.aliases : [];
+}
+
+function installedDate(value) {
+  // Written out rather than left as an ISO timestamp, and built explicitly so
+  // it reads the same wherever the interface is opened.
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const when = new Date(value);
+  if (!value || Number.isNaN(when.getTime())) return null;
+  return `${when.getDate()} ${months[when.getMonth()]} ${when.getFullYear()}`;
+}
+
+/* dfpm never touches PATH, so "what do I actually type" is the question an
+   installed tool raises most often. It gets the prominent spot, and a copy
+   button, rather than being described in prose. */
+function runBlock(commands) {
+  if (!commands.length) return null;
+  const text = commands.map((name) => `dfpm run ${name}`).join("\n");
+  return el("div", { className: "run-row" }, [
+    el("code", { className: "run-command", text }),
+    el("button", {
+      className: "copy-button",
+      type: "button",
+      text: "Copy",
+      onClick: async () => {
+        try {
+          await navigator.clipboard.writeText(text);
+          toast(commands.length > 1 ? "Commands copied" : "Command copied");
+        } catch {
+          toast("Your browser blocked clipboard access", true);
+        }
+      },
+    }),
+  ]);
 }
 
 function renderInstalled() {
   const container = $("#installed-list");
   container.replaceChildren();
+  const showing = matching(state.packages, $("#installed-search").value);
   if (!state.packages.length) {
     container.append(emptyState("Nothing is installed yet. Open the catalog to install one."));
     return;
   }
+  if (!showing.length) {
+    container.append(emptyState("Nothing installed matches that.", false));
+    return;
+  }
 
-  for (const pack of state.packages) {
-    const failures = failuresFor(pack.id, pack.version);
-    const commands = pack.entrypoints || [];
-    const summary = [
-      commands.length ? `Runs as ${commands.join(" and ")}.` : null,
-      `${pack.files ?? "?"} file${pack.files === 1 ? "" : "s"} installed ${(pack.installedAt || "").slice(0, 10)}.`,
-    ].filter(Boolean).join(" ");
+  for (const pack of showing) {
+    const problems = findingsFor(pack.id, pack.version);
+    const facts = [
+      installedDate(pack.installedAt) ? `Installed ${installedDate(pack.installedAt)}` : null,
+      pack.installedSize,
+      pack.location,
+    ].filter(Boolean).join(" · ");
 
     container.append(
       el("article", { className: "tool-card" }, [
@@ -142,16 +212,29 @@ function renderInstalled() {
             el("small", { text: `${pack.id} · ${pack.kind || "package"}` }),
           ]),
         ]),
-        el("p", { text: summary }),
+        pack.description ? el("p", { text: pack.description }) : null,
+        runBlock(pack.entrypoints || []),
         el("div", { className: "tags" }, [
-          failures.length ? chip(`${failures.length} problem${failures.length === 1 ? "" : "s"}`, "bad") : chip("Healthy", "ok"),
+          healthChip(problems),
           pack.platform ? chip(`${pack.platform.os}/${pack.platform.arch}`) : null,
           pack.project && pack.project.license ? chip(pack.project.license) : null,
         ]),
+        facts ? el("p", { className: "install-facts", text: facts }) : null,
         el("div", { className: "card-actions" }, [button("Uninstall", "danger", () => previewUninstall(pack))]),
       ])
     );
   }
+}
+
+/* A package whose runtime is missing is installed and cannot run, which is
+   neither healthy nor broken. Reporting it as healthy would be a lie told at
+   exactly the moment somebody is trying to find out why nothing happens. */
+function healthChip(problems) {
+  const failed = problems.filter((item) => item.status === "failed").length;
+  const blocked = problems.filter((item) => item.status === "blocked").length;
+  if (failed) return chip(`${failed} problem${failed === 1 ? "" : "s"}`, "bad");
+  if (blocked) return chip("Needs a runtime", "warn");
+  return chip("Healthy", "ok");
 }
 
 function renderDisciplines() {
@@ -199,11 +282,12 @@ function renderCatalog() {
     return;
   }
 
-  const showing = discipline
+  const chosen = discipline
     ? state.catalog.filter((entry) => (entry.disciplines || []).some((item) => item.key === discipline))
     : state.catalog;
+  const showing = matching(chosen, $("#catalog-search").value);
   if (!showing.length) {
-    container.append(emptyState("No package in the catalog covers that discipline."));
+    container.append(emptyState("Nothing in the catalog matches that.", false));
     return;
   }
 
@@ -421,6 +505,8 @@ document.querySelectorAll(".nav-link").forEach((link) => {
 });
 
 $("#refresh").addEventListener("click", refresh);
+$("#catalog-search").addEventListener("input", () => renderCatalog());
+$("#installed-search").addEventListener("input", () => renderInstalled());
 $("#modal-cancel").addEventListener("click", closeModal);
 $("#modal-close").addEventListener("click", closeModal);
 $("#modal-confirm").addEventListener("click", () => { if (confirmAction) confirmAction(); });

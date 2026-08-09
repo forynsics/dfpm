@@ -85,6 +85,11 @@ def _stage(
             "id": manifest.id,
             "name": manifest.name,
             "kind": manifest.kind,
+            # Recorded rather than looked up later, for the same reason the
+            # platform and project are: what is installed should be able to
+            # describe itself on a machine that has no catalog, or whose
+            # catalog has since moved on to a different version.
+            "description": manifest.description,
             "version": manifest.version,
             "installed_at": datetime.now(UTC).isoformat(),
             "manifest_digest": manifest.digest,

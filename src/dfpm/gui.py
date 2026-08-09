@@ -15,6 +15,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from . import removal
+from .archive import human_size
 from .catalog import describe, load_catalog, resolve
 from .classification import vocabulary
 from .doctor import inspect
@@ -208,7 +209,7 @@ class Handler(BaseHTTPRequestHandler):
                 "state": str(storage.state / "packages"),
                 "catalog": str(self.session.catalog),
             },
-            "packages": [_summarize(package) for package in list_packages(storage)],
+            "packages": [_summarize(package, storage) for package in list_packages(storage)],
             "catalog": catalog,
             "catalogError": catalog_error,
             # Sent alongside the packages for the same reason the command line
@@ -251,15 +252,29 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
 
-def _summarize(package: dict[str, Any]) -> dict[str, Any]:
-    """Trim a package record for the interface, leaving out per-file detail."""
+def _summarize(package: dict[str, Any], storage: Storage) -> dict[str, Any]:
+    """Trim a package record for the interface, leaving out per-file detail.
+
+    What is sent is what somebody looking at an installed tool would act on:
+    what it is, how to invoke it, where it went, and what it cost. The file
+    count is deliberately not here. It exists so the installer can refuse an
+    archive that does not match its manifest, and nobody has ever needed to
+    know a package contains five thousand and seventy-seven of anything.
+    """
+    version = package.get("version")
+    size = package.get("installed_size")
+    location = str(storage.package_version(package["id"], version)) if version else None
     return {
         "id": package["id"],
         "name": package.get("name", package["id"]),
         "kind": package.get("kind"),
-        "version": package.get("version"),
+        "description": package.get("description"),
+        "version": version,
         "installedAt": package.get("installed_at"),
-        "files": package.get("file_count"),
+        # Formatted here so the interface and the command line cannot end up
+        # describing the same install with different numbers.
+        "installedSize": human_size(size) if isinstance(size, int) else None,
+        "location": location,
         "platform": package.get("platform"),
         "project": package.get("project"),
         "entrypoints": [item["name"] for item in package.get("entrypoints", [])],
