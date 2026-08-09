@@ -104,7 +104,9 @@ Command shims are derived from the installed version's recorded entrypoints and 
 
 The directory is the unit of ownership. dfpm creates `tools/<id>/<version>/` and nothing else writes to it, so there is no per-file inventory to consult and no question of which files inside it are dfpm's. That is what lets a tool which maintains its own files be removed without ceremony: a rule set updated in place is still part of the package, and removing the package removes it.
 
-The consequence is worth stating plainly: **everything in that directory is deleted, including anything put there after installation.** Work you want to keep belongs somewhere else. In exchange, uninstalling never strands a directory that then blocks reinstalling the same version, and never leaves thousands of files behind for a person to review by hand.
+Installing a different version does the same to the directory it replaces, and the install plan shows that folder and its contents before anything is fetched. So the consequence is the same in both cases and worth stating plainly: **everything in the directory goes, including whatever the tool put there after installation.** A tool that downloads its own rules will download them again after an upgrade.
+
+Redirecting a tool's own writes somewhere durable would mean building it from source with different paths compiled in, or patching it afterwards. dfpm extracts binaries the project already published and changes nothing about them, so there is no such seam. In exchange for accepting that, uninstalling never strands a directory that blocks reinstalling the same version, and never leaves thousands of files for a person to review by hand.
 
 dfpm holds no per-file digests, and this is deliberate. Such a list would sit unsigned beside the files it vouched for, so anyone able to alter a binary could alter the list in the same breath — it detects accidental corruption, not an adversary. What is recorded instead is `artifact_sha256`, the digest of the file the project published, which is the claim worth making about an installed tool. Real integrity checking for a binary comes from its own code signature.
 

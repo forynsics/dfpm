@@ -152,7 +152,14 @@ def _install(args: argparse.Namespace, storage: Storage) -> int:
     print("Install plan")
     print(f"  Package:     {manifest.name} {manifest.version}")
     if previous:
-        print(f"  Replaces:    {previous}, which is removed once {manifest.version} is installed and working")
+        # Replacing a version deletes its whole folder, so show what is in there
+        # now rather than letting a tool's downloaded rules vanish unannounced.
+        outgoing = removal.plan(storage, manifest.id)
+        print(f"  Replaces:    {previous}, whose folder is deleted once {manifest.version} is installed and working")
+        print(f"               {outgoing.root}")
+        print(f"               {outgoing.file_count:,} file(s), {human_size(outgoing.total_size)}")
+        if outgoing.grew:
+            print(f"               Installed with {outgoing.installed_count:,}; anything added since goes too.")
     if manifest.platform is not None:
         print(f"  Platform:    {manifest.platform}")
     if manifest.project is not None:

@@ -266,8 +266,24 @@ def _require(payload: dict[str, Any], key: str) -> str:
     return value.strip()
 
 
-def _install_plan(manifest: Manifest, storage: Storage) -> dict[str, Any]:
+def _replaced(storage: Storage, package_id: str, previous: str | None) -> dict[str, Any] | None:
+    """Describe the version being replaced, whose folder the install deletes."""
+    if not previous:
+        return None
+    outgoing = removal.plan(storage, package_id)
     return {
+        "version": previous,
+        "root": str(outgoing.root),
+        "files": outgoing.file_count,
+        "size": outgoing.total_size,
+        "installedFiles": outgoing.installed_count,
+        "grew": outgoing.grew,
+    }
+
+
+def _install_plan(manifest: Manifest, storage: Storage, previous: str | None = None) -> dict[str, Any]:
+    return {
+        "replaces": _replaced(storage, manifest.id, previous),
         "package": manifest.id,
         "name": manifest.name,
         "version": manifest.version,
@@ -292,8 +308,8 @@ def _resolve(session: Session, payload: dict[str, Any]) -> Manifest:
 def _plan_install(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
     manifest = _resolve(session, payload)
     check_platform(manifest)
-    check_destination(manifest, session.storage)
-    return {"plan": _install_plan(manifest, session.storage)}
+    previous = check_destination(manifest, session.storage)
+    return {"plan": _install_plan(manifest, session.storage, previous)}
 
 
 def _do_install(session: Session, payload: dict[str, Any]) -> dict[str, Any]:

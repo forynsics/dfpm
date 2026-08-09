@@ -224,6 +224,18 @@ async function previewInstall(entry) {
       ]),
       el("div", { className: "facts" }, [fact("Source", plan.source), fact("SHA-256", plan.sha256)]),
       el("div", { className: "facts" }, [fact("Destination", plan.destination), fact("System-wide changes", "None")]),
+      plan.replaces
+        ? el("div", { className: "system-note" }, [
+            el("b", { text: `Version ${plan.replaces.version} is deleted once this one is working` }),
+            el("p", {
+              text:
+                `Its folder — ${plan.replaces.root} — holds ${plan.replaces.files} file(s) and goes entirely. ` +
+                (plan.replaces.grew
+                  ? `It was installed with ${plan.replaces.installedFiles}, so anything the tool downloaded since goes too.`
+                  : ""),
+            }),
+          ])
+        : null,
       el("div", { className: "system-note" }, [
         el("b", { text: "What happens when you confirm" }),
         el("p", { text: "dfpm downloads this artifact, refuses it unless the digest matches exactly, extracts it only if the result fits the volume, checks the expected files are present, and only then installs it." }),

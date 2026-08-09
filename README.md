@@ -93,7 +93,9 @@ A package that declares a platform is refused outright on a machine that does no
 
 A few tools carry terms restricting who may use them, or for what purpose. Those packages record the terms URL, dfpm shows it in the plan, and `--yes` on its own will not install them — confirming a plan and asserting that restricted terms permit your use are different claims, and only you can make the second one. Answering the prompt covers it interactively; a scripted install needs `--accept-terms`.
 
-Removal is equally explicit. Each version lives in a directory dfpm created and nothing else writes to, so `dfpm uninstall` removes that directory and the command shortcuts pointing at it. The plan shows the path, the file count and the size first, and says so when the directory holds more than the install put there — which is what happens when a tool updates its own rules or downloads data on first run. Everything in that folder goes, so keep your own work somewhere else.
+Removal is equally explicit. Each version lives in a directory dfpm created and nothing else writes to, so `dfpm uninstall` removes that directory and the command shortcuts pointing at it. Installing a different version does the same thing to the one it replaces.
+
+Both plans show the path, the file count and the size before anything happens, and say so when the folder holds more than the install put there — which is what you see after a tool has updated its own rules or downloaded data on first run. Those extras go with it, so a tool that fetches its own data will fetch it again after an upgrade.
 
 ## The catalog
 

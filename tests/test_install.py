@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+import contextlib
 import hashlib
+import io
 import json
 import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from unittest import mock
 
 from dfpm import platforms
+from dfpm.cli import main
 from dfpm.doctor import inspect
 from dfpm.errors import InstallError, VerificationError
 from dfpm.installer import install
@@ -140,6 +144,51 @@ class InstallTests(unittest.TestCase):
         self.assertIsNone(read_package(self.storage, "other.tool"))
         self.assertFalse(self.storage.package_version("other.tool", "2.0.0").exists())
         self.assertIn("example.tool", (self.storage.bin / "shared.cmd").read_text(encoding="utf-8"))
+
+
+class ReplacementPlanTests(unittest.TestCase):
+    """Installing over a version deletes its folder, so the plan has to say so first."""
+
+    def setUp(self) -> None:
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.storage = Storage(self.base / "dfpm-data")
+
+    def plan(self, catalog: Path, version: str) -> str:
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output), mock.patch("builtins.input", return_value="n"):
+            main([
+                "--root", str(self.storage.root),
+                "--catalog", str(catalog),
+                "install", "example.tool", "--package-version", version,
+            ])
+        return output.getvalue()
+
+    def test_the_plan_names_the_folder_a_replacement_deletes(self) -> None:
+        catalog, first = create_package(self.base, version="1.0.0")
+        destination = install(Manifest.load(first), self.storage)
+        # Stand in for a tool that downloads its own rules after installation.
+        (destination / "rules").mkdir()
+        (destination / "rules" / "downloaded.yml").write_text("rule\n", encoding="utf-8")
+        create_package(self.base, version="1.1.0")
+
+        printed = self.plan(catalog, "1.1.0")
+        self.assertIn("whose folder is deleted", printed)
+        self.assertIn(str(destination), printed)
+        self.assertIn("3 file(s)", printed)
+        self.assertIn("anything added since goes too", printed)
+
+    def test_a_replacement_of_an_untouched_version_does_not_warn_about_extras(self) -> None:
+        catalog, first = create_package(self.base, version="1.0.0")
+        install(Manifest.load(first), self.storage)
+        create_package(self.base, version="1.1.0")
+
+        printed = self.plan(catalog, "1.1.0")
+        self.assertIn("whose folder is deleted", printed)
+        self.assertNotIn("anything added since", printed)
+
+    def test_a_first_install_says_nothing_about_replacing(self) -> None:
+        catalog, _ = create_package(self.base, version="1.0.0")
+        self.assertNotIn("Replaces", self.plan(catalog, "1.0.0"))
 
 
 if __name__ == "__main__":
