@@ -91,6 +91,8 @@ Continue? [y/N]
 
 A package that declares a platform is refused outright on a machine that does not match it. Use `--yes` only when the plan has already been reviewed.
 
+A few tools carry terms restricting who may use them, or for what purpose. Those packages record the terms URL, dfpm shows it in the plan, and `--yes` on its own will not install them — confirming a plan and asserting that restricted terms permit your use are different claims, and only you can make the second one. Answering the prompt covers it interactively; a scripted install needs `--accept-terms`.
+
 Removal is equally explicit. `dfpm uninstall` previews everything dfpm owns, then deletes only the files it recorded at install time and can still recognise. Files it did not install, and managed files whose contents have changed since installation, are preserved and reported rather than deleted.
 
 ## The catalog
@@ -115,6 +117,8 @@ dfpm run yara rules.yar C:\evidence\collected
 ```
 
 It looks up the command among the installed packages, runs that exact file, and passes your arguments through as a real argument list. Its exit code is the tool's exit code, so it composes normally in scripts.
+
+**dfpm never adds arguments of its own.** What you type is what runs. Some tools look for their own rules or configuration relative to the current directory and will need to be told where those live — that is the tool's own interface, and the catalog records the working invocation rather than dfpm quietly supplying it.
 
 One exception, because Windows leaves no honest alternative: when a package's entrypoint is a `.cmd` or `.bat`, Windows runs it through `cmd`, which re-reads the command line before the script ever sees it. An argument containing `&`, `|`, `<`, `>`, `^`, `(`, `)`, `"` or `%` would not arrive intact, so dfpm refuses it and points you at the file to run directly rather than passing something the tool would misread.
 

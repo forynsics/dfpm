@@ -8,8 +8,9 @@ Every manifest here pins an exact artifact URL, SHA-256 digest, and size that a 
 2. Download the asset over HTTPS from the project's official location and compute its SHA-256 and size locally.
 3. Corroborate the digest against a second source where one exists, such as the digest the hosting platform recorded for the asset, or a checksum or signature the project publishes. GitHub only records digests for assets uploaded after it added the feature, so older releases have none and the locally computed digest is all you get.
 4. Inspect the archive to determine `strip_components`, the real entrypoint paths, and the files worth health checking. Record `install.extracted_size` and `install.entries` while you are there, so `dfpm install` can show what the package costs on disk before anything is downloaded. Both are verified after extraction, so a wrong figure fails the install rather than misleading someone.
-5. Record the upstream project, its license, and the platform the artifact was built for.
-6. Run `dfpm catalog`, which loads and validates every manifest in this directory and fails on a malformed one. Then install it and confirm the tool actually runs.
+5. Record the upstream project, its license, and the platform the artifact was built for. `license` takes an SPDX expression, so an artifact under more than one licence says so directly (`AGPL-3.0-only AND LicenseRef-DRL-1.1`). If the tool restricts who may use it or for what purpose, record `project.terms_url`; that alone makes dfpm refuse to install it from a script without `--accept-terms`.
+6. If the tool needs particular arguments to work at all — some resolve their own rules or configuration relative to the working directory — record the working invocation in the review notes below. dfpm does not supply arguments on a tool's behalf, so this is documentation for whoever installs it, not configuration.
+7. Run `dfpm catalog`, which loads and validates every manifest in this directory and fails on a malformed one. Then install it and confirm the tool actually runs.
 
 ## Review notes
 

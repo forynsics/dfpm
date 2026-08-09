@@ -51,6 +51,7 @@ class Project:
     homepage: str | None
     source: str | None
     license: str | None
+    terms_url: str | None = None
 
 
 @dataclass(frozen=True)
@@ -219,6 +220,7 @@ def _project(value: Any) -> Project | None:
         homepage=_optional_url(fields.get("homepage"), "project.homepage"),
         source=_optional_url(fields.get("source"), "project.source"),
         license=None if fields.get("license") is None else _text(fields.get("license"), "project.license"),
+        terms_url=_optional_url(fields.get("terms_url"), "project.terms_url"),
     )
 
 

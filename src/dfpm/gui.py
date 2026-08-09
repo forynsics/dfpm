@@ -277,6 +277,9 @@ def _install_plan(manifest: Manifest, storage: Storage) -> dict[str, Any]:
         "source": manifest.artifact_source(),
         "sha256": manifest.artifact.sha256,
         "size": manifest.artifact.size,
+        "extractedSize": manifest.extracted_size,
+        "entries": manifest.entry_count,
+        "termsUrl": manifest.project.terms_url if manifest.project else None,
         "destination": str(storage.package_version(manifest.id, manifest.version)),
     }
 
@@ -295,6 +298,14 @@ def _plan_install(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
 
 def _do_install(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
     manifest = _resolve(session, payload)
+    terms = manifest.project.terms_url if manifest.project else None
+    if terms and payload.get("acceptTerms") is not True:
+        # Same rule the command line applies: confirming the plan is not the same
+        # as asserting that restricted terms permit this particular user.
+        raise DfpmError(
+            f"{manifest.name} {manifest.version} is distributed under terms restricting who may use it. "
+            f"Review {terms} and confirm they permit your use."
+        )
     previous = check_destination(manifest, session.storage)
     destination = install(manifest, session.storage)
     replaced = f", replacing {previous}" if previous else ""

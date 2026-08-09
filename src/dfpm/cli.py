@@ -32,6 +32,12 @@ def build_parser() -> argparse.ArgumentParser:
     install_command.add_argument("package")
     install_command.add_argument("--package-version", dest="package_version", help="Install this version instead of the newest.")
     install_command.add_argument("--yes", action="store_true", help="Confirm the displayed plan.")
+    install_command.add_argument(
+        "--accept-terms",
+        action="store_true",
+        dest="accept_terms",
+        help="Assert that the package's usage terms permit your use. Never implied by --yes.",
+    )
 
     uninstall_command = commands.add_parser("uninstall", help="Remove installed files dfpm recorded.")
     uninstall_command.add_argument("package")
@@ -155,6 +161,9 @@ def _install(args: argparse.Namespace, storage: Storage) -> int:
             print(f"  License:     {manifest.project.license}")
         if manifest.project.source:
             print(f"  Project:     {manifest.project.source}")
+        if manifest.project.terms_url:
+            print(f"  Terms:       {manifest.project.terms_url}")
+            print("               Acceptance required. dfpm cannot judge whether they permit your use.")
     print(f"  Source:      {manifest.artifact_source()}")
     print(f"  SHA-256:     {manifest.artifact.sha256}")
     if manifest.artifact.size is not None:
@@ -169,6 +178,16 @@ def _install(args: argparse.Namespace, storage: Storage) -> int:
     if free is not None:
         print(f"  Disk:        {human_size(free)} free on that volume")
     print("  System-wide changes: none")
+    terms = manifest.project.terms_url if manifest.project else None
+    if terms and args.yes and not args.accept_terms:
+        # --yes says the plan was reviewed. Whether restricted terms permit this
+        # particular user is a separate claim, and only they can make it.
+        print(
+            f"\n{manifest.name} {manifest.version} is distributed under terms restricting who may use it.\n"
+            f"Review {terms} and pass --accept-terms if they permit your use.",
+            file=sys.stderr,
+        )
+        return 1
     if not args.yes:
         answer = input("Continue? [y/N] ").strip().lower()
         if answer not in {"y", "yes"}:
