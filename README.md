@@ -68,7 +68,7 @@ dfpm list
 dfpm doctor
 ```
 
-**One version of a package is installed at a time.** Installing replaces whatever was there before, the way `apt` and `pip` behave, so a tools directory never fills up with old copies you have to think about. The previous version is removed only after the new one is installed and working, so a failed install leaves the old one untouched.
+**One version of a package is installed at a time.** Installing replaces whatever was there before, so a tools directory never fills up with old copies you have to think about. The previous version is removed only after the new one is installed and working, so a failed install leaves the old one untouched.
 
 Going back to an older release is the same command with a version: `dfpm install yara --package-version 4.5.4`. That is usually instant and needs no network, because the artifact is already in the verified cache.
 
@@ -167,7 +167,7 @@ dfpm cache prune     # remove everything no installed package needs, and interru
 dfpm cache remove <digest>
 ```
 
-`prune` clears everything no installed package needs, which is the behaviour `apt clean` gives you and needs no flags for the common case. If you are seeding a cache for offline installs, `--keep-catalog` narrows it to artifacts no manifest lists either, and in that mode a catalog that cannot be read makes `prune` refuse rather than treat everything as unused. `remove` refuses a digest an installed package still depends on unless you pass `--force`, and files in the cache directory that are not named after their own digest are reported and left alone rather than deleted.
+`prune` clears everything no installed package needs, and needs no flags for the common case. If you are seeding a cache for offline installs, `--keep-catalog` narrows it to artifacts no manifest lists either, and in that mode a catalog that cannot be read makes `prune` refuse rather than treat everything as unused. `remove` refuses a digest an installed package still depends on unless you pass `--force`, and files in the cache directory that are not named after their own digest are reported and left alone rather than deleted.
 
 ## Local interface
 
