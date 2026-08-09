@@ -34,7 +34,7 @@ dfpm does not acquire or interpret evidence, manage cases, or run investigation 
 | Change your PATH, your `JAVA_HOME`, or any other global setting | no |
 | Manage operating system components | no |
 
-That boundary buys a stronger promise than guaranteeing every dependency on a machine: **dfpm either launches a tool in the environment it expects, or tells you exactly why it cannot.** A package installs whether or not the machine can run it yet, and says which it is.
+**dfpm either launches a tool in the environment it expects, or tells you exactly why it cannot.** A package installs whether or not the machine can run it yet, and says which it is.
 
 ## Why it exists
 
@@ -151,9 +151,7 @@ Both plans show the path, the file count and the size before anything happens, a
 
 The `catalog/` directory holds the manifests dfpm can install from. Each one names the release file its project published, records its SHA-256, and records the upstream project, its license and the platform it was built for. The download size and the size on disk are recorded too — not as a second integrity check, since the digest already settles what the bytes are, but so the plan can tell you the cost before you agree to it.
 
-It currently holds seven packages: **Hayabusa** and **YARA**, and five of Eric Zimmerman's command-line tools — **MFTECmd**, **PECmd**, **EvtxECmd**, **RECmd** and **SQLECmd**. dfpm is in early development, so the catalog is still small and grows deliberately. Every entry has been reviewed by a person, and the notes from that review are kept in [catalog/README.md](catalog/README.md) alongside what goes into an entry.
-
-Reading a digest, a size and an unpack depth out of an archive is a job for a script, and `scripts/draft-manifest.py` does it. What it will not do is decide what a tool is for or who would reach for it — that is the review, and it is why entries take a person and not just a build step.
+It currently holds seven packages: **Hayabusa** and **YARA**, and five of Eric Zimmerman's command-line tools — **MFTECmd**, **PECmd**, **EvtxECmd**, **RECmd** and **SQLECmd**. dfpm is in early development, so the catalog is still small. Every entry is reviewed by a person before it lands, and the notes from that review are kept in [catalog/README.md](catalog/README.md).
 
 Each entry describes one tool and every build of it dfpm can install, so a tool shipping for several systems is one entry rather than one per platform. `dfpm catalog` lists what is available; `dfpm catalog <package-id>` shows everything known about one of them, including the builds this machine cannot use:
 
@@ -164,7 +162,7 @@ Each entry describes one tool and every build of it dfpm can install, so a tool 
     4.0.0      macos/arm64        43.3 MiB
 ```
 
-Installing picks the newest version with a build for your machine, and the plan says so rather than leaving it implied. A manifest also records what the package costs on disk once unpacked, so the plan shows the size and file count before anything is downloaded. See the [manifest format](docs/manifest-v1.md) for the full list of rules extraction applies, and for what those rules are and are not defending against.
+Installing picks the newest version with a build for your machine, and the plan tells you which one it picked. An entry also records what the package costs on disk once unpacked, so the plan shows the size and file count before anything is downloaded. The [manifest format](docs/manifest-v1.md) lists every rule extraction applies.
 
 ## Running installed tools
 
@@ -187,7 +185,7 @@ Its exit code is the tool's exit code, so it composes normally in scripts. dfpm'
 
 What it does decide is *where* the tool runs. A command launches from the directory holding its executable rather than from wherever you happen to be, so a tool that keeps its rules or configuration beside itself finds them from any working directory. A package can name a different directory if it expects one. `dfpm which` shows it before you run anything.
 
-One exception, because Windows leaves no honest alternative: when a package's entrypoint is a `.cmd` or `.bat`, Windows runs it through `cmd`, which re-reads the command line before the script ever sees it. An argument containing `&`, `|`, `<`, `>`, `^`, `(`, `)`, `"` or `%` would not arrive intact, so dfpm refuses it and points you at the file to run directly rather than passing something the tool would misread.
+One exception. When a package's entrypoint is a `.cmd` or `.bat`, Windows runs it through `cmd`, which re-reads the command line before the script ever sees it. An argument containing `&`, `|`, `<`, `>`, `^`, `(`, `)`, `"` or `%` would not arrive intact, so dfpm refuses it and points you at the file to run directly.
 
 `dfpm which` shows what a command resolves to before you run it:
 
@@ -205,7 +203,7 @@ The third is to run the full path `dfpm which` prints, which is what the command
 
 ## The verified download cache
 
-Every artifact dfpm downloads is verified and then kept in a content-addressed cache, named by its own SHA-256. Keeping it is not about the uninstall-then-reinstall case, which is rare. It earns its disk for four reasons that matter to forensic work:
+Every artifact dfpm downloads is verified and then kept in a content-addressed cache, named by its own SHA-256. That is worth the disk for four reasons:
 
 - **Offline and air-gapped installs.** Populate the cache on a connected machine, copy the directory to an isolated one, and install with no network at all.
 - **Upstream is not permanent.** Release assets get deleted and versions get yanked. A pinned digest is worthless without the bytes, and re-running an analysis years later needs the exact version that was used at the time.
@@ -237,7 +235,7 @@ dfpm gui --port 8765          # default; use --port 0 to take any free port
 dfpm gui --no-browser         # start the server without opening a browser
 ```
 
-There are two web surfaces and they share one visual system. `src/dfpm/web/` is the local interface above; `docs/` is the public site, which explains dfpm and browses the catalog but installs nothing. It is plain static files with no build step, which is why it lives in `docs/` — that is a directory GitHub Pages can publish directly. `styles.css` and `refinements.css` are byte-identical in both, and a test fails if the copies drift.
+There is also a public site, which explains dfpm and browses the catalog but installs nothing.
 
 The default Windows data locations are rooted in `%LOCALAPPDATA%\dfpm`:
 
@@ -249,7 +247,7 @@ bin\                          Command shortcuts
 state\packages\               Records of what was installed
 ```
 
-`catalog\` holds what is **available**; `state\packages\` records what is **installed**. They move independently and on purpose: when a project publishes a new release, the entry changes to describe it, and nothing under `state\` is touched. That is what lets dfpm show you 4.1.0 in the catalog while correctly reporting that 4.0.0 is the version you are running.
+`catalog\` holds what is **available**; `state\packages\` records what is **installed**. They move independently, so when a project publishes a new release the catalog can show you 4.1.0 while still correctly reporting that 4.0.0 is the version you are running.
 
 dfpm reads entries from `catalog\` rather than from wherever you happen to be standing. `--catalog <dir>` overrides it for one command, and `DFPM_CATALOG` for a session.
 
@@ -272,13 +270,13 @@ Catalog sync plan
   Nothing is installed or removed. This only changes what is available to install.
 ```
 
-The version there has not moved, and that is not a mistake. Some projects publish each release at its own URL, and some replace the file at a fixed one whenever they rebuild — so an entry can change without the version changing. dfpm knows which kind a package is, says so in the install plan, and words a digest that stops matching accordingly.
+The version there has not moved, which is normal. Some projects publish each release at its own address, and some replace the file at a fixed one whenever they rebuild, so an entry can change without the version changing. dfpm knows which kind a package is and tells you in the install plan.
 
-The index records a digest per entry, which does three jobs: it proves an entry arrived intact, it means an unchanged entry is **never downloaded twice**, and it distinguishes a change made by the publisher from one made here — a locally edited entry is reported as such before it is replaced, not overwritten in silence. Entries that vanish upstream are removed, since an entry nobody stands behind should not stay on offer; nothing installed is affected, because a package's record does not depend on the catalog.
+An unchanged entry is never downloaded twice. An entry you have edited yourself is reported before it is replaced rather than overwritten in silence, and entries withdrawn upstream are removed — nothing you have installed is affected either way.
 
-Because entries decide what gets installed, syncing never happens on its own. It reads over HTTPS or from a directory, refuses a redirect off HTTPS, requires every entry to parse as a manifest before it lands, and writes nothing at all unless every entry passed.
+Syncing only happens when you ask for it. It reads over HTTPS or from a directory, refuses a redirect that drops out of HTTPS, checks every entry is a valid manifest before it lands, and writes nothing at all unless all of them passed.
 
-**When a project publishes a new release,** the entry is updated to describe it and nothing under `state\` changes. `dfpm list` then says so:
+**When a project publishes a new release,** the entry is updated to describe it and nothing you have installed changes. `dfpm list` says so:
 
 ```text
 yara                         4.5.5          YARA  (4.5.6 available)
@@ -287,25 +285,23 @@ The catalog has a newer version of: yara
 Installing one replaces the version you have: dfpm install <package-id>
 ```
 
-That comparison runs the same platform selection an install would, so a release that only ships for other systems is never offered to a machine that could not run it. It needs no network — the catalog is already on disk.
+A release that only ships for other systems is never offered to a machine that could not run it, and the check needs no network.
 
 ## Project status
 
 <img align="right" width="96" src="docs/assets/brix-sleeping.png" alt="">
 
-dfpm is in early development. Interfaces, manifests and behaviour may still change, and the command line ships only what is actually implemented — there are no commands that print "not yet supported".
+dfpm is in early development, and interfaces, manifests and behaviour may still change.
 
 **Working today:** installing, replacing and removing packages from verified artifacts; an install plan that shows the cost before anything is fetched; contained extraction with a free-space check; `dfpm run` and `dfpm which`; a verified download cache; catalog sync from a published directory; runtime detection that says why a tool cannot run yet; downloads of builds meant for other machines; a loopback management interface; and read-only health checks.
 
 **Not built yet:** a `dfpm search` command, health checks that actually execute a tool rather than checking its files are present, and telling you when a catalogued project has published something newer upstream. Packages are portable ZIPs only, so anything shipped as a tarball or as scripts needing an interpreter cannot be catalogued yet.
 
-**Not planned:** lockfile export, and side-by-side versions with an activate step. Both were built and deliberately removed — going back to an earlier release is `dfpm install <package> --package-version <version>`, served from the cache.
+Linux and macOS support are longer-term.
 
-Linux and macOS support, private and offline registries, signed catalogs and organisation policy are longer-term. The manifest format already has room for rulesets, parser packs and configuration packs; only tools exist today.
+## Security and Privacy
 
-## Security and privacy
-
-Telemetry is disabled by default. dfpm is not intended to receive evidence, case information, or forensic results. Security reporting guidance will be published before the first distributable release.
+dfpm is not intended to receive evidence, case information, or forensic results.
 
 ## License
 
