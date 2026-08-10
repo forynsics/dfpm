@@ -13,7 +13,7 @@ from pathlib import Path
 from . import __version__, cache, classification, launcher, plan, progress, removal, runtimes, shims, sync
 from .archive import human_size
 from . import platforms
-from .catalog import SHIPPED, build_index, describe, load_catalog, resolve
+from .catalog import SHIPPED, build_index, check_collections, describe, load_catalog, load_collections, resolve
 from .catalog import newer_than_installed as catalog_updates
 from .catalog import newest as catalog_newest
 from .catalog import version_key as catalog_version_key
@@ -121,6 +121,15 @@ def build_parser() -> argparse.ArgumentParser:
     sync_command.add_argument("--source", help=f"Where to read entries from. Defaults to {DEFAULT_SOURCE}")
     sync_command.add_argument("--yes", action="store_true", help="Confirm the displayed plan.")
 
+    # Both spellings, because listing them reads as plural and showing one
+    # reads as singular, and nobody should have to remember which was chosen.
+    collection = commands.add_parser(
+        "collection",
+        aliases=["collections"],
+        help="Show the named sets of packages this catalog offers.",
+    )
+    collection.add_argument("name", nargs="?", help="Show what one collection contains.")
+
     list_command = commands.add_parser("list", help="List installed packages.")
     list_command.add_argument("--json", action="store_true")
     doctor = commands.add_parser("doctor", help="Check installed packages without changing them.")
@@ -173,11 +182,22 @@ def _run(args: argparse.Namespace, storage: Storage) -> int:
         print(f"Tools:              {storage.tools}")
         print(f"Verified downloads: {storage.cache}")
         print(f"Command shortcuts:  {storage.bin}")
-        print(f"Catalog:            {args.catalog}")
+        # Resolved, because a relative path answers the question with the
+        # question. Where the catalog came from is worth saying too: reading a
+        # different one than you expect is the quiet way every later command
+        # goes wrong.
+        print(f"Catalog:            {args.catalog.resolve()}")
+        if args.catalog == SHIPPED:
+            print("                    The entries dfpm shipped with. 'dfpm sync' fetches the published catalog.")
+        elif args.catalog != storage.catalog:
+            print("                    Not this machine's catalog, which is:")
+            print(f"                    {storage.catalog}")
         print(f"Package records:    {storage.state / 'packages'}")
         return 0
     if args.command == "catalog":
         return _catalog(args)
+    if args.command in ("collection", "collections"):
+        return _collection(args)
     if args.command == "install":
         return _install(args, storage)
     if args.command == "sync":
@@ -224,6 +244,37 @@ def _other_builds(catalog: Path, manifest) -> int:
     return len(tools[0].builds) - 1 if tools else 0
 
 
+def _collection(args: argparse.Namespace) -> int:
+    """What can be asked for by one name, and what it stands for.
+
+    A collection is a way of requesting packages, not a thing that gets
+    installed, so there is nothing here about what is on this machine.
+    """
+    collections = load_collections(args.catalog)
+    if not collections:
+        print("This catalog offers no collections.")
+        return 0
+    if args.name:
+        wanted = args.name.lstrip("@")
+        matches = [item for item in collections if item.id == wanted]
+        if not matches:
+            offered = ", ".join(f"@{item.id}" for item in collections)
+            raise DfpmError(f"No collection called @{wanted} in this catalog. It has: {offered}")
+        chosen = matches[0]
+        print(f"@{chosen.id}  {chosen.name}")
+        if chosen.description:
+            print(textwrap.fill(chosen.description, width=88, initial_indent="  ", subsequent_indent="  "))
+        print(f"\n  {len(chosen.packages)} packages:")
+        for package_id in chosen.packages:
+            print(f"    {package_id}")
+        print(f"\nInstall them all with 'dfpm install @{chosen.id}'.")
+        return 0
+    for item in collections:
+        print(f"@{item.id:<22} {len(item.packages):>3} packages  {item.name}")
+    print("\nRun 'dfpm collection <name>' to see what one contains.")
+    return 0
+
+
 def _catalog(args: argparse.Namespace) -> int:
     if args.index:
         # What a published catalog needs beside its entries, so a machine
@@ -231,6 +282,7 @@ def _catalog(args: argparse.Namespace) -> int:
         print(json.dumps(build_index(args.catalog), indent=2))
         return 0
     tools = load_catalog(args.catalog)
+    check_collections(args.catalog)
     if args.package:
         matches = [tool for tool in tools if tool.id == args.package]
         if not matches:
@@ -457,8 +509,14 @@ def _perform_installs(args: argparse.Namespace, storage: Storage, current: plan.
     reporter = progress.reporter()
     installed: list[plan.Incoming] = []
     failed: list[tuple[str, str]] = []
+    total = len(current.incoming)
     try:
-        for item in current.incoming:
+        for position, item in enumerate(current.incoming, start=1):
+            if total > 1:
+                # One progress bar serves the whole set and restarts per stage,
+                # so without this a long batch reads as one download that keeps
+                # going back to nothing.
+                print(f"[{position}/{total}] {item.manifest.name} {item.manifest.version}")
             try:
                 destination = install(
                     item.manifest,
@@ -688,7 +746,7 @@ def _uninstall(args: argparse.Namespace, storage: Storage) -> int:
             print("Nothing is installed.")
             return 0
 
-    current = plan.for_uninstall(storage, requested)
+    current = plan.for_uninstall(storage, requested, args.catalog)
     if current.blocked:
         for item in current.blocked:
             print(f"error: {item.detail}", file=sys.stderr)

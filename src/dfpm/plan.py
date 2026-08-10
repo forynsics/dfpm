@@ -38,6 +38,7 @@ WRONG_PLATFORM = "wrong-platform"
 TERMS_NOT_ACCEPTED = "terms-not-accepted"
 DESTINATION_IN_THE_WAY = "destination-in-the-way"
 NOT_INSTALLED = "not-installed"
+NO_SUCH_COLLECTION = "no-such-collection"
 UNREADABLE = "unreadable"
 
 
@@ -169,6 +170,45 @@ class Plan:
         return self.free_space >= self.extracted_size
 
 
+COLLECTION_PREFIX = "@"
+
+
+def expand(directory: Path, requested: list[str]) -> tuple[list[str], list[Blocked]]:
+    """Replace any @collection with the packages it names.
+
+    Collections are resolved here and nowhere else. Everything downstream --
+    planning, installing, the record on disk -- deals only in packages, so a
+    collection leaves no trace of itself and there is never a question about
+    whether one is still installed.
+    """
+    names: list[str] = []
+    blocked: list[Blocked] = []
+    known: dict[str, catalogs.Collection] | None = None
+    for name in requested:
+        if not name.strip():
+            # An empty name is nearly always a shell that ate something. Naming
+            # the likely cause beats reporting that no package is called "".
+            blocked.append(Blocked(
+                "", NOT_IN_CATALOG,
+                "An empty package name arrived. If you wrote @name in PowerShell, "
+                "quote it as '@name' -- an unquoted @word is read as a variable there.",
+            ))
+            continue
+        if not name.startswith(COLLECTION_PREFIX):
+            names.append(name)
+            continue
+        if known is None:
+            known = {item.id: item for item in catalogs.load_collections(directory)}
+        collection = known.get(name[1:])
+        if collection is None:
+            offered = ", ".join(f"@{item}" for item in sorted(known)) or "none"
+            blocked.append(Blocked(name, NO_SUCH_COLLECTION,
+                                   f"No collection called {name} in this catalog. It has: {offered}"))
+            continue
+        names.extend(collection.packages)
+    return names, blocked
+
+
 def resolve(directory: Path, requested: list[str], version: str | None = None,
             platform: str | None = None) -> tuple[list[Manifest], list[Blocked]]:
     """Turn requested names into manifests, reading the catalog once.
@@ -177,9 +217,9 @@ def resolve(directory: Path, requested: list[str], version: str | None = None,
     unknown name in a list of twenty should not decide the fate of the other
     nineteen. Deciding what to do about it belongs to the caller.
     """
+    requested, blocked = expand(directory, requested)
     tools = catalogs.load_catalog(directory)
     found: list[Manifest] = []
-    blocked: list[Blocked] = []
     for package_id in _deduplicate(requested):
         try:
             found.append(catalogs.select(tools, package_id, version, platform))
@@ -270,10 +310,17 @@ def _terms_blockers(incoming: list[Incoming]) -> list[Blocked]:
     return blockers
 
 
-def for_uninstall(storage: Storage, requested: list[str]) -> Plan:
-    """What removing these packages would do."""
-    outgoing: list[removal.RemovalPlan] = []
+def for_uninstall(storage: Storage, requested: list[str], directory: Path | None = None) -> Plan:
+    """What removing these packages would do.
+
+    A collection expands here as it does anywhere else, and means the packages
+    it names today. Nothing recorded what a collection contained when it was
+    installed, so nothing can pretend to remove exactly that.
+    """
     blocked: list[Blocked] = []
+    if directory is not None:
+        requested, blocked = expand(directory, requested)
+    outgoing: list[removal.RemovalPlan] = []
     for package_id in _deduplicate(requested):
         try:
             outgoing.append(removal.plan(storage, package_id))

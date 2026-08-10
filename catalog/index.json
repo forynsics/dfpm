@@ -169,5 +169,13 @@
       "version": "4.5.5",
       "sha256": "bd34c91bb488e828fcd3cb8138296df7b3169db56a68377d696263d95f1338ca"
     }
+  ],
+  "collections": [
+    {
+      "file": "collections/ez-tools.json",
+      "id": "ez-tools",
+      "packages": 26,
+      "sha256": "43d5483bc7732801924a26830e30b33699f84d5e2c458c34cc01eece3a982aa4"
+    }
   ]
 }

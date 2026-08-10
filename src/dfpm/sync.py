@@ -31,6 +31,10 @@ from .storage import remove_tree
 # without waiting for a release of dfpm itself.
 DEFAULT_SOURCE = "https://raw.githubusercontent.com/forynsics/dfpm/main/catalog/"
 
+# Collections are published inside the catalog rather than beside it, so their
+# names carry the subdirectory and one comparison covers both kinds of file.
+COLLECTION_PREFIX = "collections/"
+
 MAX_FILE_BYTES = 1024 * 1024
 
 ADDED, UPDATED, UNCHANGED, REMOVED, EDITED = "added", "updated", "unchanged", "removed", "edited"
@@ -76,7 +80,7 @@ def plan(source: str, directory: Path) -> Plan:
     is what separates "the publisher changed it" from "somebody here changed
     it" — the second is worth saying out loud before it is overwritten.
     """
-    published = _read_index(source)
+    published, published_collections = _read_index(source)
     local = {path.name: path for path in entry_files(directory)} if directory.is_dir() else {}
     last_synced = _local_index(directory)
 
@@ -96,6 +100,20 @@ def plan(source: str, directory: Path) -> Plan:
                 kind = UPDATED
         result.changes.append(Change(name, entry["id"], entry.get("version"), entry["sha256"], kind))
 
+    for entry in published_collections:
+        name = entry["file"]
+        path = local.pop(name, None)
+        if path is None:
+            path = directory / name
+            path = path if path.is_file() else None
+        if path is None:
+            kind = ADDED
+        elif hashlib.sha256(path.read_bytes()).hexdigest() == entry["sha256"]:
+            kind = UNCHANGED
+        else:
+            kind = UPDATED
+        result.changes.append(Change(name, entry["id"], None, entry["sha256"], kind))
+
     # Anything left is here and not there. It was withdrawn upstream, which
     # usually means something, so it goes rather than lingering as an offer
     # nobody stands behind. An installed package is unaffected: its record does
@@ -103,6 +121,22 @@ def plan(source: str, directory: Path) -> Plan:
     for name in sorted(local):
         result.changes.append(Change(name, Path(name).stem, None, None, REMOVED))
     return result
+
+
+def _must_be_a_collection(name: str, body: bytes) -> None:
+    """Refuse a collection that will not load, before it reaches the catalog.
+
+    A collection naming packages this catalog does not have is a real
+    possibility across a sync, since entries and collections are published
+    together but arrive as separate files. That is checked when the catalog is
+    read rather than here, so a partial view never blocks a valid update.
+    """
+    try:
+        payload = json.loads(body)
+    except json.JSONDecodeError as exc:
+        raise DfpmError(f"{name} is not valid JSON: {exc}") from exc
+    if not isinstance(payload, dict) or not isinstance(payload.get("packages"), list):
+        raise DfpmError(f"{name} does not describe a collection.")
 
 
 def apply(current: Plan) -> list[Change]:
@@ -116,7 +150,10 @@ def apply(current: Plan) -> list[Change]:
                 f"{change.file} does not match the digest its index recorded.\n"
                 f"  expected {change.sha256}\n  found    {actual}"
             )
-        _must_be_an_entry(change.file, body)
+        if change.file.startswith(COLLECTION_PREFIX):
+            _must_be_a_collection(change.file, body)
+        else:
+            _must_be_an_entry(change.file, body)
         staged[change.file] = body
 
     # Nothing is written until every entry has been fetched and read, so a
@@ -124,18 +161,26 @@ def apply(current: Plan) -> list[Change]:
     # half-updated.
     current.directory.mkdir(parents=True, exist_ok=True)
     for name, body in staged.items():
-        (current.directory / name).write_bytes(body)
+        target = current.directory / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(body)
     for change in current.of(REMOVED):
         (current.directory / change.file).unlink(missing_ok=True)
 
     kept = [change for change in current.changes if change.kind != REMOVED]
-    index = {
+    index: dict = {
         "schema_version": INDEX_SCHEMA_VERSION,
         "entries": [
             {"file": item.file, "id": item.id, "version": item.version, "sha256": item.sha256}
-            for item in kept
+            for item in kept if not item.file.startswith(COLLECTION_PREFIX)
         ],
     }
+    groups = [
+        {"file": item.file, "id": item.id, "sha256": item.sha256}
+        for item in kept if item.file.startswith(COLLECTION_PREFIX)
+    ]
+    if groups:
+        index["collections"] = groups
     (current.directory / INDEX_NAME).write_text(json.dumps(index, indent=2) + "\n", encoding="utf-8")
     return current.fetches + current.of(REMOVED)
 
@@ -163,7 +208,30 @@ def _local_index(directory: Path) -> dict[str, str]:
         return {}
 
 
-def _read_index(source: str) -> list[dict]:
+def _published_collections(document: dict, source: str) -> list[dict]:
+    """The collections a published index names, validated as paths before use.
+
+    Optional by design: a catalog offering none, and an older published index
+    that has never heard of them, are the same thing here. The names are read
+    as untrusted text, exactly as entry names are, because they too decide
+    where bytes get written. A collection may live in one place and nowhere
+    else.
+    """
+    groups = document.get("collections") or []
+    if not isinstance(groups, list):
+        raise DfpmError(f"The catalog index at {source} does not list collections as an array.")
+    for group in groups:
+        if not isinstance(group, dict) or not {"file", "id", "sha256"} <= set(group):
+            raise DfpmError(f"The catalog index at {source} has a collection missing file, id or sha256.")
+        name = group["file"]
+        stem = name[len(COLLECTION_PREFIX):] if name.startswith(COLLECTION_PREFIX) else ""
+        if not stem or stem != Path(stem).name or stem.startswith(".") or not stem.endswith(".json"):
+            raise DfpmError(f"The catalog index names a collection dfpm will not write: {name!r}")
+    return groups
+
+
+def _read_index(source: str) -> tuple[list[dict], list[dict]]:
+    """The entries and collections a published catalog declares."""
     raw = _read(_locate(source, INDEX_NAME))
     try:
         data = json.loads(raw)
@@ -187,7 +255,7 @@ def _read_index(source: str) -> list[dict]:
             raise DfpmError(f"The catalog index names a file dfpm will not write: {name!r}")
         if name == INDEX_NAME:
             raise DfpmError("The catalog index lists itself as an entry.")
-    return entries
+    return entries, _published_collections(data, source)
 
 
 def _locate(source: str, name: str) -> str:

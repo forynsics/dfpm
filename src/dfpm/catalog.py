@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import re
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -122,7 +124,24 @@ def build_index(directory: Path) -> dict[str, Any]:
             "version": newest(tool).version,
             "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
         })
-    return {"schema_version": INDEX_SCHEMA_VERSION, "entries": entries}
+    index: dict[str, Any] = {"schema_version": INDEX_SCHEMA_VERSION, "entries": entries}
+    # Collections travel with the entries or they exist only where they were
+    # written. The key is optional and additive, so a reader that predates it
+    # sees a catalog it already understands rather than one it must refuse.
+    groups = []
+    for path in sorted(collections_directory(directory).glob("*.json")) if collections_directory(directory).is_dir() else []:
+        collection = Collection.load(path)
+        groups.append({
+            # Named relative to the catalog root, since this is both where to
+            # fetch it from and where to put it.
+            "file": f"{COLLECTIONS_DIRNAME}/{path.name}",
+            "id": collection.id,
+            "packages": len(collection.packages),
+            "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        })
+    if groups:
+        index["collections"] = groups
+    return index
 
 
 def newer_than_installed(directory: Path, packages: list[dict[str, Any]]) -> dict[str, str]:
@@ -211,3 +230,98 @@ def version_key(version: str) -> tuple[tuple[int, ...], int, str]:
             break
         release.append(int(part))
     return tuple(release), 0 if len(release) < len(parts) else 1, version
+
+
+# Collections live in a subdirectory of the catalog rather than beside the
+# entries. The entry loader globs the top level only, so a collection can never
+# be mistaken for a package, and a package manifest never has to grow a field
+# describing which groups it happens to belong to.
+COLLECTIONS_DIRNAME = "collections"
+
+# A collection id must contain a hyphen. That looks arbitrary until you write
+# one at a shell prompt: collections are requested as @name, and a shell that
+# expands @word when word names a variable would silently pass something else
+# entirely, or nothing at all. A name with a hyphen cannot be a variable, so the
+# hazard stops being something a person has to remember.
+COLLECTION_ID = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)+")
+
+
+@dataclass(frozen=True)
+class Collection:
+    """A named set of packages to request together.
+
+    It holds ids and nothing else. A collection is never installed, never
+    recorded, and never versioned: it says what to ask for, not what a machine
+    promises to keep. That is what makes removing one of its members an
+    ordinary removal rather than a question about whether the collection is
+    still intact.
+    """
+
+    id: str
+    name: str
+    description: str
+    packages: tuple[str, ...]
+
+    @classmethod
+    def load(cls, path: Path) -> Collection:
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ManifestError(f"{path.name} could not be read: {exc}") from exc
+        if not isinstance(data, dict):
+            raise ManifestError(f"{path.name} must hold a JSON object")
+
+        identifier = data.get("id")
+        if not isinstance(identifier, str) or not COLLECTION_ID.fullmatch(identifier):
+            raise ManifestError(
+                f"{path.name}: collection id must be lowercase and contain a hyphen, so that "
+                f"'@{identifier}' cannot be read as a variable by a shell. Got {identifier!r}."
+            )
+        packages = data.get("packages")
+        if not isinstance(packages, list) or not packages or not all(isinstance(item, str) for item in packages):
+            raise ManifestError(f"{path.name}: packages must be a non-empty list of package ids")
+        seen: set[str] = set()
+        for package_id in packages:
+            if package_id in seen:
+                raise ManifestError(f"{path.name}: lists {package_id!r} twice")
+            seen.add(package_id)
+        name = data.get("name")
+        description = data.get("description")
+        return cls(
+            id=identifier,
+            name=name if isinstance(name, str) and name.strip() else identifier,
+            description=description if isinstance(description, str) else "",
+            packages=tuple(packages),
+        )
+
+
+def collections_directory(directory: Path) -> Path:
+    return directory / COLLECTIONS_DIRNAME
+
+
+def load_collections(directory: Path) -> list[Collection]:
+    """Every collection in a catalog, in listing order.
+
+    A catalog with none is the ordinary case rather than a fault, so a missing
+    directory reads as an empty list.
+    """
+    folder = collections_directory(directory)
+    if not folder.is_dir():
+        return []
+    return [Collection.load(path) for path in sorted(folder.glob("*.json"))]
+
+
+def check_collections(directory: Path) -> None:
+    """Fail if any collection names a package the catalog does not have.
+
+    Checked where the catalog is validated rather than when somebody installs,
+    so a renamed entry breaks the catalog loudly instead of breaking one
+    person's request quietly.
+    """
+    known = {tool.id for tool in load_catalog(directory)}
+    for collection in load_collections(directory):
+        missing = [package_id for package_id in collection.packages if package_id not in known]
+        if missing:
+            raise ManifestError(
+                f"Collection {collection.id} names packages that are not in this catalog: {', '.join(missing)}"
+            )

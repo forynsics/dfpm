@@ -25,10 +25,24 @@ def forget_package(storage: Storage, package_id: str) -> None:
 
 
 def list_packages(storage: Storage) -> list[dict[str, Any]]:
+    """Every package this machine has a record of.
+
+    A record that cannot be read is skipped rather than raised. Everything that
+    needs to know what is installed comes through here -- listing, shims, the
+    cache survey, doctor, the local interface -- so one truncated file would
+    otherwise take all of them down at once, including the commands someone
+    would reach for to find out what was wrong.
+    """
     package_dir = storage.state / "packages"
     if not package_dir.exists():
         return []
-    return [_normalize(json.loads(path.read_text(encoding="utf-8"))) for path in sorted(package_dir.glob("*.json"))]
+    records = []
+    for path in sorted(package_dir.glob("*.json")):
+        try:
+            records.append(_normalize(json.loads(path.read_text(encoding="utf-8"))))
+        except (OSError, ValueError):
+            continue
+    return records
 
 
 def _normalize(record: dict[str, Any]) -> dict[str, Any]:

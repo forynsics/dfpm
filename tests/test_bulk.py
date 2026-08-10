@@ -190,3 +190,79 @@ class RuntimeTests(BulkFixture):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CollectionTests(BulkFixture):
+    """A named set of packages, which is a way of asking rather than a thing installed."""
+
+    def write_collection(self, identifier: str, packages: list[str]) -> None:
+        import json
+
+        folder = self.catalog / "collections"
+        folder.mkdir(exist_ok=True)
+        (folder / f"{identifier}.json").write_text(
+            json.dumps({"schema_version": 1, "id": identifier, "name": identifier, "packages": packages}),
+            encoding="utf-8",
+        )
+
+    def test_a_collection_stands_for_the_packages_it_names(self) -> None:
+        self.write_collection("test-kit", ["alpha", "beta"])
+        names, blocked = plan.expand(self.catalog, ["@test-kit"])
+        self.assertEqual(names, ["alpha", "beta"])
+        self.assertEqual(blocked, [])
+
+    def test_collections_and_packages_mix_in_one_request(self) -> None:
+        self.write_collection("test-kit", ["alpha", "beta"])
+        current = plan.for_install(self.storage, self.catalog, ["@test-kit", "gamma"])
+        self.assertEqual([item.package for item in current.incoming], ["alpha", "beta", "gamma"])
+
+    def test_a_package_named_twice_through_a_collection_is_installed_once(self) -> None:
+        self.write_collection("test-kit", ["alpha", "beta"])
+        current = plan.for_install(self.storage, self.catalog, ["@test-kit", "alpha"])
+        self.assertEqual([item.package for item in current.incoming], ["alpha", "beta"])
+
+    def test_an_unknown_collection_says_what_there_is(self) -> None:
+        self.write_collection("test-kit", ["alpha"])
+        _, blocked = plan.expand(self.catalog, ["@nosuch"])
+        self.assertEqual([item.reason for item in blocked], [plan.NO_SUCH_COLLECTION])
+        self.assertIn("@test-kit", blocked[0].detail)
+
+    def test_installing_a_collection_records_nothing_called_by_its_name(self) -> None:
+        # A collection says what to ask for, never what the machine promises to
+        # keep. Recording one would raise the question of whether removing a
+        # member had broken it, which is a question with no good answer.
+        self.write_collection("test-kit", ["alpha", "beta"])
+        self.run_cli("install", "@test-kit", "--yes")
+        self.assertEqual(self.installed(), {"alpha", "beta"})
+        self.assertFalse((self.storage.state / "packages" / "test-kit.json").exists())
+
+    def test_removing_one_member_is_an_ordinary_removal(self) -> None:
+        self.write_collection("test-kit", ["alpha", "beta"])
+        self.run_cli("install", "@test-kit", "--yes")
+        code, _ = self.run_cli("uninstall", "alpha", "--yes")
+        self.assertEqual(code, 0)
+        self.assertEqual(self.installed(), {"beta"})
+
+    def test_an_id_without_a_hyphen_is_refused(self) -> None:
+        # It would be requested as @name, and a shell expands @name when name
+        # is a variable -- silently passing something else, or nothing at all.
+        from dfpm.errors import ManifestError
+
+        self.write_collection("testkit", ["alpha"])
+        with self.assertRaises(ManifestError) as caught:
+            plan.expand(self.catalog, ["@testkit"])
+        self.assertIn("hyphen", str(caught.exception))
+
+    def test_a_collection_naming_a_missing_package_fails_the_catalog(self) -> None:
+        from dfpm.catalog import check_collections
+        from dfpm.errors import ManifestError
+
+        self.write_collection("test-kit", ["alpha", "vanished"])
+        with self.assertRaises(ManifestError) as caught:
+            check_collections(self.catalog)
+        self.assertIn("vanished", str(caught.exception))
+
+    def test_a_catalog_with_no_collections_is_not_a_fault(self) -> None:
+        from dfpm.catalog import load_collections
+
+        self.assertEqual(load_collections(self.catalog), [])
