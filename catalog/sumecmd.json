@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "id": "sumecmd",
+  "name": "SumECmd",
+  "kind": "tool",
+  "description": "Parse Windows Server User Access Logging databases and export client access records as CSV.",
+  "about": "User Access Logging is enabled by default on Windows Server and records which clients used which installed roles, by user name, by IP address and by day, retained for up to three years. SumECmd reads the databases holding it — SystemIdentity.mdb, Current.mdb and the archived year files beside them — and writes the results to CSV, optionally broken down to day level. Because the data reaches back years and names both the account and the source address, it covers periods long past what event logs on the same machine still hold.",
+  "disciplines": [
+    "windows-forensics"
+  ],
+  "capabilities": [
+    "data-export"
+  ],
+  "use_cases": [
+    "incident-response",
+    "compromise-assessment"
+  ],
+  "evidence": [
+    "user-access-logging"
+  ],
+  "project": {
+    "homepage": "https://ericzimmerman.github.io/",
+    "repository": "https://github.com/EricZimmerman/Sum",
+    "license": "MIT"
+  },
+  "builds": [
+    {
+      "version": "2026.5.0.0",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://download.ericzimmermanstools.com/net9/SumECmd.zip",
+        "sha256": "15c6aafc9084854824c8703cbf7aec74b49eb7cd84b82407bf4d90e2ba6bddf2",
+        "size": 1728470,
+        "stability": "rolling"
+      },
+      "install": {
+        "strategy": "portable-zip",
+        "strip_components": 0,
+        "extracted_size": 2011700,
+        "entries": 3,
+        "entrypoints": [
+          {
+            "name": "sumecmd",
+            "path": "SumECmd.exe"
+          }
+        ]
+      },
+      "requires": [
+        {
+          "runtime": "dotnet",
+          "version": ">=9",
+          "flavor": "base"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "id": "bstrings",
+  "name": "bstrings",
+  "kind": "tool",
+  "description": "Extract ASCII and Unicode strings from any file, with built-in regular expressions for common artifacts.",
+  "about": "bstrings reads a file, or every file under a directory, in chunks and reports the printable strings it finds in both ASCII and Unicode encodings. Beyond a minimum and maximum length it can filter results to a literal string or a regular expression, or to lists of either supplied from files, and it ships with more than two dozen named patterns covering URLs, GUIDs, email and IP addresses, security identifiers, UNC and registry paths, BitLocker recovery keys, payment card numbers and cryptocurrency wallet addresses. The character ranges treated as printable are adjustable, as is the code page used to decode single-byte text, which is what makes it usable against files that are not in Latin-1. Results can be sorted alphabetically or by length and written to a file.",
+  "capabilities": [
+    "string-extraction",
+    "data-export"
+  ],
+  "use_cases": [
+    "forensic-triage",
+    "threat-hunting"
+  ],
+  "evidence": [
+    "files"
+  ],
+  "project": {
+    "homepage": "https://ericzimmerman.github.io/",
+    "repository": "https://github.com/EricZimmerman/bstrings",
+    "license": "MIT"
+  },
+  "builds": [
+    {
+      "version": "2026.5.0.0",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://download.ericzimmermanstools.com/net9/bstrings.zip",
+        "sha256": "0630d2b3a527f285c8407ece8deddcddfe92531a25e16c2d5ffd2d60fb90d8c6",
+        "size": 2006525,
+        "stability": "rolling"
+      },
+      "install": {
+        "strategy": "portable-zip",
+        "strip_components": 0,
+        "extracted_size": 2801204,
+        "entries": 3,
+        "entrypoints": [
+          {
+            "name": "bstrings",
+            "path": "bstrings.exe"
+          }
+        ]
+      },
+      "requires": [
+        {
+          "runtime": "dotnet",
+          "version": ">=9",
+          "flavor": "base"
+        }
+      ]
+    }
+  ]
+}

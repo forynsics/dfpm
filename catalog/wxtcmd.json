@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "id": "wxtcmd",
+  "name": "WxTCmd",
+  "kind": "tool",
+  "description": "Parse the Windows Timeline ActivitiesCache database and export recorded activity as CSV.",
+  "about": "Windows Timeline recorded what a user did across their devices: which application was in focus, which document it had open, and for how long. WxTCmd reads the SQLite database behind it, ActivitiesCache.db, and writes the activity and clipboard tables to CSV. Each row carries the application, the payload describing what was being worked on, and both the recorded start and end times and the times the row itself was created and last modified. The database lives per profile under AppData\\Local\\ConnectedDevicesPlatform, so each user account on a system has its own.",
+  "disciplines": [
+    "windows-forensics"
+  ],
+  "capabilities": [
+    "data-export"
+  ],
+  "use_cases": [
+    "forensic-triage",
+    "evidence-review"
+  ],
+  "evidence": [
+    "windows-timeline",
+    "sqlite-databases"
+  ],
+  "project": {
+    "homepage": "https://ericzimmerman.github.io/",
+    "repository": "https://github.com/EricZimmerman/WxTCmd",
+    "license": "MIT"
+  },
+  "builds": [
+    {
+      "version": "2026.5.0.0",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://download.ericzimmermanstools.com/net9/WxTCmd.zip",
+        "sha256": "aa08a020cc9daa22551edbf07bca336cb8249ce29830d67cf09bc3703dffec6d",
+        "size": 6078718,
+        "stability": "rolling"
+      },
+      "install": {
+        "strategy": "portable-zip",
+        "strip_components": 0,
+        "extracted_size": 10036788,
+        "entries": 3,
+        "entrypoints": [
+          {
+            "name": "wxtcmd",
+            "path": "WxTCmd.exe"
+          }
+        ]
+      },
+      "requires": [
+        {
+          "runtime": "dotnet",
+          "version": ">=9",
+          "flavor": "base"
+        }
+      ]
+    }
+  ]
+}

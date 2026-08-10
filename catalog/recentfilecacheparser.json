@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "id": "recentfilecacheparser",
+  "name": "RecentFileCacheParser",
+  "kind": "tool",
+  "description": "Parse RecentFileCache.bcf and export the executables it recorded as CSV or JSON.",
+  "about": "RecentFileCache.bcf is a file the Program Compatibility Assistant wrote on Windows 7, listing executables that ran for the first time. It holds names only — no timestamps, no paths, no run counts — so what it establishes is that a program was present and executed, and the file's own modified time bounds when. RecentFileCacheParser reads it and writes those names to CSV or JSON. The artifact does not exist on Windows 8 and later, where Amcache took over the role.",
+  "disciplines": [
+    "windows-forensics"
+  ],
+  "capabilities": [
+    "data-export"
+  ],
+  "use_cases": [
+    "forensic-triage"
+  ],
+  "evidence": [
+    "recentfilecache"
+  ],
+  "project": {
+    "homepage": "https://ericzimmerman.github.io/",
+    "repository": "https://github.com/EricZimmerman/RecentFileCacheParser",
+    "license": "MIT"
+  },
+  "builds": [
+    {
+      "version": "2026.5.0.0",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://download.ericzimmermanstools.com/net9/RecentFileCacheParser.zip",
+        "sha256": "50731763d336940ae35d20575b058bda09f3abb96e4662bd61a5f2994017c46e",
+        "size": 1599633,
+        "stability": "rolling"
+      },
+      "install": {
+        "strategy": "portable-zip",
+        "strip_components": 0,
+        "extracted_size": 1862708,
+        "entries": 3,
+        "entrypoints": [
+          {
+            "name": "recentfilecacheparser",
+            "path": "RecentFileCacheParser.exe"
+          }
+        ]
+      },
+      "requires": [
+        {
+          "runtime": "dotnet",
+          "version": ">=9",
+          "flavor": "base"
+        }
+      ]
+    }
+  ]
+}

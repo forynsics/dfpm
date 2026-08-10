@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "id": "rbcmd",
+  "name": "RBCmd",
+  "kind": "tool",
+  "description": "Parse recycle bin metadata from $I files and INFO2 records and export them as CSV.",
+  "about": "When a file is sent to the recycle bin its contents and its metadata are stored separately, and the metadata is what says where the file came from. RBCmd reads both formats Windows has used for that: the per-file $I records of Vista and later, and the single INFO2 database of earlier versions. For each deleted item it reports the original full path, the size, and the time it was deleted, and writes the result to CSV. That original path survives even when the corresponding $R file holding the contents does not.",
+  "disciplines": [
+    "windows-forensics"
+  ],
+  "capabilities": [
+    "data-export"
+  ],
+  "use_cases": [
+    "forensic-triage",
+    "evidence-review"
+  ],
+  "evidence": [
+    "recycle-bin"
+  ],
+  "project": {
+    "homepage": "https://ericzimmerman.github.io/",
+    "repository": "https://github.com/EricZimmerman/RBCmd",
+    "license": "MIT"
+  },
+  "builds": [
+    {
+      "version": "2026.5.0.0",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://download.ericzimmermanstools.com/net9/RBCmd.zip",
+        "sha256": "e2b5c6ba8929a8731d861577c796763730e303ec2d4dd8d294ee0de8d5ceb541",
+        "size": 1690356,
+        "stability": "rolling"
+      },
+      "install": {
+        "strategy": "portable-zip",
+        "strip_components": 0,
+        "extracted_size": 2293300,
+        "entries": 3,
+        "entrypoints": [
+          {
+            "name": "rbcmd",
+            "path": "RBCmd.exe"
+          }
+        ]
+      },
+      "requires": [
+        {
+          "runtime": "dotnet",
+          "version": ">=9",
+          "flavor": "base"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "id": "appcompatcacheparser",
+  "name": "AppCompatCacheParser",
+  "kind": "tool",
+  "description": "Extract shimcache entries from a SYSTEM hive and export them as CSV.",
+  "about": "The application compatibility cache, commonly called shimcache, is a list Windows keeps in the SYSTEM hive of executables it has encountered, with each file's path and last modified time. AppCompatCacheParser reads that list and writes it to CSV in the order the cache stored it, which is itself meaningful because position reflects recency. Every control set in the hive is parsed by default, so an entry present in one and absent from another is visible rather than collapsed. Given no hive it reads the live registry instead, and transaction logs beside a dirty hive are replayed unless that is turned off.",
+  "disciplines": [
+    "windows-forensics"
+  ],
+  "capabilities": [
+    "registry-parsing",
+    "data-export"
+  ],
+  "use_cases": [
+    "forensic-triage",
+    "incident-response"
+  ],
+  "evidence": [
+    "shimcache",
+    "registry-hives"
+  ],
+  "project": {
+    "homepage": "https://ericzimmerman.github.io/",
+    "repository": "https://github.com/EricZimmerman/AppCompatCacheParser",
+    "license": "MIT"
+  },
+  "builds": [
+    {
+      "version": "2026.5.0.0",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://download.ericzimmermanstools.com/net9/AppCompatCacheParser.zip",
+        "sha256": "67756841dbcd8ca3f47083be2b016a22f61bde0ea3450f0a776cf878bf66d42d",
+        "size": 2290113,
+        "stability": "rolling"
+      },
+      "install": {
+        "strategy": "portable-zip",
+        "strip_components": 0,
+        "extracted_size": 2562612,
+        "entries": 3,
+        "entrypoints": [
+          {
+            "name": "appcompatcacheparser",
+            "path": "AppCompatCacheParser.exe"
+          }
+        ]
+      },
+      "requires": [
+        {
+          "runtime": "dotnet",
+          "version": ">=9",
+          "flavor": "base"
+        }
+      ]
+    }
+  ]
+}

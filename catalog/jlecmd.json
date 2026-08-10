@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "id": "jlecmd",
+  "name": "JLECmd",
+  "kind": "tool",
+  "description": "Parse automatic and custom destinations jump lists and export them as CSV, JSON or HTML.",
+  "about": "Jump lists record the files and locations a user reached through an application on the taskbar or Start menu. JLECmd parses both kinds: automaticDestinations-ms files, which wrap embedded shortcut streams and a DestList ordering them by use, and customDestinations-ms files, which an application populates itself. Output goes to CSV, JSON or HTML, and the shortcut data inside each entry can be reported in summary or in full, or written back out as individual .lnk files for separate examination. Application identifiers are resolved against a built-in list that a supplied file can extend or override.",
+  "disciplines": [
+    "windows-forensics"
+  ],
+  "capabilities": [
+    "data-export"
+  ],
+  "use_cases": [
+    "forensic-triage",
+    "evidence-review"
+  ],
+  "evidence": [
+    "jump-lists",
+    "shortcut-files"
+  ],
+  "project": {
+    "homepage": "https://ericzimmerman.github.io/",
+    "repository": "https://github.com/EricZimmerman/JLECmd",
+    "license": "MIT"
+  },
+  "builds": [
+    {
+      "version": "2026.5.0.0",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://download.ericzimmermanstools.com/net9/JLECmd.zip",
+        "sha256": "155ee54e6ac6b70bce1aa636ec52d0b0165263933764d9a45c85af97df546892",
+        "size": 3011582,
+        "stability": "rolling"
+      },
+      "install": {
+        "strategy": "portable-zip",
+        "strip_components": 0,
+        "extracted_size": 3695668,
+        "entries": 3,
+        "entrypoints": [
+          {
+            "name": "jlecmd",
+            "path": "JLECmd.exe"
+          }
+        ]
+      },
+      "requires": [
+        {
+          "runtime": "dotnet",
+          "version": ">=9",
+          "flavor": "base"
+        }
+      ]
+    }
+  ]
+}

@@ -2,6 +2,24 @@
   "schema_version": 1,
   "entries": [
     {
+      "file": "amcacheparser.json",
+      "id": "amcacheparser",
+      "version": "2026.5.0.0",
+      "sha256": "17f05a8e99c60023f335132fe1b2a93445bb251517080e1f733de696b9f6230e"
+    },
+    {
+      "file": "appcompatcacheparser.json",
+      "id": "appcompatcacheparser",
+      "version": "2026.5.0.0",
+      "sha256": "56a8c62a1b125d1338e304a8afcd618a0fa79a9c5ec09ddf2ce917da25faf13a"
+    },
+    {
+      "file": "bstrings.json",
+      "id": "bstrings",
+      "version": "2026.5.0.0",
+      "sha256": "c03186e35f0bc2b8656888394fea2abec69d0dc9dc5fe9eeaa8e5c3d846493a6"
+    },
+    {
       "file": "evtxecmd.json",
       "id": "evtxecmd",
       "version": "2026.5.0.0",
@@ -12,6 +30,24 @@
       "id": "hayabusa",
       "version": "4.0.0",
       "sha256": "2a29d4811964744418ea5e3a2982f1e4a1faa2bfa32f2187c59b40a4beec8714"
+    },
+    {
+      "file": "iisgeolocate.json",
+      "id": "iisgeolocate",
+      "version": "2026.5.0.0",
+      "sha256": "639b4ef671b6b8d6c4d3f84d9ae38f79203f8528e455367fe4643560b0efa4b2"
+    },
+    {
+      "file": "jlecmd.json",
+      "id": "jlecmd",
+      "version": "2026.5.0.0",
+      "sha256": "c4c7cce6a583cba46a2c6ea07147adb30b2e462df75ca57240e64912b8e44648"
+    },
+    {
+      "file": "lecmd.json",
+      "id": "lecmd",
+      "version": "2026.5.0.0",
+      "sha256": "a64ed262ce8e53d17484ff5aaf54731efdc79034598d3a3d6fb68bb08f56539d"
     },
     {
       "file": "mftecmd.json",
@@ -26,16 +62,64 @@
       "sha256": "c2313f9c9977b647a6d7c0f83fd502bf868e7a0018efd11655f152e1277c689a"
     },
     {
+      "file": "rbcmd.json",
+      "id": "rbcmd",
+      "version": "2026.5.0.0",
+      "sha256": "d7a6e1826d6ed9bba2c6976569d7712891622dbfe9f59b6783ed811e4dbbe223"
+    },
+    {
+      "file": "recentfilecacheparser.json",
+      "id": "recentfilecacheparser",
+      "version": "2026.5.0.0",
+      "sha256": "303623aa90fed11cba0f4ccd8d3b20aa253330c577d74f64c702877011445b5b"
+    },
+    {
       "file": "recmd.json",
       "id": "recmd",
       "version": "2026.5.0.0",
       "sha256": "eedea06aa50db32fa33006eeecb9a2ae5ef35d720507925d4bfbb9bdde278292"
     },
     {
+      "file": "rla.json",
+      "id": "rla",
+      "version": "2026.5.0.0",
+      "sha256": "f395fc7586361923d8c13db852fc118864cd24fc48ea91edb4d211605f5becd8"
+    },
+    {
+      "file": "sbecmd.json",
+      "id": "sbecmd",
+      "version": "2026.5.0.0",
+      "sha256": "2f0993e0c2c245e965d7a9aee1e31b2b509ae3b3408855bbaebb25d3ea4c932a"
+    },
+    {
       "file": "sqlecmd.json",
       "id": "sqlecmd",
       "version": "2026.5.0.0",
       "sha256": "c581c200fbd2ccbbd5238a4e05108d6d81f6c8e041a92a13ebe4907ba5a784fb"
+    },
+    {
+      "file": "srumecmd.json",
+      "id": "srumecmd",
+      "version": "2026.5.0.0",
+      "sha256": "8937d0c1c5e25bc7cc10f53ec766db2d69747ea489a8d6305f35f5414e30b744"
+    },
+    {
+      "file": "sumecmd.json",
+      "id": "sumecmd",
+      "version": "2026.5.0.0",
+      "sha256": "81ca8aaeb468e2549f6f2017346c771729acfce40985ce0409cf9a65217bc64b"
+    },
+    {
+      "file": "vscmount.json",
+      "id": "vscmount",
+      "version": "2026.5.0.0",
+      "sha256": "0b35c16fc8085682dbbdf0fc645b4565efeddf248bb950a830a6b1d4bf4560e4"
+    },
+    {
+      "file": "wxtcmd.json",
+      "id": "wxtcmd",
+      "version": "2026.5.0.0",
+      "sha256": "b1a4737001c7ec620b843799fd1d352e376fc52b16b2a8bf6c7f093b4c1ae1c6"
     },
     {
       "file": "yara.json",

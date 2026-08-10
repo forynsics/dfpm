@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "id": "sbecmd",
+  "name": "SBECmd",
+  "kind": "tool",
+  "description": "Parse shellbags from registry hives and export the folders a user browsed as CSV or JSON.",
+  "about": "Shellbags are the view settings Explorer stores for folders a user has opened, which makes them a record of folders that were browsed — including folders on removable media, network shares and archives that are no longer present. SBECmd reads them from the UsrClass.dat and NTUSER.DAT hives in a directory, reconstructing each entry's full path and the timestamps stored alongside it, and writes the result to CSV or JSON. Given a directory of hives it can process them together and drop duplicate entries. It can also read the live registry instead, which requires Administrator rights.",
+  "disciplines": [
+    "windows-forensics"
+  ],
+  "capabilities": [
+    "registry-parsing",
+    "data-export"
+  ],
+  "use_cases": [
+    "forensic-triage",
+    "evidence-review"
+  ],
+  "evidence": [
+    "shellbags",
+    "registry-hives"
+  ],
+  "project": {
+    "homepage": "https://ericzimmerman.github.io/"
+  },
+  "builds": [
+    {
+      "version": "2026.5.0.0",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://download.ericzimmermanstools.com/net9/SBECmd.zip",
+        "sha256": "88edb98a32baaf68114aa106f25f999e46d387d9d0003d3222a1168cc1b7eb9b",
+        "size": 3177325,
+        "stability": "rolling"
+      },
+      "install": {
+        "strategy": "portable-zip",
+        "strip_components": 0,
+        "extracted_size": 3991604,
+        "entries": 3,
+        "entrypoints": [
+          {
+            "name": "sbecmd",
+            "path": "SBECmd.exe"
+          }
+        ]
+      },
+      "requires": [
+        {
+          "runtime": "dotnet",
+          "version": ">=9",
+          "flavor": "base"
+        }
+      ]
+    }
+  ]
+}

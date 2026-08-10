@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "id": "lecmd",
+  "name": "LECmd",
+  "kind": "tool",
+  "description": "Parse Windows shortcut files and export their target, tracker and extra block data as CSV, JSON, XML or HTML.",
+  "about": "A .lnk file records far more than the path it points at. LECmd reads the header timestamps, the target ID list describing each step of the path as the shell stored it, and the extra data blocks, which can carry the originating machine's NetBIOS name, its MAC address and the volume serial number of the drive the target sat on. Those tracker fields are what tie a shortcut to a particular machine and a particular volume, including removable ones, and the tool can be limited to shortcuts pointing at removable drives alone. Results are written as CSV, JSON, XML or HTML, and the target ID and extra block sections can each be suppressed.",
+  "disciplines": [
+    "windows-forensics"
+  ],
+  "capabilities": [
+    "data-export"
+  ],
+  "use_cases": [
+    "forensic-triage",
+    "evidence-review"
+  ],
+  "evidence": [
+    "shortcut-files"
+  ],
+  "project": {
+    "homepage": "https://ericzimmerman.github.io/",
+    "repository": "https://github.com/EricZimmerman/LECmd",
+    "license": "MIT"
+  },
+  "builds": [
+    {
+      "version": "2026.5.0.0",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://download.ericzimmermanstools.com/net9/LECmd.zip",
+        "sha256": "f3e9c799ec7d3fa4cd5f553ec3f9d544c80c8e48afd04ef43456da3d48ad0760",
+        "size": 3066762,
+        "stability": "rolling"
+      },
+      "install": {
+        "strategy": "portable-zip",
+        "strip_components": 0,
+        "extracted_size": 3671092,
+        "entries": 3,
+        "entrypoints": [
+          {
+            "name": "lecmd",
+            "path": "LECmd.exe"
+          }
+        ]
+      },
+      "requires": [
+        {
+          "runtime": "dotnet",
+          "version": ">=9",
+          "flavor": "base"
+        }
+      ]
+    }
+  ]
+}

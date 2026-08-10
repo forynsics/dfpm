@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "id": "iisgeolocate",
+  "name": "iisGeolocate",
+  "kind": "tool",
+  "description": "Resolve client IP addresses in IIS logs to geographic locations and write the enriched logs as CSV.",
+  "about": "iisGeolocate walks a directory for IIS log files, reads the client address from each request, and looks it up in a bundled MaxMind GeoLite2 City database. It writes a copy of each log as CSV with the resolved city and country appended as columns, alongside a list of the unique addresses seen and their locations, and a separate file collecting rows it could not parse. Multicast, private and reserved addresses are skipped rather than looked up. The database ships inside the package and is consulted offline, so nothing about a log leaves the machine — and it is a snapshot, so it reflects address assignments as of the day that database was built rather than the day the log was written.",
+  "disciplines": [
+    "windows-forensics"
+  ],
+  "capabilities": [
+    "data-export"
+  ],
+  "use_cases": [
+    "incident-response",
+    "evidence-review"
+  ],
+  "evidence": [
+    "web-server-logs"
+  ],
+  "project": {
+    "homepage": "https://ericzimmerman.github.io/",
+    "repository": "https://github.com/EricZimmerman/iisGeolocate",
+    "license": "MIT",
+    "terms_url": "https://www.maxmind.com/en/geolite/eula"
+  },
+  "builds": [
+    {
+      "version": "2026.5.0.0",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://download.ericzimmermanstools.com/net9/iisGeolocate.zip",
+        "sha256": "9132733112e710df2c08b82af68aea7d9fb7083958a7f28803ba9010c327c5c3",
+        "size": 30766979,
+        "stability": "rolling"
+      },
+      "install": {
+        "strategy": "portable-zip",
+        "strip_components": 1,
+        "extracted_size": 67017835,
+        "entries": 4,
+        "entrypoints": [
+          {
+            "name": "iisgeolocate",
+            "path": "iisGeolocate.exe"
+          }
+        ]
+      },
+      "verify": [
+        {
+          "type": "file",
+          "path": "GeoLite2-City.mmdb"
+        }
+      ],
+      "requires": [
+        {
+          "runtime": "dotnet",
+          "version": ">=9",
+          "flavor": "base"
+        }
+      ]
+    }
+  ]
+}

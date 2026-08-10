@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "id": "vscmount",
+  "name": "VSCMount",
+  "kind": "tool",
+  "description": "Mount every volume shadow copy on a drive as a symbolic link so its contents can be browsed.",
+  "about": "Volume shadow copies hold earlier states of a volume, but they are not reachable through a drive letter. VSCMount enumerates the shadow copies on a given drive and creates one symbolic link per copy under a directory of your choosing, each named for the drive and the copy's number, so every snapshot becomes an ordinary path that any other tool can read. It only exposes what is already there; it does not create, delete or modify shadow copies. Administrator rights are required, and without them the tool exits immediately.",
+  "disciplines": [
+    "windows-forensics"
+  ],
+  "capabilities": [
+    "volume-mounting"
+  ],
+  "use_cases": [
+    "forensic-triage",
+    "incident-response"
+  ],
+  "evidence": [
+    "volume-shadow-copies"
+  ],
+  "project": {
+    "homepage": "https://ericzimmerman.github.io/",
+    "repository": "https://github.com/EricZimmerman/VSCMount",
+    "license": "MIT"
+  },
+  "builds": [
+    {
+      "version": "2026.5.0.0",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://download.ericzimmermanstools.com/net9/VSCMount.zip",
+        "sha256": "fdcbcdf3d9f935de9e4555fb713a3ad25072f91a086514ea54f889f2671b3933",
+        "size": 1679576,
+        "stability": "rolling"
+      },
+      "install": {
+        "strategy": "portable-zip",
+        "strip_components": 0,
+        "extracted_size": 1997876,
+        "entries": 4,
+        "entrypoints": [
+          {
+            "name": "vscmount",
+            "path": "VSCMount.exe"
+          }
+        ]
+      },
+      "verify": [
+        {
+          "type": "file",
+          "path": "WmiLight.Native.dll"
+        }
+      ],
+      "requires": [
+        {
+          "runtime": "dotnet",
+          "version": ">=9",
+          "flavor": "base"
+        }
+      ]
+    }
+  ]
+}
