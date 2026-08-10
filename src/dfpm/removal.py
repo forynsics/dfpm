@@ -60,12 +60,16 @@ def plan(storage: Storage, package_id: str) -> RemovalPlan:
     )
 
 
-def execute(storage: Storage, removal_plan: RemovalPlan) -> None:
+def execute(storage: Storage, removal_plan: RemovalPlan, *, reconcile: bool = True) -> None:
     """Remove the version directory, then the command shortcuts it owned.
 
     The order matters. Files go first and the record is forgotten only once they
     are gone, so a removal that fails half way leaves dfpm still knowing about
     the package rather than believing it removed something it did not.
+
+    Reconciling shims rebuilds every command from every remaining record, so a
+    caller removing several packages should pass `reconcile=False` and do it
+    once at the end. Doing it per package is the same answer computed N times.
     """
     if removal_plan.root.exists():
         if not storage.contains_package(removal_plan.root):
@@ -81,7 +85,8 @@ def execute(storage: Storage, removal_plan: RemovalPlan) -> None:
                 "deleted, so a second run picks up where this one stopped."
             )
     forget_package(storage, removal_plan.package)
-    shims.reconcile(storage)
+    if reconcile:
+        shims.reconcile(storage)
     with contextlib.suppress(OSError):
         (storage.tools / removal_plan.package).rmdir()
 

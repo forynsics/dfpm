@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
+from . import plan as plans
 from . import removal
 from .archive import human_size
 from .catalog import describe, load_catalog, newer_than_installed, resolve
@@ -321,9 +322,15 @@ def _replaced(storage: Storage, package_id: str, previous: str | None) -> dict[s
     }
 
 
-def _install_plan(manifest: Manifest, storage: Storage, previous: str | None = None) -> dict[str, Any]:
+def _install_plan(item: plans.Incoming, storage: Storage, current: plans.Plan) -> dict[str, Any]:
+    """The same facts the command line prints, shaped for a page to render.
+
+    Built from the shared plan rather than gathered here, so the two surfaces
+    cannot end up describing one install differently.
+    """
+    manifest = item.manifest
     return {
-        "replaces": _replaced(storage, manifest.id, previous),
+        "replaces": _replaced(storage, manifest.id, item.previous),
         "package": manifest.id,
         "name": manifest.name,
         "version": manifest.version,
@@ -331,64 +338,88 @@ def _install_plan(manifest: Manifest, storage: Storage, previous: str | None = N
         "license": manifest.project.license if manifest.project else None,
         "project": manifest.project.repository if manifest.project else None,
         "source": manifest.package_url(),
+        "rolling": manifest.package.rolling,
         "sha256": manifest.package.sha256,
         "size": manifest.package.size,
         "extractedSize": manifest.extracted_size,
         "entries": manifest.entry_count,
         "termsUrl": manifest.project.terms_url if manifest.project else None,
-        "destination": str(storage.package_version(manifest.id, manifest.version)),
+        "destination": str(item.destination),
+        "freeSpace": current.free_space,
+        "fits": current.fits,
+        "requirements": [
+            {
+                "runtime": requirement.runtime,
+                "flavor": requirement.flavor,
+                "version": requirement.version,
+                "met": requirement.met,
+                "detail": requirement.detail,
+                "remediation": requirement.remediation,
+            }
+            for requirement in current.requirements
+        ],
     }
 
 
-def _resolve(session: Session, payload: dict[str, Any]) -> Manifest:
-    version = payload.get("version")
-    return resolve(session.catalog, _require(payload, "package"), version if version else None)
-
-
 def _plan_install(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
-    manifest = _resolve(session, payload)
-    check_platform(manifest)
-    previous = check_destination(manifest, session.storage)
-    return {"plan": _install_plan(manifest, session.storage, previous)}
+    package_id = _require(payload, "package")
+    version = payload.get("version")
+    # Terms are reported rather than enforced here: a plan is what a person
+    # reads in order to decide, so refusing to describe it until they have
+    # already agreed would put the question before the information.
+    current = plans.for_install(
+        session.storage, session.catalog, [package_id],
+        version=version if version else None, accept_terms=True,
+    )
+    if current.skipped:
+        raise DfpmError(f"{package_id} {current.skipped[0].version} is already installed")
+    if current.blocked:
+        raise DfpmError(current.blocked[0].detail)
+    return {"plan": _install_plan(current.incoming[0], session.storage, current)}
 
 
 def _do_install(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
-    manifest = _resolve(session, payload)
-    terms = manifest.project.terms_url if manifest.project else None
-    if terms and payload.get("acceptTerms") is not True:
-        # Same rule the command line applies: confirming the plan is not the same
-        # as asserting that restricted terms permit this particular user.
-        raise DfpmError(
-            f"{manifest.name} {manifest.version} is distributed under terms restricting who may use it. "
-            f"Review {terms} and confirm they permit your use."
-        )
-    previous = check_destination(manifest, session.storage)
-    destination = install(manifest, session.storage)
-    replaced = f", replacing {previous}" if previous else ""
-    return {"message": f"Installed {manifest.name} {manifest.version}{replaced}", "destination": str(destination)}
+    package_id = _require(payload, "package")
+    version = payload.get("version")
+    current = plans.for_install(
+        session.storage, session.catalog, [package_id],
+        version=version if version else None,
+        accept_terms=payload.get("acceptTerms") is True,
+    )
+    if current.skipped:
+        raise DfpmError(f"{package_id} {current.skipped[0].version} is already installed")
+    if current.blocked:
+        raise DfpmError(current.blocked[0].detail)
+    item = current.incoming[0]
+    destination = install(item.manifest, session.storage)
+    replaced = f", replacing {item.previous}" if item.previous else ""
+    return {
+        "message": f"Installed {item.manifest.name} {item.manifest.version}{replaced}",
+        "destination": str(destination),
+    }
 
 
 def _plan_uninstall(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
-    plan = removal.plan(session.storage, _require(payload, "package"))
+    outgoing = removal.plan(session.storage, _require(payload, "package"))
     return {
         "plan": {
-            "package": plan.package,
-            "name": plan.name,
-            "version": plan.version,
-            "root": str(plan.root),
-            "files": plan.file_count,
-            "size": plan.total_size,
-            "installedFiles": plan.installed_count,
-            "grew": plan.grew,
-            "commands": list(plan.commands),
+            "package": outgoing.package,
+            "name": outgoing.name,
+            "version": outgoing.version,
+            "root": str(outgoing.root),
+            "files": outgoing.file_count,
+            "size": outgoing.total_size,
+            "installedFiles": outgoing.installed_count,
+            "grew": outgoing.grew,
+            "commands": list(outgoing.commands),
         }
     }
 
 
 def _do_uninstall(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
-    plan = removal.plan(session.storage, _require(payload, "package"))
-    removal.execute(session.storage, plan)
-    return {"message": f"Removed {plan.package} {plan.version}"}
+    outgoing = removal.plan(session.storage, _require(payload, "package"))
+    removal.execute(session.storage, outgoing)
+    return {"message": f"Removed {outgoing.package} {outgoing.version}"}
 
 
 Action = Callable[[Session, dict[str, Any]], dict[str, Any]]

@@ -10,7 +10,7 @@ import textwrap
 from collections.abc import Mapping
 from pathlib import Path
 
-from . import __version__, cache, classification, launcher, progress, removal, runtimes, sync
+from . import __version__, cache, classification, launcher, plan, progress, removal, runtimes, shims, sync
 from .archive import human_size
 from . import platforms
 from .catalog import SHIPPED, build_index, describe, load_catalog, resolve
@@ -51,7 +51,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     install_command = commands.add_parser("install", help="Install a package, replacing any version already installed.")
-    install_command.add_argument("package")
+    install_command.add_argument("package", nargs="+")
     install_command.add_argument("--package-version", dest="package_version", help="Install this version instead of the newest.")
     install_command.add_argument("--yes", action="store_true", help="Confirm the displayed plan.")
     install_command.add_argument(
@@ -71,7 +71,7 @@ def build_parser() -> argparse.ArgumentParser:
         "download",
         help="Download a package's release file without installing it, for a machine that is not this one.",
     )
-    download_command.add_argument("package")
+    download_command.add_argument("package", nargs="+")
     download_command.add_argument("--package-version", dest="package_version", help="Download this version instead of the newest.")
     download_command.add_argument("--platform", help="Download the build for this os/arch, written as os/arch.")
     download_command.add_argument("--to", dest="destination", type=Path, help="Directory to save into. Defaults to the current one.")
@@ -83,7 +83,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     uninstall_command = commands.add_parser("uninstall", help="Remove installed files dfpm recorded.")
-    uninstall_command.add_argument("package")
+    uninstall_command.add_argument("package", nargs="*")
+    uninstall_command.add_argument("--all", action="store_true", help="Remove every installed package.")
     uninstall_command.add_argument("--yes", action="store_true", help="Confirm the displayed plan.")
 
     cache_command = commands.add_parser("cache", help="Inspect and clean the verified download cache.")
@@ -321,16 +322,45 @@ def _free_space(root: Path) -> int | None:
 
 
 def _install(args: argparse.Namespace, storage: Storage) -> int:
-    manifest = resolve(args.catalog, args.package, args.package_version)
-    check_platform(manifest)
-    previous = check_destination(manifest, storage)
+    requested = args.package if isinstance(args.package, list) else [args.package]
+    # Terms are settled by the prompt when there is going to be one. Asking a
+    # person to confirm a plan that names the terms, and then asking again for a
+    # flag, would be the same question twice.
+    current = plan.for_install(
+        storage,
+        args.catalog,
+        requested,
+        version=args.package_version,
+        accept_terms=args.accept_terms or not args.yes,
+    )
 
+    if len(requested) == 1 and len(current.incoming) == 1:
+        _describe_install(args, storage, current.incoming[0])
+    elif current.incoming:
+        _summarize_install(current)
+
+    for skip in current.skipped:
+        print(f"{skip.package} {skip.version} is already installed.")
+    if current.blocked:
+        _report_blocked(current.blocked)
+        return 1
+    if not current.incoming:
+        return 0
+    if _declined(args.yes):
+        return 2
+    return _perform_installs(args, storage, current)
+
+
+def _describe_install(args: argparse.Namespace, storage: Storage, item: plan.Incoming) -> None:
+    """The whole story for one package, which is what one package deserves."""
+    manifest = item.manifest
+    previous = item.previous
     print("Install plan")
     print(f"  Package:     {manifest.name} {manifest.version}")
     if previous:
         # Replacing a version deletes its whole folder, so show what is in there
         # now rather than letting a tool's downloaded rules vanish unannounced.
-        outgoing = removal.plan(storage, manifest.id)
+        outgoing = item.outgoing or removal.plan(storage, manifest.id)
         print(f"  Replaces:    {previous}, whose folder is deleted once {manifest.version} is installed and working")
         print(f"               {outgoing.root}")
         print(f"               {outgoing.file_count:,} file(s), {human_size(outgoing.total_size)}")
@@ -374,34 +404,91 @@ def _install(args: argparse.Namespace, storage: Storage) -> int:
     if free is not None:
         print(f"  Disk:        {human_size(free)} free on that volume")
     print("  System-wide changes: none")
-    terms = manifest.project.terms_url if manifest.project else None
-    if terms and args.yes and not args.accept_terms:
-        # --yes says the plan was reviewed. Whether restricted terms permit this
-        # particular user is a separate claim, and only they can make it.
-        print(
-            f"\n{manifest.name} {manifest.version} is distributed under terms restricting who may use it.\n"
-            f"Review {terms} and pass --accept-terms if they permit your use.",
-            file=sys.stderr,
-        )
-        return 1
-    if _declined(args.yes):
-        return 2
+
+
+def _summarize_install(current: plan.Plan) -> None:
+    """What a set costs, said once. Repeating the single-package block per
+    package would put hundreds of lines between the request and the question."""
+    print(f"Install plan: {len(current.incoming)} packages")
+    for item in current.incoming:
+        manifest = item.manifest
+        size = f", {human_size(item.download_size)}" if manifest.package.size is not None else ""
+        replaces = f", replacing {item.previous}" if item.previous else ""
+        print(f"  {manifest.name} {manifest.version} ({manifest.id}){replaces}{size}")
+    if current.download_size:
+        print(f"  Download:    {human_size(current.download_size)}")
+    if current.extracted_size:
+        installed = human_size(current.extracted_size)
+        if current.entry_count:
+            installed += f" across {current.entry_count:,} files"
+        print(f"  Installed:   {installed}")
+    if current.free_space is not None:
+        print(f"  Disk:        {human_size(current.free_space)} free on that volume")
+        if current.fits is False:
+            print("               That is less than this would install.")
+    if current.rolling:
+        print(f"  Rolling:     {len(current.rolling)} of these have URLs the publisher replaces")
+    if current.terms:
+        named = ", ".join(name for name, _ in current.terms)
+        count = len(current.terms)
+        print(f"  Terms:       {count} package{'' if count == 1 else 's'} need{'s' if count == 1 else ''} acceptance ({named})")
+    for requirement in current.unmet:
+        print(f"  Runtime:     {requirement.detail}, needed by {len(requirement.wanted_by)}")
+    print("  System-wide changes: none")
+
+
+def _report_blocked(blocked: list[plan.Blocked]) -> None:
+    """Why nothing happened. Reported together so one run names every problem."""
+    print("\nCannot install the requested set:", file=sys.stderr)
+    for item in blocked:
+        print(f"  {item.package:<24} {item.detail}", file=sys.stderr)
+        if item.reason == plan.TERMS_NOT_ACCEPTED:
+            print(f"  {'':<24} Pass --accept-terms if they permit your use.", file=sys.stderr)
+    print("\nNo changes were made.", file=sys.stderr)
+
+
+def _perform_installs(args: argparse.Namespace, storage: Storage, current: plan.Plan) -> int:
+    """Install what the plan approved, reporting rather than stopping on a failure.
+
+    Atomicity ended when the plan was approved. Letting one download failure
+    abandon the packages after it would turn a recoverable problem into a
+    half-finished machine nobody asked for.
+    """
     reporter = progress.reporter()
+    installed: list[plan.Incoming] = []
+    failed: list[tuple[str, str]] = []
     try:
-        destination = install(
-            manifest,
-            storage,
-            on_progress=reporter,
-            on_mismatch=_digest_decision(manifest.package, args.accept_digest_mismatch),
-        )
+        for item in current.incoming:
+            try:
+                destination = install(
+                    item.manifest,
+                    storage,
+                    on_progress=reporter,
+                    on_mismatch=_digest_decision(item.manifest.package, args.accept_digest_mismatch),
+                )
+            except DfpmError as exc:
+                if len(current.incoming) == 1:
+                    raise
+                failed.append((item.manifest.id, str(exc)))
+                continue
+            installed.append(item)
+            if len(current.incoming) == 1:
+                print(f"Installed to {destination}")
+                if item.previous:
+                    print(f"Removed the previous version, {item.previous}.")
     finally:
         if reporter is not None:
             reporter.close()
-    print(f"Installed to {destination}")
-    if previous:
-        print(f"Removed the previous version, {previous}.")
-    _report_readiness(storage, manifest)
-    return 0
+
+    if len(current.incoming) > 1:
+        print(f"\nInstalled {len(installed)} of {len(current.incoming)} packages.")
+        if failed:
+            print("\nFailed:", file=sys.stderr)
+            for package_id, detail in failed:
+                print(f"  {package_id:<24} {detail}", file=sys.stderr)
+    for item in installed:
+        _report_readiness(storage, item.manifest)
+    return 1 if failed else 0
 
 
 def _declined(assume_yes: bool) -> bool:
@@ -521,12 +608,38 @@ def _download(args: argparse.Namespace) -> int:
     more: the release, under the name its project gave it, in a directory of
     your choosing. Whatever the other machine does with it is its own business.
     """
-    manifest = resolve(args.catalog, args.package, args.package_version, args.platform)
+    requested = args.package if isinstance(args.package, list) else [args.package]
     directory = args.destination or Path.cwd()
     if not directory.is_dir():
         raise DfpmError(f"Not a directory: {directory}")
-    target = directory / _released_filename(manifest)
 
+    manifests, blocked = plan.resolve(args.catalog, requested, args.package_version, args.platform)
+    if blocked:
+        for item in blocked:
+            print(f"error: {item.detail}", file=sys.stderr)
+        return 1
+
+    # Two packages can publish assets with the same filename, and retrieve
+    # refuses to overwrite. Finding that out after the first download is a worse
+    # way to learn it than being told before any of them start.
+    targets = {}
+    for manifest in manifests:
+        target = directory / _released_filename(manifest)
+        if target in targets:
+            raise DfpmError(
+                f"{manifest.id} and {targets[target]} would both be saved as {target.name}. "
+                "Download them separately, or into different directories."
+            )
+        targets[target] = manifest.id
+
+    failed = False
+    for manifest in manifests:
+        if not _download_one(args, manifest, directory / _released_filename(manifest)):
+            failed = True
+    return 1 if failed else 0
+
+
+def _download_one(args: argparse.Namespace, manifest, target: Path) -> bool:
     size = f", {human_size(manifest.package.size)}" if manifest.package.size else ""
     print(f"Downloading {manifest.name} {manifest.version} for {manifest.platform or 'any platform'}{size}")
     print(f"  from {manifest.package_url()}")
@@ -541,6 +654,9 @@ def _download(args: argparse.Namespace) -> int:
             reporter,
             _digest_decision(manifest.package, args.accept_digest_mismatch),
         )
+    except DfpmError as exc:
+        print(f"error: {manifest.id}: {exc}", file=sys.stderr)
+        return False
     finally:
         if reporter is not None:
             reporter.close()
@@ -552,7 +668,7 @@ def _download(args: argparse.Namespace) -> int:
         # themselves that it is not the file the catalog describes.
         print(f"  sha256 {saved.digest}")
         print(f"  The catalog pinned {manifest.package.sha256}, so this is not the reviewed file.")
-    return 0
+    return True
 
 
 def _released_filename(manifest) -> str:
@@ -563,25 +679,60 @@ def _released_filename(manifest) -> str:
 
 
 def _uninstall(args: argparse.Namespace, storage: Storage) -> int:
-    plan = removal.plan(storage, args.package)
+    requested = args.package if isinstance(args.package, list) else [args.package]
+    if args.all:
+        if requested:
+            raise DfpmError("Name packages or pass --all, not both.")
+        requested = [record["id"] for record in list_packages(storage)]
+        if not requested:
+            print("Nothing is installed.")
+            return 0
 
-    print("Removal plan")
-    print(f"  Package:     {plan.name} {plan.version} ({plan.package})")
-    print(f"  Removes:     {plan.root}")
-    print(f"               {plan.file_count:,} file(s), {human_size(plan.total_size)}")
-    if plan.grew:
-        # The tool may maintain its own files, or someone may have added their
-        # own. Either way the whole directory goes, so say so before it does.
-        print(f"  Note:        the install put {plan.installed_count:,} file(s) here; everything present now is removed")
-    if plan.commands:
-        print(f"  Commands:    {', '.join(plan.commands)} removed")
-    print("  Downloads stay in the cache; 'dfpm cache prune' clears them.")
+    current = plan.for_uninstall(storage, requested)
+    if current.blocked:
+        for item in current.blocked:
+            print(f"error: {item.detail}", file=sys.stderr)
+        return 1
+    if len(current.outgoing) == 1:
+        _describe_uninstall(current.outgoing[0])
+    else:
+        _summarize_uninstall(current)
     if _declined(args.yes):
         return 2
 
-    removal.execute(storage, plan)
-    print(f"Removed {plan.package} {plan.version}")
+    # Shim reconciliation rebuilds every command from every remaining record,
+    # so doing it once at the end rather than once per package is the whole
+    # difference between linear and quadratic work on a large set.
+    removed = []
+    for item in current.outgoing:
+        removal.execute(storage, item, reconcile=False)
+        removed.append(item)
+    shims.reconcile(storage)
+    for item in removed:
+        print(f"Removed {item.package} {item.version}")
     return 0
+
+
+def _describe_uninstall(item) -> None:
+    print("Removal plan")
+    print(f"  Package:     {item.name} {item.version} ({item.package})")
+    print(f"  Removes:     {item.root}")
+    print(f"               {item.file_count:,} file(s), {human_size(item.total_size)}")
+    if item.grew:
+        # The tool may maintain its own files, or someone may have added their
+        # own. Either way the whole directory goes, so say so before it does.
+        print(f"  Note:        the install put {item.installed_count:,} file(s) here; everything present now is removed")
+    if item.commands:
+        print(f"  Commands:    {', '.join(item.commands)} removed")
+    print("  Downloads stay in the cache; 'dfpm cache prune' clears them.")
+
+
+def _summarize_uninstall(current: plan.Plan) -> None:
+    print(f"Removal plan: {len(current.outgoing)} packages")
+    for item in current.outgoing:
+        print(f"  {item.name} {item.version} ({item.package}), {item.file_count:,} file(s), {human_size(item.total_size)}")
+    print(f"  Removes:     {current.reclaimed_files:,} file(s), {human_size(current.reclaimed_size)}")
+    print("  Downloads stay in the cache; 'dfpm cache prune' clears them.")
 
 
 def _cache(args: argparse.Namespace, storage: Storage) -> int:

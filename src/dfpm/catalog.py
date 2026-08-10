@@ -57,10 +57,21 @@ def resolve(directory: Path, package_id: str, version: str | None = None, platfo
     and taking whichever happened to sort last would put a Linux binary on a
     Windows machine without ever saying so.
     """
-    tools = [tool for tool in load_catalog(directory) if tool.id == package_id]
-    if not tools:
+    return select(load_catalog(directory), package_id, version, platform)
+
+
+def select(tools: list[Tool], package_id: str, version: str | None = None, platform: str | None = None) -> Manifest:
+    """The same choice, made against a catalog that is already loaded.
+
+    Resolving one package at a time reads and parses every entry in the
+    directory each time, which is invisible for one package and quadratic-ish
+    for a set of them. Asking for several is the ordinary case now, so the
+    reading and the choosing are separable.
+    """
+    matches = [tool for tool in tools if tool.id == package_id]
+    if not matches:
         raise ManifestError(f"Package not found in catalog: {package_id}")
-    tool = tools[0]
+    tool = matches[0]
 
     wanted = _requested_platform(platform) if platform else platforms.current()
     builds = list(tool.builds)
