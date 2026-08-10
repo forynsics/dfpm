@@ -1,31 +1,231 @@
-# Reviewed package catalog
+# Package catalog
 
-Every file here describes one tool and every build of it dfpm can install. Each build names one exact file and records its SHA-256, and a person approved it being here.
+This directory contains the package manifests that make up the dfpm catalog. Each manifest describes one tool and the builds of that tool that dfpm can install.
 
-That approval is the point, not the typing. A manifest may perfectly well be produced by a script that reads a project's release feed, downloads the asset and computes the digest — nobody is auditing eleven megabytes of compiled Rust by hand, and pretending otherwise would be dishonest about what the digest is for. What it actually buys is that everyone installing a given version gets identical bytes, now and in three years, and that an asset quietly replaced at the same URL is caught. What must not happen is a manifest reaching this directory without a person approving the change. Discovery proposes; a person merges.
+Every change to this catalog must be reviewed and approved by a person before it is merged. Tooling may discover releases, download assets, calculate hashes, inspect archives, or generate manifests, but it must not add or update catalog entries on its own.
 
-The steps below describe doing it by hand, which is how it works until that tooling exists.
+**Discovery proposes; a person merges.**
+
+## What reviewing a package means
+
+Reviewing a package does **not** mean auditing its source code or inspecting every byte of a compiled binary.
+
+For each build, dfpm records the exact asset URL and its SHA-256 digest. This gives dfpm a known set of bytes for that version. Someone installing the same version later should receive exactly the same file, and dfpm can detect if an asset at an existing URL is silently replaced.
+
+A manifest can therefore be generated partly or entirely by tooling. The important requirement is that a person reviews and approves the resulting catalog change before it is merged.
+
+The process below describes doing that work manually.
+
+## Before you start
+
+The complete field reference is [docs/manifest-v1.md](../docs/manifest-v1.md). Read it once; you will not need to reread it for every entry.
+
+The fastest way to begin is to copy an existing manifest with a similar shape and edit it. `yara.json` is a small tool with two entrypoints and no runtime dependency. `hayabusa.json` covers three platforms in one manifest. `mftecmd.json` is a single Windows build that needs the .NET runtime.
+
+There is also a script that fills in the mechanical fields for you:
+
+```powershell
+python scripts\draft-manifest.py <url> --id <package-id> --name <DisplayName>
+```
+
+It downloads the archive and derives the digest, size, version, architecture, archive depth, entrypoints, installed size, entry count, and any runtime the package declares. It prints a manifest to standard output.
+
+It deliberately leaves blank everything that requires judgement: `description`, `about`, the four classification axes, and `package.stability`. Those are yours to write. A draft is a starting point, not a finished entry.
 
 ## Reviewing a package
 
-1. Find the candidate release and the correct asset for each platform you intend to support. A tool shipping for Windows, Linux and macOS becomes three builds in one file, not three files. Asset naming is not stable across releases, and a project's newest release does not always publish binaries at all, so the newest tag is not automatically the right answer.
-2. Download the asset over HTTPS from the project's official location and compute its SHA-256 and size locally. Decide `package.stability` while you are looking at the URL: does it name a version, or is it a fixed address the publisher overwrites on every build? A URL like `.../releases/download/v4.0.0/tool-4.0.0.zip` is `immutable` and needs nothing said; one like `.../latest/tool.zip` is `rolling`, and saying so is what lets dfpm tell a routine upstream release apart from an artifact that changed when it should not have. Getting this wrong in the safe direction costs an alarming message; getting it wrong the other way describes a genuine problem as routine.
-3. Corroborate the digest against a second source where one exists, such as the digest the hosting platform recorded for the asset, or a checksum or signature the project publishes. GitHub only records digests for assets uploaded after it added the feature, so older releases have none and the locally computed digest is all you get.
-4. Inspect **each** archive to determine `strip_components`, the real entrypoint paths, and the files worth checking. Builds of one release are not interchangeable: their binaries are named differently and their file counts differ, so every build needs its own inspection rather than the Windows numbers copied across. Record `install.extracted_size` and `install.entries` while you are there, so `dfpm install` can show what the package costs on disk before anything is downloaded. Both are verified after extraction, so a wrong figure fails the install rather than misleading someone. Record them per build.
-5. Write `about`, and classify the package with `disciplines`, `capabilities`, `use_cases` and `evidence`. The one-line `description` says what the tool is; `about` describes what it does and produces, factually — not why it is good, which ages badly and is not the catalog's job to claim. Classification is what makes a package findable by someone who does not already know its name, which is most people most of the time. Keep the four axes honest: which discipline it belongs to, what it does, when you would reach for it, what it reads. `disciplines` is about whose evidence the tool examines, not which operating system the binary runs on — those differ often. Leave it empty for a tool that genuinely serves no single discipline rather than listing them all. The full vocabulary lives in `src/dfpm/classification.py`; a term that is not in it is refused, so a manifest cannot invent one. If no existing term fits, add one to `src/dfpm/classification.py` in the same change rather than forcing a near-miss.
-6. Record the upstream project and its license once, at the tool level. The platform belongs to each build; the platforms a tool supports are read from its builds rather than stated again. `license` takes an SPDX expression, so an artifact under more than one license says so directly (`AGPL-3.0-only AND LicenseRef-DRL-1.1`). If the tool restricts who may use it or for what purpose, record `project.terms_url`; that alone makes dfpm refuse to install it from a script without `--accept-terms`.
-7. If the tool needs particular arguments to work at all — some resolve their own rules or configuration relative to the working directory — say so in the entry's `about`, where whoever installs it will read it. dfpm does not supply arguments on a tool's behalf, so this is documentation rather than configuration.
-8. Run `dfpm catalog`, which loads and validates every manifest in this directory and fails on a malformed one. Then install it and confirm the tool actually runs.
-9. Regenerate the index with `dfpm catalog --index > catalog\index.json`. The index is how a published catalog says what it contains, since nothing can list a directory over HTTPS, and its digests are what let a machine sync only what changed. An entry added without regenerating the index is invisible to everyone syncing.
+### 1. Choose the release and assets
 
-So the whole mechanical part is two commands:
+Find the release you want to package and identify the correct asset for each platform you intend to support.
+
+One tool gets one manifest. If a release provides Windows, Linux, and macOS builds, those are three builds in the same manifest, not three separate manifests.
+
+Do not assume that:
+
+* asset names are consistent between releases;
+* every release contains compiled binaries; or
+* the newest tag is necessarily the release you should package.
+
+Verify the actual assets published by the upstream project.
+
+### 2. Download and hash each asset
+
+Download each asset over HTTPS from the project's official distribution location.
+
+Record its:
+
+* URL;
+* SHA-256 digest; and
+* download size.
+
+Compute the SHA-256 locally from the file you actually downloaded.
+
+Also determine `package.stability`.
+
+Use `immutable` when the URL identifies a particular release or version, for example:
+
+```text
+.../releases/download/v4.0.0/tool-4.0.0.zip
+```
+
+Use `rolling` when the publisher reuses the same URL for changing builds, for example:
+
+```text
+.../latest/tool.zip
+```
+
+This distinction matters. A changed `immutable` asset is unexpected and should raise an alarm. A changed `rolling` asset may simply mean that upstream published a new build.
+
+Getting this wrong in the cautious direction produces an alarming message about a routine event. Getting it wrong the other way describes a genuine problem as routine, which is worse.
+
+### 3. Corroborate the digest when possible
+
+If upstream provides an independent digest or signature, compare it with the SHA-256 you calculated.
+
+Useful sources include:
+
+* checksums published by the project;
+* signatures published by the project; or
+* the digest recorded by the hosting platform for that asset.
+
+Not every release has one. For example, GitHub only records digests for assets uploaded after it introduced that feature. When no independent digest exists, use the locally computed SHA-256.
+
+### 4. Inspect every archive
+
+Inspect each platform's archive separately.
+
+Do not assume that builds from the same release have identical layouts. Binary names, directories, and file counts can differ between Windows, Linux, and macOS packages.
+
+Determine the correct:
+
+* `install.strip_components` — how many leading directories to remove so the tool lands at the package root;
+* `install.entrypoints` — the real path to each executable, and the command name it should be reachable as; and
+* `build.verify` — files that must exist after extraction for the install to count as successful.
+
+`verify` is worth using whenever a tool ships supporting files it cannot run without, such as a rules directory or a bundled database. Naming one of those files catches an archive that unpacked at the wrong depth while still leaving the executable reachable.
+
+Do this for every build rather than copying values from another platform.
+
+### 5. Record the installed contents
+
+For each build, record:
+
+* `install.extracted_size`; and
+* `install.entries`.
+
+These let `dfpm install` tell the user how much disk space the package requires before downloading it, and verify the resulting installation after extraction.
+
+These values are per-build. If they are wrong, installation should fail rather than silently accepting an unexpected archive layout.
+
+### 6. Describe and classify the tool
+
+Write a short `description` and an `about` section.
+
+Use them differently:
+
+* `description` — what the tool is, in one line.
+* `about` — what the tool does, what it works with, and what it produces.
+
+Keep `about` factual. Avoid claims about how good, fast, popular, or useful a tool is; those age badly and are not claims the catalog needs to make.
+
+Then classify the package using four separate axes:
+
+* `disciplines` — the forensic domain the tool belongs to;
+* `capabilities` — what the tool can do;
+* `use_cases` — when an investigator would reach for it;
+* `evidence` — what kinds of evidence the tool reads.
+
+Classification should help someone discover a useful tool **without already knowing its name**.
+
+`disciplines` describes the evidence domain, not the operating system the executable runs on. A Windows executable can analyze evidence from another platform.
+
+If a tool genuinely does not belong to one particular discipline, leave `disciplines` empty rather than listing every discipline.
+
+The allowed vocabulary lives in:
+
+```text
+src/dfpm/classification.py
+```
+
+Manifests cannot introduce arbitrary classification terms. If an existing term does not accurately describe the tool, add an appropriate term to `classification.py` in the same change rather than forcing the package into a near-match.
+
+### 7. Record project and license information
+
+Record upstream project information and licensing once at the tool level.
+
+Platform information belongs to individual builds. Do not duplicate a list of supported platforms at the tool level; dfpm derives that from the builds in the manifest.
+
+`license` uses an SPDX expression. If an artifact is subject to multiple licenses, express that directly, for example:
+
+```text
+AGPL-3.0-only AND LicenseRef-DRL-1.1
+```
+
+Record what you can actually establish. If a tool has no public source repository, omit `repository` and `license` rather than inferring them from a sibling project.
+
+If upstream restricts who may use the tool or what it may be used for, record its terms in `project.terms_url`. This also applies when a package redistributes third-party data under its own terms, such as a bundled geolocation database.
+
+Packages with a `terms_url` cannot be installed non-interactively unless the user explicitly supplies `--accept-terms`.
+
+### 8. Document required invocation behaviour
+
+Some tools require particular command-line arguments, or expect rules, configuration, or other files relative to their working directory.
+
+If someone needs to know this to successfully run the installed tool, explain it in the entry's `about` section.
+
+dfpm does not automatically supply arguments on behalf of installed tools. This information is documentation, not package configuration.
+
+### 9. Validate and test the package
+
+Point dfpm at the catalog:
 
 ```powershell
 $env:DFPM_CATALOG = "catalog"
-dfpm catalog                              # validates every entry
+```
+
+Then validate it:
+
+```powershell
+dfpm catalog
+```
+
+This loads and validates every manifest in the catalog. Fix any validation errors before continuing.
+
+Install the package through dfpm and confirm that the installed tool actually runs. Running it is what catches a manifest that is valid but wrong, and it regularly corrects the `about` text written before anyone launched the tool.
+
+If a tool cannot be verified — because it requires elevation, particular hardware, or evidence you do not have — say so in the pull request rather than implying it was tested.
+
+### 10. Regenerate the catalog index
+
+After adding or changing a manifest, regenerate the index:
+
+```powershell
 dfpm catalog --index > catalog\index.json
 ```
 
-**Nothing else needs copying anywhere.** This directory is the only place entries are edited. The entries dfpm ships with are staged into the package when it is built, and the feed the public site reads is generated when the site is deployed — neither is committed, so neither can fall out of step with what is here.
+`index.json` tells remote dfpm clients which manifests exist and which ones have changed. A new manifest that is not included in the index is invisible to clients using `dfpm sync`.
 
-The index is the one exception, because `dfpm sync` fetches it straight from the repository over HTTPS and so it has to exist there. The test suite fails when it is stale.
+The test suite checks that the committed index matches the catalog.
+
+## Before you commit
+
+At minimum, these commands should succeed:
+
+```powershell
+$env:DFPM_CATALOG = "catalog"
+
+dfpm catalog
+dfpm catalog --index > catalog\index.json
+```
+
+You should also have installed the package through dfpm and confirmed that its entrypoint runs.
+
+## Source of truth
+
+**This directory is the only place package manifests are edited.**
+
+Do not copy manifests into another source directory after changing them here.
+
+The catalog bundled with dfpm is staged from this directory when the package is built. The feed used by the public site is generated when the site is deployed. Neither generated copy is committed to the repository, so there is nothing else for a contributor to keep synchronized manually.
+
+`catalog/index.json` is the exception. `dfpm sync` fetches the index directly from the repository over HTTPS, so the generated index must be committed alongside catalog changes.
