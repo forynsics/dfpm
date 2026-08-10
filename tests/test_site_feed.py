@@ -111,3 +111,17 @@ class ShippedEntriesTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LineEndingTests(unittest.TestCase):
+    """Catalog files are hashed as bytes, so their line endings are not cosmetic."""
+
+    def test_every_catalog_file_uses_one_line_ending(self) -> None:
+        # The index records a digest of each file's bytes. A working copy that
+        # writes CRLF where the repository holds LF produces an index nobody
+        # else can reproduce, which fails on a build machine and nowhere near
+        # the person who caused it.
+        catalog = REPOSITORY / "catalog"
+        files = list(catalog.glob("*.json")) + list((catalog / "collections").glob("*.json"))
+        offenders = [path.name for path in files if b"\r\n" in path.read_bytes()]
+        self.assertEqual(offenders, [], "these carry CRLF; .gitattributes asks for LF")
