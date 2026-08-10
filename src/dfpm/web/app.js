@@ -304,6 +304,9 @@ function renderCatalog() {
     const existing = installed.get(entry.id);
     const alreadyInstalled = Boolean(existing && existing.version === entry.version);
     const replaces = existing && existing.version !== entry.version ? existing.version : null;
+    // Installing what is already there is a no-op that succeeds, so offering it
+    // again is honest. A button that can never be pressed would say otherwise.
+    const actionLabel = replaces ? "Update" : "Install";
     container.append(
       el("article", { className: "tool-card" }, [
         el("header", {}, [
@@ -327,9 +330,12 @@ function renderCatalog() {
         ]),
         metaRows(entry),
         el("div", { className: "card-actions" }, [
+          // Nothing to do is shown as nothing to do. Offering a button that
+          // would report "already installed" and change nothing is an
+          // invitation to press it and learn that.
           alreadyInstalled
             ? button("Installed", "", null, { disabled: true, title: "This version is already installed" })
-            : button(replaces ? "Update" : "Install", "primary", () => previewInstall(entry)),
+            : button(actionLabel, "primary", () => previewInstall(entry)),
         ]),
       ])
     );
@@ -391,18 +397,86 @@ function renderLocations() {
 
 /* ---------- plans and confirmation ---------- */
 
+function countText(value) {
+  return value === null || value === undefined ? null : value.toLocaleString();
+}
+
+/* Exact bytes rather than a rounded size. A plan is what somebody checks a
+   download against afterwards, and "47 MB" does not answer that question. */
+function byteCount(value) {
+  const shown = countText(value);
+  return shown === null ? null : `${shown} bytes`;
+}
+
+/* Unknown and false are different answers, and a volume dfpm could not measure
+   must not be reported as one that has no room. */
+function yesNo(value) {
+  return value === null || value === undefined ? null : value ? "Yes" : "No";
+}
+
+/* A box to tick rather than a line of prose, because the claim being made is
+   about this person's own use and dfpm cannot make it on their behalf. */
+function acceptBox(label, onChange) {
+  const box = el("input", { type: "checkbox" });
+  box.addEventListener("change", () => onChange(box.checked));
+  return el("label", {}, [box, el("span", { text: ` ${label}` })]);
+}
+
+/* Runtimes are checked here rather than left to the health page, so a package
+   that cannot run on this machine says so while there is still a choice. */
+function unmetNote(requirement) {
+  return el("div", { className: "system-note" }, [
+    el("b", { text: requirement.detail }),
+    el("p", { text: requirement.remediation }),
+    el("p", { text: "Installing works without it; the tool will not run until it is there." }),
+  ]);
+}
+
 async function previewInstall(entry) {
   try {
     const { plan } = await call("/api/install/plan", { package: entry.id, version: entry.version });
+    // Acceptance travels with the install request, so it is held here from the
+    // moment it is given until the confirm button sends it.
+    let acceptedTerms = false;
     const body = el("div", {}, [
       el("div", { className: "facts" }, [
         fact("Package", `${plan.name} ${plan.version}`),
         fact("Platform", plan.platform),
         fact("License", plan.license),
-        fact("Download size", plan.size === null ? null : `${plan.size.toLocaleString()} bytes`),
+        fact("Download size", byteCount(plan.size)),
       ]),
       el("div", { className: "facts" }, [fact("Source", plan.source), fact("SHA-256", plan.sha256)]),
+      el("div", { className: "facts" }, [
+        fact("Installed size", byteCount(plan.extractedSize)),
+        fact("Files", countText(plan.entries)),
+        fact("Free space", byteCount(plan.freeSpace)),
+        fact("Room to install", yesNo(plan.fits)),
+      ]),
       el("div", { className: "facts" }, [fact("Destination", plan.destination), fact("System-wide changes", "None")]),
+      plan.termsUrl
+        ? el("div", { className: "system-note" }, [
+            el("b", { text: "This package is distributed under terms restricting who may use it" }),
+            el("p", { className: "path", text: plan.termsUrl }),
+            el("p", { text: "dfpm cannot judge whether they permit your use, so it will not install this until you say they do." }),
+            acceptBox("I have reviewed these terms and they permit my use", (checked) => {
+              acceptedTerms = checked;
+              $("#modal-confirm").disabled = !checked;
+            }),
+          ])
+        : null,
+      ...(plan.requirements || []).filter((requirement) => !requirement.met).map(unmetNote),
+      plan.fits === false
+        ? el("div", { className: "system-note" }, [
+            el("b", { text: "That volume has less free space than this would install" }),
+            el("p", { text: "dfpm checks again before extracting and stops rather than filling the disk. Free some space first." }),
+          ])
+        : null,
+      plan.rolling
+        ? el("div", { className: "system-note" }, [
+            el("b", { text: "The publisher replaces this file rather than adding a new one" }),
+            el("p", { text: "The pinned digest describes the bytes at one moment rather than a release that stays put. If the file at that URL has changed since this entry was reviewed, the install stops rather than taking whatever is there now." }),
+          ])
+        : null,
       plan.replaces
         ? el("div", { className: "system-note" }, [
             el("b", { text: `Version ${plan.replaces.version} is deleted once this one is working` }),
@@ -420,9 +494,14 @@ async function previewInstall(entry) {
         el("p", { text: "dfpm downloads this artifact, refuses it unless the digest matches exactly, extracts it only if the result fits the volume, checks the expected files are present, and only then installs it." }),
       ]),
     ]);
-    openModal("Install plan", `Install ${plan.name} ${plan.version}?`, body, "Install", () =>
-      run("/api/install", { package: entry.id, version: entry.version })
-    );
+    openModal("Install plan", `Install ${plan.name} ${plan.version}?`, body, "Install", () => {
+      const request = { package: entry.id, version: entry.version };
+      if (acceptedTerms) request.acceptTerms = true;
+      return run("/api/install", request);
+    });
+    // The install is refused without acceptance, so the tick is the way through
+    // rather than a failure to read after pressing the button.
+    if (plan.termsUrl) $("#modal-confirm").disabled = true;
   } catch (error) {
     toast(error.message, true);
   }
@@ -466,6 +545,9 @@ function openModal(kicker, title, body, confirmLabel, action) {
   $("#modal-title").textContent = title;
   $("#modal-body").replaceChildren(body);
   $("#modal-confirm").textContent = confirmLabel;
+  // A plan that gates its confirm button disables it after this runs, so the
+  // default is restored here and one plan's condition cannot follow the next.
+  $("#modal-confirm").disabled = false;
   confirmAction = action;
   $("#modal-shade").classList.add("open");
 }
