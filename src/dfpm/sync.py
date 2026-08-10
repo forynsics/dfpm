@@ -146,9 +146,19 @@ def apply(current: Plan) -> list[Change]:
         body = _read(_locate(current.source, change.file))
         actual = hashlib.sha256(body).hexdigest()
         if actual != change.sha256:
+            # A published catalog is usually served through a cache, and an
+            # index updated moments ago can arrive alongside files that have
+            # not caught up. That looks exactly like tampering from here, so
+            # the refusal stands -- but it is worth saying which is likelier.
+            stale = ""
+            if urllib.parse.urlparse(current.source).scheme in {"https", "http"}:
+                stale = (
+                    "\nA catalog updated in the last few minutes can serve an index newer than "
+                    "the files it describes. If it was just published, try again shortly."
+                )
             raise DfpmError(
                 f"{change.file} does not match the digest its index recorded.\n"
-                f"  expected {change.sha256}\n  found    {actual}"
+                f"  expected {change.sha256}\n  found    {actual}{stale}"
             )
         if change.file.startswith(COLLECTION_PREFIX):
             _must_be_a_collection(change.file, body)
