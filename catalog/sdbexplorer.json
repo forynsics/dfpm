@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "id": "sdbexplorer",
+  "name": "SDB Explorer",
+  "kind": "tool",
+  "description": "Inspect Microsoft shim databases and the application fixes they install.",
+  "about": "A shim database describes compatibility fixes Windows applies to a program when it runs, matched against the executable by name, size and other attributes. Custom databases can be registered on a system to attach arbitrary behaviour to a chosen program, which is why they are worth examining rather than assuming to be Microsoft's own. SDB Explorer parses a .sdb file and shows the executables it matches, the conditions each match depends on, and the fixes or patches applied when it does — including the raw patch bytes where one is present. Both the shipped system databases and custom ones can be read.",
+  "disciplines": [
+    "windows-forensics"
+  ],
+  "capabilities": [
+    "visualisation",
+    "data-export"
+  ],
+  "use_cases": [
+    "incident-response",
+    "threat-hunting"
+  ],
+  "evidence": [
+    "shim-databases"
+  ],
+  "project": {
+    "homepage": "https://ericzimmerman.github.io/",
+    "license": "MIT"
+  },
+  "builds": [
+    {
+      "version": "2026.5.0.0",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://download.ericzimmermanstools.com/net9/SDBExplorer.zip",
+        "sha256": "c3ca7453f659bb0981bf2a573672b74bfffee5985e752cec35bda3abc20080de",
+        "size": 91393982,
+        "stability": "rolling"
+      },
+      "install": {
+        "strategy": "portable-zip",
+        "strip_components": 1,
+        "extracted_size": 92307750,
+        "entries": 4,
+        "entrypoints": [
+          {
+            "name": "sdbexplorer",
+            "path": "SDBExplorer.exe"
+          }
+        ]
+      },
+      "requires": [
+        {
+          "runtime": "dotnet",
+          "version": ">=9",
+          "flavor": "desktop"
+        }
+      ]
+    }
+  ]
+}

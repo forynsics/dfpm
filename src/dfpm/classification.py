@@ -123,6 +123,8 @@ EVIDENCE = _index(
          ("shimcache", "appcompatcache", "application compatibility")),
     Term("recentfilecache", "RecentFileCache",
          ("recentfilecache", "recent file cache", "bcf", "program compatibility assistant")),
+    Term("shim-databases", "Shim databases",
+         ("sdb", "shim database", "custom shim", "appcompat database", "application fix")),
     Term("shellbags", "Shellbags",
          ("shellbags", "shellbag", "folder access")),
     Term("jump-lists", "Jump lists",
@@ -183,6 +185,8 @@ EVIDENCE = _index(
          ("cloudtrail", "azure activity", "unified audit log", "gcp audit", "cloud logs")),
     Term("netflow-records", "Flow records",
          ("netflow", "flow records", "ipfix")),
+    Term("tabular-exports", "Tabular exports",
+         ("csv", "tsv", "spreadsheet", "excel", "tool output", "exported results")),
     Term("files", "Files of any kind",
          ("files", "file contents", "any file", "binaries", "executables")),
 )

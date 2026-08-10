@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "id": "mftexplorer",
+  "name": "MFT Explorer",
+  "kind": "tool",
+  "description": "Browse an NTFS master file table as a directory tree and inspect the attributes behind each record.",
+  "about": "MFT Explorer loads a $MFT and rebuilds the directory structure it describes, so a volume can be walked as folders and files rather than read as a table of records. Selecting an entry shows what the record actually holds: both the $STANDARD_INFORMATION and $FILE_NAME timestamp sets, the resident or non-resident data attributes, alternate data streams, and the parent reference the path was reconstructed from. Deleted entries still present in the table appear in place, which is what makes a file's former location visible. The reconstructed tree can be exported.",
+  "disciplines": [
+    "windows-forensics"
+  ],
+  "capabilities": [
+    "file-system-parsing",
+    "visualisation",
+    "data-export"
+  ],
+  "use_cases": [
+    "forensic-triage",
+    "evidence-review"
+  ],
+  "evidence": [
+    "master-file-table"
+  ],
+  "project": {
+    "homepage": "https://ericzimmerman.github.io/",
+    "license": "MIT"
+  },
+  "builds": [
+    {
+      "version": "2026.5.0.0",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://download.ericzimmermanstools.com/net9/MFTExplorer.zip",
+        "sha256": "6266f057b3b8243931ff6533b0d72885f3d53976c44f2db531372117ca54ade9",
+        "size": 91404340,
+        "stability": "rolling"
+      },
+      "install": {
+        "strategy": "portable-zip",
+        "strip_components": 1,
+        "extracted_size": 92145446,
+        "entries": 4,
+        "entrypoints": [
+          {
+            "name": "mftexplorer",
+            "path": "MFTExplorer.exe"
+          }
+        ]
+      },
+      "requires": [
+        {
+          "runtime": "dotnet",
+          "version": ">=9",
+          "flavor": "desktop"
+        }
+      ]
+    }
+  ]
+}

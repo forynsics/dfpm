@@ -91,7 +91,7 @@ Continue? [y/N]
 
 <img align="right" width="100" src="docs/assets/brix-box.png" alt="">
 
-Twenty-one packages today: **Hayabusa** and **YARA**, and nineteen of Eric Zimmerman's command-line tools, covering the master file table, prefetch, event logs, the registry, shellbags, jump lists and much of what else Windows records about itself.
+Twenty-eight packages today: **Hayabusa** and **YARA**, and twenty-six of Eric Zimmerman's tools — nineteen command-line parsers covering the master file table, prefetch, event logs, the registry, shellbags, jump lists and much of what else Windows records about itself, plus the seven graphical viewers that go with them, including **Registry Explorer** and **Timeline Explorer**.
 
 dfpm is early, so the catalog is small and every entry is reviewed by a person before it lands. `dfpm sync` picks up new and updated entries without waiting for a dfpm release.
 

@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "id": "shellbagsexplorer",
+  "name": "ShellBags Explorer",
+  "kind": "tool",
+  "description": "Browse shellbags from registry hives as the folder tree a user actually navigated.",
+  "about": "Shellbags are the view settings Explorer stores for folders that were opened, which makes them a record of browsing rather than of files. ShellBags Explorer reconstructs them from UsrClass.dat and NTUSER.DAT into a tree that mirrors what the user saw, including folders on removable media, network shares and archives that are no longer attached. Each node carries the timestamps stored with it and the raw shell item bytes behind it, so an interpretation can be checked against the underlying structure rather than taken on trust. The reconstructed tree can be exported for reporting. On first run it asks for a contact email address before its main window appears, and it keeps its settings in a file beside the executable.",
+  "disciplines": [
+    "windows-forensics"
+  ],
+  "capabilities": [
+    "registry-parsing",
+    "visualisation",
+    "data-export"
+  ],
+  "use_cases": [
+    "forensic-triage",
+    "evidence-review"
+  ],
+  "evidence": [
+    "shellbags",
+    "registry-hives"
+  ],
+  "project": {
+    "homepage": "https://ericzimmerman.github.io/",
+    "license": "MIT"
+  },
+  "builds": [
+    {
+      "version": "2026.5.0.0",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://download.ericzimmermanstools.com/net9/ShellBagsExplorer.zip",
+        "sha256": "56a5adbcb7649ca4b3f8740ea285fe814aea4cc8f185eafbf6a0051ece9b09ce",
+        "size": 93561020,
+        "stability": "rolling"
+      },
+      "install": {
+        "strategy": "portable-zip",
+        "strip_components": 1,
+        "extracted_size": 95216422,
+        "entries": 4,
+        "entrypoints": [
+          {
+            "name": "shellbagsexplorer",
+            "path": "ShellBagsExplorer.exe"
+          }
+        ]
+      },
+      "requires": [
+        {
+          "runtime": "dotnet",
+          "version": ">=9",
+          "flavor": "desktop"
+        }
+      ]
+    }
+  ]
+}

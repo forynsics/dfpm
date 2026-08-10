@@ -26,6 +26,12 @@
       "sha256": "96729376a75ab0b2e661d23e62e494cfbf2a365a9ff53b84174f8be9974792ad"
     },
     {
+      "file": "ezviewer.json",
+      "id": "ezviewer",
+      "version": "2026.5.0.0",
+      "sha256": "6a860f3d48ea377d0014baa5cdc7828506c79ad19ca12b41714537bd84b2f6d4"
+    },
+    {
       "file": "hayabusa.json",
       "id": "hayabusa",
       "version": "4.0.0",
@@ -44,6 +50,12 @@
       "sha256": "c4c7cce6a583cba46a2c6ea07147adb30b2e462df75ca57240e64912b8e44648"
     },
     {
+      "file": "jumplistexplorer.json",
+      "id": "jumplistexplorer",
+      "version": "2026.5.0.0",
+      "sha256": "81b9506a72ec1c8a638f10f2de35eb725a52f6422d0b45d678a515f155a8d136"
+    },
+    {
       "file": "lecmd.json",
       "id": "lecmd",
       "version": "2026.5.0.0",
@@ -54,6 +66,12 @@
       "id": "mftecmd",
       "version": "2026.5.0.0",
       "sha256": "070540ec85070fb99f4a62cd1ef1c30dc60b0bf00413597beac7d74132d3cbf6"
+    },
+    {
+      "file": "mftexplorer.json",
+      "id": "mftexplorer",
+      "version": "2026.5.0.0",
+      "sha256": "4285e81c94b3edf1ab04cdbbe7663bde8f18a2bf297599e8545232464ca367bb"
     },
     {
       "file": "pecmd.json",
@@ -80,6 +98,12 @@
       "sha256": "eedea06aa50db32fa33006eeecb9a2ae5ef35d720507925d4bfbb9bdde278292"
     },
     {
+      "file": "registryexplorer.json",
+      "id": "registryexplorer",
+      "version": "2026.5.0.0",
+      "sha256": "b0a83c346e8140ee7166882904f68fad0ff79802774a54beda31f48dabeded9c"
+    },
+    {
       "file": "rla.json",
       "id": "rla",
       "version": "2026.5.0.0",
@@ -90,6 +114,18 @@
       "id": "sbecmd",
       "version": "2026.5.0.0",
       "sha256": "2f0993e0c2c245e965d7a9aee1e31b2b509ae3b3408855bbaebb25d3ea4c932a"
+    },
+    {
+      "file": "sdbexplorer.json",
+      "id": "sdbexplorer",
+      "version": "2026.5.0.0",
+      "sha256": "28b94713f5bd806bf8418042ad9ee527c8d19cbbefad24dd713ff1ae716ce538"
+    },
+    {
+      "file": "shellbagsexplorer.json",
+      "id": "shellbagsexplorer",
+      "version": "2026.5.0.0",
+      "sha256": "f33865cdcd19441acc9a7a0681082b93d19f11dfb43abc7cd82e29791631959c"
     },
     {
       "file": "sqlecmd.json",
@@ -108,6 +144,12 @@
       "id": "sumecmd",
       "version": "2026.5.0.0",
       "sha256": "81ca8aaeb468e2549f6f2017346c771729acfce40985ce0409cf9a65217bc64b"
+    },
+    {
+      "file": "timelineexplorer.json",
+      "id": "timelineexplorer",
+      "version": "2026.5.0.0",
+      "sha256": "c0805daabfc34970b432b25cb0740137af40d570f13290a544a71487d6942dc3"
     },
     {
       "file": "vscmount.json",

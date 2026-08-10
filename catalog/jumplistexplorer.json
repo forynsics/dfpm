@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "id": "jumplistexplorer",
+  "name": "JumpList Explorer",
+  "kind": "tool",
+  "description": "Browse jump lists in a graphical viewer that shows each entry alongside the application it belongs to.",
+  "about": "JumpList Explorer opens automaticDestinations-ms and customDestinations-ms files and presents their entries grouped by the application that created them, resolving application identifiers to names where they are known. Selecting an entry shows the shortcut data embedded inside it: the target path, the timestamps, and the tracker fields naming the machine and the volume the target sat on. Several files can be loaded at once, which is how a user's recent activity across applications is read in one place rather than one file at a time.",
+  "disciplines": [
+    "windows-forensics"
+  ],
+  "capabilities": [
+    "visualisation",
+    "data-export"
+  ],
+  "use_cases": [
+    "forensic-triage",
+    "evidence-review"
+  ],
+  "evidence": [
+    "jump-lists",
+    "shortcut-files"
+  ],
+  "project": {
+    "homepage": "https://ericzimmerman.github.io/",
+    "license": "MIT"
+  },
+  "builds": [
+    {
+      "version": "2026.5.0.0",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://download.ericzimmermanstools.com/net9/JumpListExplorer.zip",
+        "sha256": "953c2d91c948e48f1f0731817033bd89b877f8dd163720d8c1d686ac6214d737",
+        "size": 91163135,
+        "stability": "rolling"
+      },
+      "install": {
+        "strategy": "portable-zip",
+        "strip_components": 1,
+        "extracted_size": 91794726,
+        "entries": 4,
+        "entrypoints": [
+          {
+            "name": "jumplistexplorer",
+            "path": "JumpListExplorer.exe"
+          }
+        ]
+      },
+      "requires": [
+        {
+          "runtime": "dotnet",
+          "version": ">=9",
+          "flavor": "desktop"
+        }
+      ]
+    }
+  ]
+}

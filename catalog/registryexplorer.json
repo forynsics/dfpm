@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "id": "registryexplorer",
+  "name": "Registry Explorer",
+  "kind": "tool",
+  "description": "Browse Windows registry hives in a graphical viewer, with bookmarks for known keys and plugins that decode their values.",
+  "about": "Registry Explorer opens one or more hives at once and presents them as a navigable tree, replaying transaction logs so a hive taken from a running system shows its most recent state. Two things distinguish it from a plain viewer. Bookmarks point straight at keys of known forensic interest, so a hive can be examined without knowing where anything lives. Plugins decode values that are otherwise opaque binary blobs — shellbags, run keys, USB history, application-specific settings — into readable tables. Deleted keys and values recoverable from unallocated space in the hive are surfaced alongside the live ones, and anything on screen can be exported.",
+  "disciplines": [
+    "windows-forensics"
+  ],
+  "capabilities": [
+    "registry-parsing",
+    "visualisation",
+    "data-export"
+  ],
+  "use_cases": [
+    "forensic-triage",
+    "evidence-review"
+  ],
+  "evidence": [
+    "registry-hives"
+  ],
+  "project": {
+    "homepage": "https://ericzimmerman.github.io/",
+    "license": "MIT"
+  },
+  "builds": [
+    {
+      "version": "2026.5.0.0",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://download.ericzimmermanstools.com/net9/RegistryExplorer.zip",
+        "sha256": "7cbd0994c0329b24a95cb7e66354d959f0e3fbf5ee9811b63a7d3d898be4f4f2",
+        "size": 97927381,
+        "stability": "rolling"
+      },
+      "install": {
+        "strategy": "portable-zip",
+        "strip_components": 1,
+        "extracted_size": 100984973,
+        "entries": 222,
+        "entrypoints": [
+          {
+            "name": "registryexplorer",
+            "path": "RegistryExplorer.exe"
+          }
+        ]
+      },
+      "verify": [
+        {
+          "type": "file",
+          "path": "Plugins/RegistryPlugin.Amcache-InventoryApplication.dll"
+        },
+        {
+          "type": "file",
+          "path": "Bookmarks/Common/Autoruns_NtUser_Run_2ec3d165-3d58-417e-bf86-d30652b7b53a"
+        }
+      ],
+      "requires": [
+        {
+          "runtime": "dotnet",
+          "version": ">=9",
+          "flavor": "desktop"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "id": "ezviewer",
+  "name": "EZViewer",
+  "kind": "tool",
+  "description": "View a file's contents by type where it is recognised, and as hex where it is not.",
+  "about": "EZViewer opens a file and renders it according to its extension: text and markup as text, spreadsheets and delimited files as a grid, PDFs and images as themselves. Anything it does not recognise is shown in a hex editor rather than refused, so the tool always displays something. Which extensions map to which viewer is read from a plain text file beside the executable and can be edited, so a format encountered often can be added without waiting for a release. It renders files and does not alter them, which is what makes it usable against material that must not change.",
+  "capabilities": [
+    "visualisation"
+  ],
+  "use_cases": [
+    "forensic-triage",
+    "evidence-review"
+  ],
+  "evidence": [
+    "files"
+  ],
+  "project": {
+    "homepage": "https://ericzimmerman.github.io/",
+    "license": "MIT"
+  },
+  "builds": [
+    {
+      "version": "2026.5.0.0",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://download.ericzimmermanstools.com/net9/EZViewer.zip",
+        "sha256": "ebe7074f907be1a74f995530248332d03fd35bab648f1204a59adc1bdf126e9e",
+        "size": 91506373,
+        "stability": "rolling"
+      },
+      "install": {
+        "strategy": "portable-zip",
+        "strip_components": 1,
+        "extracted_size": 92300054,
+        "entries": 5,
+        "entrypoints": [
+          {
+            "name": "ezviewer",
+            "path": "EZViewer.exe"
+          }
+        ]
+      },
+      "verify": [
+        {
+          "type": "file",
+          "path": "Extensions.yaml"
+        }
+      ],
+      "requires": [
+        {
+          "runtime": "dotnet",
+          "version": ">=9",
+          "flavor": "desktop"
+        }
+      ]
+    }
+  ]
+}

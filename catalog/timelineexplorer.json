@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "id": "timelineexplorer",
+  "name": "Timeline Explorer",
+  "kind": "tool",
+  "description": "Open large CSV, TSV and Excel files in a grid built for filtering, grouping and tagging forensic tool output.",
+  "about": "Most forensic command-line tools finish by writing a CSV, and Timeline Explorer is built to read those rather than to parse evidence itself. It loads several files at once as tabs, keeps large ones responsive, and offers filtering, grouping, conditional colouring and per-row tagging so a set of results can be worked through and marked up. Plugins give it column layouts for output it recognises, including the other tools from this publisher, so timestamps arrive typed as dates rather than text and columns are named and ordered usefully. Saved layouts persist how a particular kind of file should be presented.",
+  "disciplines": [
+    "windows-forensics"
+  ],
+  "capabilities": [
+    "visualisation",
+    "timeline-generation"
+  ],
+  "use_cases": [
+    "evidence-review",
+    "forensic-triage"
+  ],
+  "evidence": [
+    "tabular-exports"
+  ],
+  "project": {
+    "homepage": "https://ericzimmerman.github.io/",
+    "license": "MIT"
+  },
+  "builds": [
+    {
+      "version": "2026.5.0.0",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://download.ericzimmermanstools.com/net9/TimelineExplorer.zip",
+        "sha256": "4c79248786cc6ea342f66e105588f72fc8d571b5bc89acdb5178a392416d93e9",
+        "size": 91772972,
+        "stability": "rolling"
+      },
+      "install": {
+        "strategy": "portable-zip",
+        "strip_components": 1,
+        "extracted_size": 94069717,
+        "entries": 98,
+        "entrypoints": [
+          {
+            "name": "timelineexplorer",
+            "path": "TimelineExplorer.exe"
+          }
+        ]
+      },
+      "verify": [
+        {
+          "type": "file",
+          "path": "Plugins/TLEFileEZTools.dll"
+        }
+      ],
+      "requires": [
+        {
+          "runtime": "dotnet",
+          "version": ">=9",
+          "flavor": "desktop"
+        }
+      ]
+    }
+  ]
+}
