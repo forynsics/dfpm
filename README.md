@@ -95,7 +95,7 @@ Seven packages today: **Hayabusa** and **YARA**, and five of Eric Zimmerman's co
 
 dfpm is early, so the catalog is small and every entry is reviewed by a person before it lands. `dfpm sync` picks up new and updated entries without waiting for a dfpm release.
 
-See [the catalog](docs/catalog.md) for how entries work, or [catalog/README.md](catalog/README.md) for the review notes recorded against each package.
+See [the catalog](docs/catalog.md) for how entries work, or [catalog/README.md](catalog/README.md) for what a review requires.
 
 ## Commands
 

@@ -9,7 +9,7 @@ dfpm catalog                 # everything available
 dfpm catalog <package-id>    # everything known about one, including builds this machine cannot use
 ```
 
-Every entry is reviewed by a person before it lands. What goes into one, and the notes recorded for each package, are in [catalog/README.md](../catalog/README.md). The format itself is in [manifest-v1.md](manifest-v1.md).
+Every entry is reviewed by a person before it lands. What that review requires is in [catalog/README.md](../catalog/README.md). The format itself is in [manifest-v1.md](manifest-v1.md).
 
 ## Where entries come from
 
