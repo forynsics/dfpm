@@ -256,6 +256,22 @@ class CatalogUpdateTests(unittest.TestCase):
         self.assertEqual(entries - policies, set(), f"Catalog entries without update policies: {sorted(entries - policies)}")
         self.assertEqual(policies - entries, set(), f"Update policies without catalog entries: {sorted(policies - entries)}")
 
+    def test_update_policies_preserve_every_published_platform(self) -> None:
+        failures = []
+        policies = REPOSITORY / "catalog" / "update-policies"
+        for manifest_path in sorted((REPOSITORY / "catalog").glob("*.json")):
+            if manifest_path.name == "index.json":
+                continue
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            policy = json.loads((policies / f"{manifest['id']}.json").read_text(encoding="utf-8"))
+            manifest_platforms = {json.dumps(build.get("platform"), sort_keys=True) for build in manifest["builds"]}
+            policy_platforms = {json.dumps(asset.get("platform"), sort_keys=True) for asset in policy["assets"]}
+            if manifest_platforms != policy_platforms:
+                failures.append(
+                    f"{manifest['id']}: manifest={sorted(manifest_platforms)}, policy={sorted(policy_platforms)}"
+                )
+        self.assertEqual(failures, [], "Update policies would change published platform coverage:\n" + "\n".join(failures))
+
     def test_rolling_url_uses_etag_digest_pe_version_and_layout(self) -> None:
         shutil.copyfile(REPOSITORY / "catalog" / "mftecmd.json", self.catalog / "mftecmd.json")
         policy_path = self.base / "mftecmd-policy.json"

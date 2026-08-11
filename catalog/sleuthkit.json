@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "id": "sleuthkit",
+  "name": "The Sleuth Kit",
+  "kind": "tool",
+  "description": "Inspect disk images and file systems with a collection of focused command-line tools.",
+  "about": "The Sleuth Kit provides low-level commands for examining storage evidence without requiring a graphical case application. Its tools describe partition tables and file systems, list directory and inode metadata, extract file contents, inspect data blocks and journals, recover allocated or deleted files, and load results into a database. The official Windows package is a 32-bit build; it runs on 64-bit Windows through Windows' built-in x86 compatibility support.",
+  "disciplines": [],
+  "capabilities": [
+    "file-system-parsing",
+    "file-carving",
+    "hash-matching",
+    "data-export"
+  ],
+  "use_cases": [
+    "incident-response",
+    "forensic-triage",
+    "evidence-review"
+  ],
+  "evidence": [
+    "disk-images"
+  ],
+  "project": {
+    "homepage": "https://www.sleuthkit.org/sleuthkit/",
+    "repository": "https://github.com/sleuthkit/sleuthkit",
+    "license": "CPL-1.0 AND IPL-1.0 AND GPL-2.0-only AND BSD-3-Clause AND MIT"
+  },
+  "builds": [
+    {
+      "version": "4.15.0",
+      "platform": {
+        "os": "windows",
+        "arch": "x86"
+      },
+      "package": {
+        "url": "https://github.com/sleuthkit/sleuthkit/releases/download/sleuthkit-4.15.0/sleuthkit-4.15.0-win32.zip",
+        "sha256": "c2ebab8105b893d97bd8ce35b88e01985e2a106efc97f03adf95840a631b20ce",
+        "size": 17728689
+      },
+      "install": {
+        "strategy": "portable-zip",
+        "strip_components": 1,
+        "extracted_size": 43964592,
+        "entries": 92,
+        "entrypoints": [
+          {"name": "blkcalc", "path": "bin/blkcalc.exe"},
+          {"name": "blkcat", "path": "bin/blkcat.exe"},
+          {"name": "blkls", "path": "bin/blkls.exe"},
+          {"name": "blkstat", "path": "bin/blkstat.exe"},
+          {"name": "fcat", "path": "bin/fcat.exe"},
+          {"name": "ffind", "path": "bin/ffind.exe"},
+          {"name": "fls", "path": "bin/fls.exe"},
+          {"name": "fsstat", "path": "bin/fsstat.exe"},
+          {"name": "hfind", "path": "bin/hfind.exe"},
+          {"name": "icat", "path": "bin/icat.exe"},
+          {"name": "ifind", "path": "bin/ifind.exe"},
+          {"name": "ils", "path": "bin/ils.exe"},
+          {"name": "img_cat", "path": "bin/img_cat.exe"},
+          {"name": "img_stat", "path": "bin/img_stat.exe"},
+          {"name": "istat", "path": "bin/istat.exe"},
+          {"name": "jcat", "path": "bin/jcat.exe"},
+          {"name": "jls", "path": "bin/jls.exe"},
+          {"name": "mmcat", "path": "bin/mmcat.exe"},
+          {"name": "mmls", "path": "bin/mmls.exe"},
+          {"name": "mmstat", "path": "bin/mmstat.exe"},
+          {"name": "pstat", "path": "bin/pstat.exe"},
+          {"name": "tsk_comparedir", "path": "bin/tsk_comparedir.exe"},
+          {"name": "tsk_gettimes", "path": "bin/tsk_gettimes.exe"},
+          {"name": "tsk_imageinfo", "path": "bin/tsk_imageinfo.exe"},
+          {"name": "tsk_loaddb", "path": "bin/tsk_loaddb.exe"},
+          {"name": "tsk_recover", "path": "bin/tsk_recover.exe"}
+        ]
+      },
+      "verify": [
+        {
+          "type": "file",
+          "path": "bin/libewf.dll"
+        },
+        {
+          "type": "file",
+          "path": "licenses/cpl1.0.txt"
+        }
+      ]
+    }
+  ]
+}

@@ -56,6 +56,12 @@
       "sha256": "2a29d4811964744418ea5e3a2982f1e4a1faa2bfa32f2187c59b40a4beec8714"
     },
     {
+      "file": "hindsight.json",
+      "id": "hindsight",
+      "version": "2026.06",
+      "sha256": "00636ea5b377e54991ea60b2c1ca116b677ff2c3b454e6111cf49fea23e4dc5a"
+    },
+    {
       "file": "iisgeolocate.json",
       "id": "iisgeolocate",
       "version": "2026.5.0.0",
@@ -152,6 +158,12 @@
       "sha256": "f33865cdcd19441acc9a7a0681082b93d19f11dfb43abc7cd82e29791631959c"
     },
     {
+      "file": "sleuthkit.json",
+      "id": "sleuthkit",
+      "version": "4.15.0",
+      "sha256": "b4bf52fdb836af895d26ae36084012682a663064434df07af12e2c73ad1b3781"
+    },
+    {
       "file": "sqlecmd.json",
       "id": "sqlecmd",
       "version": "2026.5.0.0",
@@ -168,6 +180,18 @@
       "id": "sumecmd",
       "version": "2026.5.0.0",
       "sha256": "81ca8aaeb468e2549f6f2017346c771729acfce40985ce0409cf9a65217bc64b"
+    },
+    {
+      "file": "suzaku.json",
+      "id": "suzaku",
+      "version": "2.0.0",
+      "sha256": "895349b958d9f3f2f10f651f4a9ac99b8036477b99bb034de3798466fb579eda"
+    },
+    {
+      "file": "takajo.json",
+      "id": "takajo",
+      "version": "2.16.1",
+      "sha256": "61dcf9153b1c452aa2f555f84141febf4f80021df12a352b037c7c952a912e85"
     },
     {
       "file": "timelineexplorer.json",

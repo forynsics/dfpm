@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "sleuthkit",
+  "provider": "github-releases",
+  "repository": "sleuthkit/sleuthkit",
+  "tag_prefix": "sleuthkit-",
+  "assets": [
+    {
+      "name": "sleuthkit-{version}-win32.zip",
+      "platform": {
+        "os": "windows",
+        "arch": "x86"
+      }
+    }
+  ]
+}

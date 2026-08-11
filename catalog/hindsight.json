@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "id": "hindsight",
+  "name": "Hindsight",
+  "kind": "tool",
+  "description": "Parse browser profiles into a timeline of history, downloads, cookies, storage, and related activity.",
+  "about": "Hindsight examines a browser profile directory, copies live databases by default so locked files can still be read, runs artifact-specific parsers and plugins, and writes the combined results as SQLite, JSONL or XLSX. The current build recognizes Chrome, Edge, Brave, Vivaldi, Firefox and Tor profiles, while retaining its deepest coverage for Chrome and Chromium data. Give it a profile or user-data directory with --input and an output name with --output.",
+  "disciplines": [],
+  "capabilities": [
+    "timeline-generation",
+    "data-export"
+  ],
+  "use_cases": [
+    "incident-response",
+    "forensic-triage",
+    "evidence-review"
+  ],
+  "evidence": [
+    "browser-history",
+    "sqlite-databases"
+  ],
+  "project": {
+    "homepage": "https://github.com/RyanDFIR/hindsight",
+    "repository": "https://github.com/RyanDFIR/hindsight",
+    "license": "Apache-2.0"
+  },
+  "builds": [
+    {
+      "version": "2026.06",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://github.com/RyanDFIR/hindsight/releases/download/v2026.06/hindsight.exe",
+        "sha256": "69beaaec4f29ea36734ca9115e6c002fc43ed918d860794e1641d3ac9f129bd7",
+        "size": 18853397
+      },
+      "install": {
+        "strategy": "standalone-file",
+        "strip_components": 0,
+        "extracted_size": 18853397,
+        "entries": 1,
+        "entrypoints": [
+          {
+            "name": "hindsight",
+            "path": "hindsight.exe"
+          }
+        ]
+      }
+    }
+  ]
+}

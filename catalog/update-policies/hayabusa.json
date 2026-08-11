@@ -11,6 +11,20 @@
         "os": "windows",
         "arch": "x64"
       }
+    },
+    {
+      "name": "hayabusa-{version}-lin-x64-gnu.zip",
+      "platform": {
+        "os": "linux",
+        "arch": "x64"
+      }
+    },
+    {
+      "name": "hayabusa-{version}-mac-aarch64.zip",
+      "platform": {
+        "os": "macos",
+        "arch": "arm64"
+      }
     }
   ]
 }

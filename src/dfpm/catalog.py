@@ -102,12 +102,18 @@ def select(tools: list[Tool], package_id: str, version: str | None = None, platf
             f"which this dfpm cannot install."
         )
     usable = installable
-    usable.sort(key=lambda build: version_key(build.version))
+    usable.sort(key=lambda build: (version_key(build.version), _platform_preference(build.platform, wanted)))
     return tool.release(usable[-1])
 
 
 def _matches(platform: Platform, wanted: tuple[str, str]) -> bool:
-    return (platform.system, platform.architecture) == wanted
+    return platforms.compatible((platform.system, platform.architecture), wanted)
+
+
+def _platform_preference(platform: Platform | None, wanted: tuple[str, str]) -> int:
+    if platform is None:
+        return 0
+    return 2 if (platform.system, platform.architecture) == wanted else 1
 
 
 def _requested_platform(text: str) -> tuple[str, str]:

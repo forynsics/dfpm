@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "suzaku",
+  "provider": "github-releases",
+  "repository": "Yamato-Security/suzaku",
+  "tag_prefix": "v",
+  "assets": [
+    {
+      "name": "suzaku-{version}-win-x64.zip",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      }
+    }
+  ]
+}

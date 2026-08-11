@@ -43,7 +43,8 @@ def check_platform(manifest: Manifest) -> None:
     if manifest.platform is None:
         return
     system, architecture = platforms.current()
-    if (manifest.platform.system, manifest.platform.architecture) != (system, architecture):
+    offered = manifest.platform.system, manifest.platform.architecture
+    if not platforms.compatible(offered, (system, architecture)):
         raise InstallError(
             f"{manifest.id} {manifest.version} targets {manifest.platform}, but this machine is {system}/{architecture}"
         )

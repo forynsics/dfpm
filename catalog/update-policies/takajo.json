@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "takajo",
+  "provider": "github-releases",
+  "repository": "Yamato-Security/takajo",
+  "tag_prefix": "v",
+  "assets": [
+    {
+      "name": "takajo-{version}-win-x64.zip",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      }
+    }
+  ]
+}

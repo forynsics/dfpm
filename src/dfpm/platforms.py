@@ -22,3 +22,15 @@ def current() -> tuple[str, str]:
     system = _SYSTEMS.get(platform.system(), platform.system().lower())
     architecture = _ARCHITECTURES.get(platform.machine(), platform.machine().lower())
     return system, architecture
+
+
+def compatible(offered: tuple[str, str], wanted: tuple[str, str]) -> bool:
+    """Whether a build can run on the requested platform.
+
+    64-bit Windows retains native support for 32-bit Windows programs. Other
+    architecture substitutions are not assumed: they depend on optional
+    emulators or operating-system versions dfpm cannot establish from a name.
+    """
+    if offered == wanted:
+        return True
+    return offered == ("windows", "x86") and wanted == ("windows", "x64")

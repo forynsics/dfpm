@@ -114,6 +114,15 @@ class InstallTests(unittest.TestCase):
         self.assertIn("this machine is", str(caught.exception))
         self.assertFalse(self.storage.package_version("example.tool", "1.0.0").exists())
 
+    def test_accepts_a_32_bit_windows_package_on_64_bit_windows(self) -> None:
+        _, manifest_path = create_package(self.base)
+        data = json.loads(manifest_path.read_text(encoding="utf-8"))
+        data["builds"][0]["platform"] = {"os": "windows", "arch": "x86"}
+        manifest_path.write_text(json.dumps(data), encoding="utf-8")
+        with mock.patch.object(platforms, "current", return_value=("windows", "x64")):
+            destination = install(Manifest.load(manifest_path), self.storage)
+        self.assertTrue(destination.is_dir())
+
     def test_records_platform_and_project_for_provenance(self) -> None:
         system, architecture = platforms.current()
         _, manifest_path = create_package(self.base)

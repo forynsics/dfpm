@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "hindsight",
+  "provider": "github-releases",
+  "repository": "RyanDFIR/hindsight",
+  "tag_prefix": "v",
+  "assets": [
+    {
+      "name": "hindsight.exe",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      }
+    }
+  ]
+}

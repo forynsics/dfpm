@@ -89,6 +89,25 @@ class SelectionTests(unittest.TestCase):
         create_package(self.base)
         self.assertIsNone(resolve(self.catalog, "example.tool").platform)
 
+    def test_a_32_bit_windows_build_is_compatible_with_64_bit_windows(self) -> None:
+        create_package(self.base, platform={"os": "windows", "arch": "x86"})
+        chosen = resolve(self.catalog, "example.tool", platform="windows/x64")
+        self.assertEqual(chosen.platform.architecture, "x86")
+
+    def test_an_exact_windows_build_beats_a_compatible_32_bit_build(self) -> None:
+        create_package(
+            self.base,
+            platform={"os": "windows", "arch": "x86"},
+            extra_builds=[build_of("1.0.0", "windows", "x64")],
+        )
+        chosen = resolve(self.catalog, "example.tool", platform="windows/x64")
+        self.assertEqual(chosen.platform.architecture, "x64")
+
+    def test_x86_is_not_assumed_compatible_on_other_operating_systems(self) -> None:
+        create_package(self.base, platform={"os": "linux", "arch": "x86"})
+        with self.assertRaises(ManifestError):
+            resolve(self.catalog, "example.tool", platform="linux/x64")
+
     def test_the_newest_version_is_chosen(self) -> None:
         create_package(
             self.base,
