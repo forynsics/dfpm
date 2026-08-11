@@ -41,5 +41,5 @@ coverage/
 
 # Manufactured from catalog/, never edited by hand.
 # The wheel build stages the entries; the Pages deploy generates the site feed.
-/src/dfpm/entries/*.json
+/src/dfpm/entries/
 /docs/catalog.json

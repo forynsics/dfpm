@@ -27,12 +27,19 @@ from setuptools.build_meta import build_wheel as _build_wheel
 ROOT = Path(__file__).parent
 SOURCE = ROOT / "catalog"
 SHIPPED = ROOT / "src" / "dfpm" / "entries"
+BUILT = ROOT / "build" / "lib" / "dfpm" / "entries"
+COLLECTIONS = "collections"
 
 
 def _stage_entries() -> None:
     """Put the reviewed catalog where the package expects to find it."""
     if not SOURCE.is_dir():
         return
+    # setuptools may reuse build/lib between local builds. Package data removed
+    # from the source catalog must not survive there and leak into a later
+    # wheel, especially when a draft has been moved out of publication.
+    if BUILT.is_dir():
+        shutil.rmtree(BUILT)
     SHIPPED.mkdir(parents=True, exist_ok=True)
     wanted = {path.name for path in SOURCE.glob("*.json")}
     for stale in SHIPPED.glob("*.json"):
@@ -40,6 +47,17 @@ def _stage_entries() -> None:
             stale.unlink()
     for entry in SOURCE.glob("*.json"):
         shutil.copyfile(entry, SHIPPED / entry.name)
+
+    source_collections = SOURCE / COLLECTIONS
+    shipped_collections = SHIPPED / COLLECTIONS
+    if source_collections.is_dir():
+        shipped_collections.mkdir(parents=True, exist_ok=True)
+        wanted_collections = {path.name for path in source_collections.glob("*.json")}
+        for stale in shipped_collections.glob("*.json"):
+            if stale.name not in wanted_collections:
+                stale.unlink()
+        for collection in source_collections.glob("*.json"):
+            shutil.copyfile(collection, shipped_collections / collection.name)
 
 
 def build_wheel(*args, **kwargs):

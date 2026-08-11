@@ -6,11 +6,19 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     # Windows is the platform dfpm supports, and the suite checks things that
     # only exist there: command shims, path-length limits, reserved device names.
     runs-on: windows-latest
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
@@ -38,7 +46,7 @@ jobs:
           fresh\Scripts\dfpm.exe --version
           fresh\Scripts\dfpm.exe catalog
 
-      - name: Confirm the wheel carries every reviewed entry
+      - name: Confirm the wheel carries every reviewed catalog file
         # This is the only place the claim can honestly be made: a build has just
         # happened, so the staged entries are current rather than left over from
         # whenever somebody last installed.
@@ -46,8 +54,16 @@ jobs:
         run: |
           import pathlib, sys, zipfile
           wheel = next(pathlib.Path("dist").glob("*.whl"))
-          shipped = {n.rsplit("/", 1)[-1] for n in zipfile.ZipFile(wheel).namelist() if "/entries/" in n}
+          names = zipfile.ZipFile(wheel).namelist()
+          shipped = {n.rsplit("/", 1)[-1] for n in names if "/entries/" in n and "/entries/collections/" not in n}
           reviewed = {p.name for p in pathlib.Path("catalog").glob("*.json")}
           if shipped != reviewed:
               sys.exit(f"wheel carries {sorted(shipped)}, catalog holds {sorted(reviewed)}")
-          print(f"{len(shipped)} entries, matching catalog/")
+          shipped_collections = {n.rsplit("/", 1)[-1] for n in names if "/entries/collections/" in n}
+          reviewed_collections = {p.name for p in pathlib.Path("catalog/collections").glob("*.json")}
+          if shipped_collections != reviewed_collections:
+              sys.exit(
+                  f"wheel carries collections {sorted(shipped_collections)}, "
+                  f"catalog holds {sorted(reviewed_collections)}"
+              )
+          print(f"{len(shipped)} entries and {len(shipped_collections)} collections, matching catalog/")
