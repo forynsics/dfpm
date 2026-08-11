@@ -1,5 +1,11 @@
 # Installing and removing packages
 
+## Finding and updating packages
+
+`dfpm search <words>` finds packages by name, description, command, capability and evidence vocabulary. `dfpm outdated` reports installed packages for which the current catalog has a newer version and supports `--json` for automation.
+
+Upgrade selected packages with `dfpm upgrade <package-id>...`, or every outdated package with `dfpm upgrade --all`. Upgrades reuse the ordinary install plan, confirmation, terms and digest rules. In a multi-package upgrade, packages install independently: a later failure does not roll back packages that already upgraded successfully.
+
 ## The plan comes first
 
 `dfpm install <package-id>` shows what it is about to do and waits:

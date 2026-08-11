@@ -91,24 +91,29 @@ Continue? [y/N]
 
 <img align="right" width="100" src="docs/assets/brix-box.png" alt="">
 
-Twenty-eight packages today: **Hayabusa** and **YARA**, and twenty-six of Eric Zimmerman's tools — nineteen command-line parsers covering the master file table, prefetch, event logs, the registry, shellbags, jump lists and much of what else Windows records about itself, plus the seven graphical viewers that go with them, including **Registry Explorer** and **Timeline Explorer**.
+The catalog includes **Hayabusa**, **YARA**, Eric Zimmerman's command-line parsers and graphical viewers, and a growing set of acquisition, memory-analysis, malware-analysis and threat-hunting tools. Run `dfpm catalog` for the current list; it is generated from the reviewed manifests rather than maintained separately here.
 
 dfpm is early, so the catalog is small and every entry is reviewed by a person before it lands. `dfpm sync` picks up new and updated entries without waiting for a dfpm release.
 
 See [the catalog](docs/catalog.md) for how entries work, or [catalog/README.md](catalog/README.md) for what a review requires.
+Routine releases can be maintained by [policy-constrained catalog automation](docs/catalog-updates.md) after a package's initial admission.
 
 ## Commands
 
 ```text
 dfpm catalog [<package-id>]    what's available, or everything about one package
+dfpm search <words>            find tools by purpose, capability, or evidence
 dfpm install <package-id>      install it, after showing you the plan
 dfpm list                      what's installed, and what has a newer version
+dfpm outdated                  show installed packages with available updates
+dfpm upgrade <id> | --all      upgrade through the same reviewed install plan
 dfpm run <command> [args...]   run an installed tool
 dfpm which <command>           show exactly which file a command resolves to
 dfpm uninstall <package-id>    remove it
 dfpm doctor                    check installed packages are intact and runnable
 dfpm sync                      update the catalog from where it is published
 dfpm download <package-id>     save a release file without installing it
+dfpm collection [<name>]       list curated package sets, or show one set
 dfpm cache list | verify | prune | remove <digest>
 dfpm paths                     where everything lives
 dfpm gui                       manage all of this in a browser instead
@@ -152,7 +157,7 @@ dfpm is in early development, and interfaces, manifests and behaviour may still 
 
 **Working today:** installing, replacing and removing packages from verified artifacts; install plans; contained extraction; `dfpm run` and `dfpm which`; a verified download cache; catalog sync; runtime detection; downloads of builds meant for other machines; a local management interface; and read-only health checks.
 
-**Not built yet:** a `dfpm search` command, health checks that actually execute a tool rather than checking its files are present, and noticing when a catalogued project has published something newer upstream. Packages are portable ZIPs only.
+**Not built yet:** health checks that actually execute a tool rather than checking its files are present. Installable artifacts currently include portable ZIP archives and standalone files; other published formats can be described in the catalog but are not selected for installation. Policy-enabled catalog entries can be checked against upstream releases by the catalog-maintenance workflow.
 
 Windows is supported today. Linux and macOS are longer-term.
 

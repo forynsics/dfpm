@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 import shutil
 import sys
 import textwrap
@@ -24,6 +23,7 @@ from .errors import DfpmError
 from .gui import serve
 from .installer import check_destination, check_platform, install
 from .inventory import list_packages
+from .manifest import published_filename
 from .storage import Storage
 from .sync import DEFAULT_SOURCE
 
@@ -49,6 +49,32 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print the index that describes this catalog, for publishing it.",
     )
+    search = commands.add_parser("search", help="Find packages by name, purpose, capability, or evidence.")
+    search.add_argument("query", nargs="+", help="Words describing the tool or forensic task to find.")
+    search.add_argument("--json", action="store_true")
+
+    outdated = commands.add_parser("outdated", help="Show installed packages with a newer catalog version.")
+    outdated.add_argument("--json", action="store_true")
+
+    upgrade = commands.add_parser("upgrade", help="Upgrade installed packages to newer catalog versions.")
+    upgrade.add_argument("package", nargs="*", help="Installed package IDs to upgrade.")
+    upgrade.add_argument("--all", action="store_true", help="Upgrade every installed package with an available update.")
+    upgrade.add_argument("--yes", action="store_true", help="Confirm the displayed plan.")
+    upgrade.add_argument(
+        "--accept-terms",
+        action="store_true",
+        dest="accept_terms",
+        help="Assert that updated packages' usage terms permit your use. Never implied by --yes.",
+    )
+    upgrade.add_argument(
+        "--accept-digest-mismatch",
+        action="store_true",
+        dest="accept_digest_mismatch",
+        help="Upgrade a rolling package whose bytes no longer match the catalog. Never implied by --yes.",
+    )
+    # Upgrade always selects the newest version. Giving it the same internal
+    # shape as install lets both commands use one planner and executor.
+    upgrade.set_defaults(package_version=None)
 
     install_command = commands.add_parser("install", help="Install a package, replacing any version already installed.")
     install_command.add_argument("package", nargs="+")
@@ -196,6 +222,12 @@ def _run(args: argparse.Namespace, storage: Storage) -> int:
         return 0
     if args.command == "catalog":
         return _catalog(args)
+    if args.command == "search":
+        return _search(args)
+    if args.command == "outdated":
+        return _outdated(args, storage)
+    if args.command == "upgrade":
+        return _upgrade(args, storage)
     if args.command in ("collection", "collections"):
         return _collection(args)
     if args.command == "install":
@@ -311,6 +343,145 @@ def _catalog(args: argparse.Namespace) -> int:
         print(f"{'':<24} {platforms}")
     print("\nRun 'dfpm catalog <package>' to see everything known about one of them.")
     return 0
+
+
+def _search(args: argparse.Namespace) -> int:
+    """Find tools by ordinary words, including vocabulary aliases."""
+    query = " ".join(args.query).strip().lower()
+    matches = []
+    for tool in load_catalog(args.catalog):
+        text = " ".join((tool.id, tool.name, tool.description, tool.about or "")).lower()
+        direct = query in text
+        classified = any(
+            set(getattr(tool, field)) & classification.matching_keys(field, query)
+            for field in classification.VOCABULARIES
+        )
+        commands = any(query in entrypoint.name.lower() for build in tool.builds for entrypoint in build.entrypoints)
+        if direct or classified or commands:
+            matches.append(tool)
+
+    if args.json:
+        print(json.dumps({"query": query, "packages": [describe(tool) for tool in matches]}, indent=2))
+        return 0
+    if not matches:
+        print(f"No catalog packages match: {query}")
+        return 0
+    for tool in matches:
+        print(f"{tool.id:<24} {catalog_newest(tool).version:<12} {tool.name}")
+        print(f"{'':<24} {tool.description}")
+    print("\nRun 'dfpm catalog <package>' to see everything known about one of them.")
+    return 0
+
+
+def _available_updates(catalog: Path, packages: list[dict]) -> list[dict]:
+    """Installed and available versions in a stable, machine-readable shape."""
+    updates = catalog_updates(catalog, packages)
+    return [
+        {
+            "id": package["id"],
+            "name": package.get("name") or package["id"],
+            "installed_version": package.get("version"),
+            "available_version": updates[package["id"]],
+        }
+        for package in packages
+        if package["id"] in updates
+    ]
+
+
+def _outdated(args: argparse.Namespace, storage: Storage) -> int:
+    """Report upgrades without changing the machine."""
+    packages = list_packages(storage)
+    updates = _available_updates(args.catalog, packages)
+    if args.json:
+        print(json.dumps(updates, indent=2, sort_keys=True))
+        return 0
+    if not packages:
+        print("No packages are installed.")
+        return 0
+    if not updates:
+        print("All installed packages are up to date.")
+        return 0
+
+    print(f"{'PACKAGE':<28} {'INSTALLED':<14} {'AVAILABLE':<14} NAME")
+    for item in updates:
+        print(
+            f"{item['id']:<28} {item['installed_version'] or '-':<14} "
+            f"{item['available_version']:<14} {item['name']}"
+        )
+    print("\nUpgrade selected packages with 'dfpm upgrade <package-id>', or all of them with 'dfpm upgrade --all'.")
+    return 0
+
+
+def _upgrade(args: argparse.Namespace, storage: Storage) -> int:
+    """Upgrade only installed packages for which the catalog is newer.
+
+    The install planner deliberately permits replacing a version with any
+    explicitly selected version. Upgrade has the narrower promise its name
+    implies, so it filters first and can never turn an installed package back
+    to an older catalog version.
+    """
+    if args.all and args.package:
+        raise DfpmError("Name packages or pass --all, not both.")
+    if not args.all and not args.package:
+        raise DfpmError("Name installed packages to upgrade, or pass --all.")
+
+    packages = list_packages(storage)
+    installed = {package["id"]: package for package in packages}
+    if args.all:
+        requested = [item["id"] for item in _available_updates(args.catalog, packages)]
+        if not packages:
+            print("Nothing is installed.")
+            return 0
+        if not requested:
+            print("All installed packages are up to date.")
+            return 0
+    else:
+        # Preserve the order typed while treating an accidental duplicate as
+        # one request, matching the install planner's behavior.
+        requested = list(dict.fromkeys(args.package))
+        missing = [package_id for package_id in requested if package_id not in installed]
+        if missing:
+            print("\nCannot upgrade the requested set:", file=sys.stderr)
+            for package_id in missing:
+                print(f"  {package_id:<24} is not installed.", file=sys.stderr)
+            print("\nNo changes were made.", file=sys.stderr)
+            return 1
+
+        candidates: list[str] = []
+        blocked: list[tuple[str, str]] = []
+        current: list[str] = []
+        for package_id in requested:
+            try:
+                candidate = resolve(args.catalog, package_id)
+            except DfpmError as exc:
+                blocked.append((package_id, str(exc)))
+                continue
+            installed_version = installed[package_id].get("version")
+            if installed_version and catalog_version_key(candidate.version) > catalog_version_key(installed_version):
+                candidates.append(package_id)
+            else:
+                current.append(package_id)
+
+        if blocked:
+            print("\nCannot upgrade the requested set:", file=sys.stderr)
+            for package_id, detail in blocked:
+                print(f"  {package_id:<24} {detail}", file=sys.stderr)
+            print("\nNo changes were made.", file=sys.stderr)
+            return 1
+        for package_id in current:
+            version = installed[package_id].get("version") or "unknown version"
+            print(f"{package_id} {version} is already the newest version available.")
+        requested = candidates
+        if not requested:
+            return 0
+
+    if len(requested) > 1:
+        print(
+            "Upgrade behavior: after approval, packages are installed independently; "
+            "a failure does not roll back upgrades that succeeded."
+        )
+    args.package = requested
+    return _install(args, storage)
 
 
 def _show_tool(tool) -> None:
@@ -730,10 +901,8 @@ def _download_one(args: argparse.Namespace, manifest, target: Path) -> bool:
 
 
 def _released_filename(manifest) -> str:
-    """The name the project published the file under, made safe to join to a directory."""
-    tail = manifest.package.url.replace("\\", "/").rstrip("/").rsplit("/", 1)[-1]
-    cleaned = re.sub(r"[^A-Za-z0-9._-]", "_", tail).lstrip(".")
-    return cleaned or f"{manifest.id}-{manifest.version}"
+    """What to call a saved download, falling back when the URL names nothing usable."""
+    return published_filename(manifest.package.url) or f"{manifest.id}-{manifest.version}"
 
 
 def _uninstall(args: argparse.Namespace, storage: Storage) -> int:

@@ -89,6 +89,25 @@ class CatalogDiscoveryTests(unittest.TestCase):
         packages = json.loads(printed)["packages"]
         self.assertEqual([entry["id"] for entry in packages], ["example.tool"])
 
+    def test_search_finds_a_package_by_description(self) -> None:
+        create_package(self.base)
+        _, printed = self.run_cli("search", "verify", "dfpm")
+        self.assertIn("example.tool", printed)
+
+    def test_search_finds_a_package_by_classification_alias(self) -> None:
+        _, manifest_path = create_package(self.base)
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["evidence"] = ["windows-event-logs"]
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+        _, printed = self.run_cli("search", "evtx")
+        self.assertIn("example.tool", printed)
+
+    def test_search_json_reports_an_empty_result(self) -> None:
+        create_package(self.base)
+        code, printed = self.run_cli("search", "definitely-absent", "--json")
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(printed)["packages"], [])
+
 
 if __name__ == "__main__":
     unittest.main()
