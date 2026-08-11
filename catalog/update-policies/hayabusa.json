@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "hayabusa",
+  "provider": "github-releases",
+  "repository": "Yamato-Security/hayabusa",
+  "tag_prefix": "v",
+  "assets": [
+    {
+      "name": "hayabusa-{version}-win-x64.zip",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      }
+    }
+  ]
+}

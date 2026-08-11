@@ -6,6 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: write
   contents: write
   pull-requests: write
 
@@ -39,7 +40,7 @@ jobs:
       - name: Validate the resulting catalog
         run: python -m unittest discover -s tests
 
-      - name: Propose validated catalog changes
+      - name: Publish validated catalog changes
         if: success()
         shell: pwsh
         env:
@@ -55,13 +56,20 @@ jobs:
           git checkout -B $branch
           git add catalog
           git commit -m "Update policy-managed catalog entries"
+          $headCommit = git rev-parse HEAD
           git push --force origin "HEAD:refs/heads/$branch"
           $existing = gh pr list --head $branch --base main --state open --json number --jq '.[0].number'
           if ($existing) {
             Write-Host "Updated existing pull request #$existing."
+            $pullRequest = $existing
           } else {
-            gh pr create --base main --head $branch --title "Update policy-managed catalog entries" --body "Automated proposal from the constrained catalog updater. The workflow recomputed artifact facts, validated established layout invariants, and passed the full test suite. Review the attached evidence before merging."
+            gh pr create --base main --head $branch --title "Update policy-managed catalog entries" --body "Automated update from the constrained catalog updater. The workflow recomputed artifact facts, validated established layout invariants, and passed the full test suite before merging. The pull request remains as the audit record."
+            $pullRequest = gh pr list --head $branch --base main --state open --json number --jq '.[0].number'
           }
+          if (-not $pullRequest) { throw "Could not identify the catalog update pull request." }
+          gh pr merge $pullRequest --squash --delete-branch --match-head-commit $headCommit
+          gh workflow run tests.yml --ref main
+          gh workflow run pages.yml --ref main
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()

@@ -169,6 +169,19 @@ class CatalogUpdateTests(unittest.TestCase):
         self.assertEqual(result, 1)
         self.assertEqual((self.catalog / "yara.json").read_bytes(), original)
 
+    def test_every_github_release_download_has_an_update_policy(self) -> None:
+        policies = {path.stem for path in (REPOSITORY / "catalog" / "update-policies").glob("*.json")}
+        missing = []
+        for path in (REPOSITORY / "catalog").glob("*.json"):
+            if path.name == "index.json":
+                continue
+            manifest = json.loads(path.read_text(encoding="utf-8"))
+            urls = [build["package"]["url"] for build in manifest["builds"]]
+            if any("github.com/" in url and "/releases/download/" in url for url in urls):
+                if manifest["id"] not in policies:
+                    missing.append(manifest["id"])
+        self.assertEqual(missing, [], f"GitHub release packages without update policies: {missing}")
+
 
 if __name__ == "__main__":
     unittest.main()

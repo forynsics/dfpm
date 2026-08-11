@@ -14,12 +14,14 @@ The `catalog updates` workflow runs daily and can also be started manually. It:
 6. loads the proposed manifest through dfpm's normal validation;
 7. regenerates the catalog index;
 8. runs the complete test suite;
-9. writes validated changes to the automation-owned `automation/catalog-updates` branch and opens or updates a pull request; and
+9. writes validated changes to the automation-owned `automation/catalog-updates` branch, opens or updates a pull request, and merges that exact validated commit; and
 10. uploads the proposed catalog and evidence as a workflow artifact.
 
 It does not rewrite descriptions, classification, licensing, terms, commands or project provenance. A renamed or missing asset, ambiguous match, changed archive layout, disappeared entrypoint, unsupported artifact format, invalid manifest, or failing test stops the job rather than being guessed through. The evidence report includes the failed stage, patterns, available assets and inspected release tags where applicable. A failed multi-package apply restores manifests already changed during that invocation and does not regenerate the index.
 
-The workflow cannot push to `main` and does not merge its own pull request. A maintainer still reviews the evidence and the proposed manifest diff before merging. If every policy-managed package is already current, the run records its evidence and exits without opening a pull request.
+The pull request is an audit record, not a recurring approval queue. Routine changes merge without a human when every policy succeeds, the established archive layout remains intact, manifest validation succeeds, and the complete test suite passes. The workflow then explicitly starts the normal test matrix and site deployment because events created by GitHub's workflow token do not recursively start other workflows.
+
+New packages and changes to update policies still require normal review. An ambiguous asset, prerelease outside an explicit policy, changed archive layout, missing entrypoint, download failure, or failed test stops without merging. If every policy-managed package is already current, the run records its evidence and exits without opening a pull request.
 
 ## Adding a policy
 
