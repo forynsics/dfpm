@@ -16,7 +16,7 @@ from .catalog import SHIPPED, build_index, check_collections, describe, load_cat
 from .catalog import newer_than_installed as catalog_updates
 from .catalog import newest as catalog_newest
 from .catalog import version_key as catalog_version_key
-from .doctor import inspect
+from .doctor import apply_repairs, inspect, repair_plan
 from . import downloads
 from .downloads import retrieve
 from .errors import DfpmError
@@ -160,7 +160,10 @@ def build_parser() -> argparse.ArgumentParser:
     list_command.add_argument("--json", action="store_true")
     doctor = commands.add_parser("doctor", help="Check installed packages without changing them.")
     doctor.add_argument("package", nargs="?", help="Check only this package.")
-    doctor.add_argument("--json", action="store_true")
+    doctor_mode = doctor.add_mutually_exclusive_group()
+    doctor_mode.add_argument("--json", action="store_true")
+    doctor_mode.add_argument("--repair", action="store_true", help="Plan and repair safe dfpm-owned inconsistencies.")
+    doctor.add_argument("--yes", action="store_true", help="Confirm the displayed repair plan.")
     return parser
 
 
@@ -249,21 +252,7 @@ def _run(args: argparse.Namespace, storage: Storage) -> int:
     if args.command == "list":
         return _list(args, storage)
     if args.command == "doctor":
-        findings = inspect(storage, args.package)
-        if args.json:
-            print(json.dumps([item.__dict__ for item in findings], indent=2))
-        elif not findings:
-            print("No installed packages to check.")
-        else:
-            markers = {"passing": "PASS", "blocked": "WAIT", "failed": "FAIL", "unverified": "WARN"}
-            for finding in findings:
-                marker = markers.get(finding.status, "FAIL")
-                print(f"{marker:<4} {finding.package} {finding.version}: {finding.detail}")
-        # A machine missing a runtime is not a broken install, so it gets its
-        # own code: a script can tell "dfpm is wrong" from "this box is not ready".
-        if any(item.status == "failed" for item in findings):
-            return 1
-        return 2 if any(item.status == "blocked" for item in findings) else 0
+        return _doctor(args, storage)
     return 1
 
 
@@ -1118,6 +1107,57 @@ def _list(args: argparse.Namespace, storage: Storage) -> int:
         print(f"\nThe catalog has a newer version of: {names}")
         print("Installing one replaces the version you have: dfpm install <package-id>")
     return 0
+
+
+def _doctor(args: argparse.Namespace, storage: Storage) -> int:
+    if args.yes and not args.repair:
+        raise DfpmError("--yes is only meaningful with doctor --repair")
+    if args.repair:
+        if args.package:
+            raise DfpmError("doctor --repair checks the whole dfpm root; it cannot be narrowed to one package")
+        actions = repair_plan(storage)
+        print("Doctor repair plan")
+        print("------------------")
+        if not actions:
+            print("No safe automatic repairs are available.")
+        else:
+            for action in actions:
+                print(f"  {action.detail}")
+                print(f"    Target: {action.target}")
+            if _declined(args.yes):
+                return 0
+            applied = apply_repairs(storage, actions)
+            print(f"Applied {len(applied)} repair(s).")
+        findings = inspect(storage)
+        remaining = [item for item in findings if item.status != "passing"]
+        if remaining:
+            print("\nProblems that still need attention:")
+            _print_doctor_findings(remaining)
+        return _doctor_exit(findings)
+
+    findings = inspect(storage, args.package)
+    if args.json:
+        print(json.dumps([item.__dict__ for item in findings], indent=2))
+    elif not findings:
+        print("No installed packages or dfpm maintenance problems to check.")
+    else:
+        _print_doctor_findings(findings)
+    return _doctor_exit(findings)
+
+
+def _print_doctor_findings(findings) -> None:
+    markers = {"passing": "PASS", "blocked": "WAIT", "failed": "FAIL", "unverified": "WARN"}
+    for finding in findings:
+        marker = markers.get(finding.status, "FAIL")
+        print(f"{marker:<4} {finding.package} {finding.version}: {finding.detail}")
+
+
+def _doctor_exit(findings) -> int:
+    # A machine missing a runtime is not a broken install, so it gets its own
+    # code: a script can tell "dfpm is wrong" from "this box is not ready".
+    if any(item.status == "failed" for item in findings):
+        return 1
+    return 2 if any(item.status == "blocked" for item in findings) else 0
 
 
 if __name__ == "__main__":

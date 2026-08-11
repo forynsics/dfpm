@@ -43,9 +43,10 @@ Catalog sync plan
 
 The catalog is published as a plain directory of entries plus an index describing them, so a reviewed change reaches every machine that syncs, whenever it syncs — no dfpm release required.
 
-Syncing only happens when you ask for it. It reads over HTTPS or from a directory, refuses a redirect that drops out of HTTPS, checks every entry parses as a manifest before it lands, and writes nothing at all unless all of them passed.
+Syncing only happens when you ask for it. It reads over HTTPS or from a directory, refuses a redirect that drops out of HTTPS, and checks every entry parses as a manifest before it lands. Changed files and verified unchanged files are assembled into a complete sibling snapshot, collections are checked against that snapshot, and only then is the active catalog replaced by same-volume directory renames. A write or publish failure restores the previous snapshot, so a sync never leaves a mixture of old and new files. If the process is killed in the narrow gap between the two directory renames, the complete previous snapshot remains beside the catalog for `dfpm doctor --repair` to restore.
 
 - An unchanged entry is never downloaded twice.
+- An interrupted publish leaves a recoverable previous snapshot that `dfpm doctor --repair` can restore.
 - An entry you edited yourself is reported before it is replaced, rather than overwritten in silence.
 - Entries withdrawn upstream are removed. Nothing you have installed is affected — a package's record does not depend on the catalog.
 

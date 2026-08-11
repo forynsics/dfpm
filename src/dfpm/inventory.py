@@ -39,8 +39,11 @@ def list_packages(storage: Storage) -> list[dict[str, Any]]:
     records = []
     for path in sorted(package_dir.glob("*.json")):
         try:
-            records.append(_normalize(json.loads(path.read_text(encoding="utf-8"))))
-        except (OSError, ValueError):
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(payload, dict) or not isinstance(payload.get("id"), str):
+                continue
+            records.append(_normalize(payload))
+        except (OSError, ValueError, TypeError):
             continue
     return records
 

@@ -110,7 +110,7 @@ dfpm upgrade <id> | --all      upgrade through the same reviewed install plan
 dfpm run <command> [args...]   run an installed tool
 dfpm which <command>           show exactly which file a command resolves to
 dfpm uninstall <package-id>    remove it
-dfpm doctor                    check installed packages are intact and runnable
+dfpm doctor [--repair]         inspect dfpm state and plan safe repairs
 dfpm sync                      update the catalog from where it is published
 dfpm download <package-id>     save a release file without installing it
 dfpm collection [<name>]       list curated package sets, or show one set
@@ -145,6 +145,7 @@ The full set of rules, and what they do and do not defend against, is in the [se
 | [Running tools](docs/running-tools.md) | `dfpm run`, PATH options, exit codes, runtimes |
 | [The catalog](docs/catalog.md) | where entries come from, `dfpm sync`, upstream changes |
 | [The verified cache](docs/cache.md) | offline installs, pruning, seeding an isolated machine |
+| [Doctor and repair](docs/doctor.md) | health checks, interrupted operations, safe repairs |
 | [Local interface](docs/gui.md) | `dfpm gui`, its security controls, where files live |
 | [Security model](docs/security.md) | what dfpm guarantees, and what it does not |
 | [Manifest format](docs/manifest-v1.md) | how a catalog entry is written |
@@ -156,7 +157,7 @@ The full set of rules, and what they do and do not defend against, is in the [se
 
 dfpm is in early development, and interfaces, manifests and behaviour may still change.
 
-**Working today:** installing, replacing and removing packages from verified artifacts; install plans; contained extraction; `dfpm run` and `dfpm which`; a verified download cache; catalog sync; runtime detection; downloads of builds meant for other machines; a local management interface; and read-only health checks.
+**Working today:** installing, replacing and removing packages from verified artifacts; install plans; contained extraction; `dfpm run` and `dfpm which`; a verified download cache; transactional catalog sync; runtime detection; downloads of builds meant for other machines; a local management interface; health checks; and explicit repair plans for safe dfpm-owned inconsistencies.
 
 **Not built yet:** health checks that actually execute a tool rather than checking its files are present. Installable artifacts currently include portable ZIP archives and standalone files; other published formats can be described in the catalog but are not selected for installation. Policy-enabled catalog entries can be checked against upstream releases by the catalog-maintenance workflow.
 

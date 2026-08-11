@@ -5,6 +5,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from dfpm import sync
 from dfpm.catalog import INDEX_NAME, build_index, load_catalog
@@ -91,6 +92,33 @@ class SyncTests(SyncFixture):
         self.assertFalse((self.local / "example.tool.json").exists())
         self.assertEqual([tool.id for tool in load_catalog(self.local)], ["second.tool"])
 
+    def test_a_collection_withdrawn_upstream_is_removed_transactionally(self) -> None:
+        collections = self.published / "collections"
+        collections.mkdir()
+        collection = collections / "example-set.json"
+        collection.write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "id": "example-set",
+                    "name": "Example set",
+                    "description": "Fixture",
+                    "packages": ["example.tool"],
+                }
+            ),
+            encoding="utf-8",
+        )
+        self.republish()
+        self.sync()
+        self.assertTrue((self.local / "collections" / collection.name).exists())
+
+        collection.unlink()
+        self.republish()
+        current = sync.plan(self.source(), self.local)
+        self.assertEqual(current.of(sync.REMOVED)[0].file, f"collections/{collection.name}")
+        sync.apply(current)
+        self.assertFalse((self.local / "collections" / collection.name).exists())
+
     def test_the_index_is_written_so_the_next_sync_can_compare(self) -> None:
         self.sync()
         written = json.loads((self.local / INDEX_NAME).read_text(encoding="utf-8"))
@@ -100,6 +128,45 @@ class SyncTests(SyncFixture):
     def test_the_index_is_not_treated_as_a_package(self) -> None:
         self.sync()
         self.assertEqual([tool.id for tool in load_catalog(self.local)], ["example.tool"])
+
+    def test_publish_failure_restores_the_complete_previous_snapshot(self) -> None:
+        self.sync()
+        previous = (self.local / "example.tool.json").read_bytes()
+        self.edit_published(description="A newer snapshot that must not land halfway.")
+        current = sync.plan(self.source(), self.local)
+        real_replace = sync.os.replace
+        backup = sync.backup_directory(self.local)
+
+        def fail_new_snapshot(source, destination):
+            if Path(destination) == self.local and Path(source) != backup:
+                raise OSError("simulated publish failure")
+            return real_replace(source, destination)
+
+        with mock.patch.object(sync.os, "replace", side_effect=fail_new_snapshot), self.assertRaises(DfpmError):
+            sync.apply(current)
+        self.assertEqual((self.local / "example.tool.json").read_bytes(), previous)
+        self.assertFalse(backup.exists())
+        self.assertEqual(sync.staging_directories(self.local), [])
+
+    def test_next_sync_recovers_a_backup_left_between_directory_renames(self) -> None:
+        self.sync()
+        backup = sync.backup_directory(self.local)
+        sync.os.replace(self.local, backup)
+        self.assertFalse(self.local.exists())
+
+        applied = self.sync()
+        self.assertTrue(applied)
+        self.assertTrue(load_catalog(self.local))
+        self.assertFalse(backup.exists())
+
+    def test_snapshot_staging_failure_never_touches_the_active_catalog(self) -> None:
+        self.sync()
+        previous = (self.local / "example.tool.json").read_bytes()
+        self.edit_published(description="Will fail while staging.")
+        with mock.patch.object(sync, "_write_snapshot_file", side_effect=DfpmError("disk full")), self.assertRaises(DfpmError):
+            self.sync()
+        self.assertEqual((self.local / "example.tool.json").read_bytes(), previous)
+        self.assertEqual(sync.staging_directories(self.local), [])
 
 
 class SyncRefusalTests(SyncFixture):

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import tempfile
 from dataclasses import dataclass
@@ -68,12 +69,55 @@ def reconcile(storage: Storage) -> list[str]:
     for shim in shims.values():
         _write(storage.bin / f"{shim.name}.cmd", shim)
     removed = []
-    for path in sorted(storage.bin.glob("*.cmd")):
-        if path.stem in shims or not owned(path):
-            continue
-        path.unlink()
-        removed.append(path.name)
+    if state_records_readable(storage):
+        for path in sorted(storage.bin.glob("*.cmd")):
+            if path.stem in shims or not owned(path):
+                continue
+            path.unlink()
+            removed.append(path.name)
     return removed
+
+
+def repair(storage: Storage) -> list[str]:
+    """Repair only missing or dfpm-owned shims, leaving unmanaged files untouched."""
+    storage.bin.mkdir(parents=True, exist_ok=True)
+    expected = planned(storage)
+    changed: list[str] = []
+    for shim in expected.values():
+        path = storage.bin / f"{shim.name}.cmd"
+        if path.exists() and not owned(path):
+            continue
+        if not current(path, shim):
+            _write(path, shim)
+            changed.append(path.name)
+    if state_records_readable(storage):
+        for path in sorted(storage.bin.glob("*.cmd")):
+            if path.stem not in expected and owned(path):
+                path.unlink()
+                changed.append(path.name)
+    return changed
+
+
+def state_records_readable(storage: Storage) -> bool:
+    """Whether sweeping an apparently stale shim is safe despite skipped state records."""
+    directory = storage.state / "packages"
+    if not directory.is_dir():
+        return True
+    for path in directory.glob("*.json"):
+        try:
+            if not isinstance(json.loads(path.read_text(encoding="utf-8")), dict):
+                return False
+        except (OSError, ValueError):
+            return False
+    return True
+
+
+def current(path: Path, shim: Shim) -> bool:
+    """Whether a managed shortcut contains exactly the command now planned for it."""
+    try:
+        return path.read_bytes() == _content(shim).encode("utf-8")
+    except OSError:
+        return False
 
 
 def owned(path: Path) -> bool:
@@ -91,13 +135,7 @@ def _write(path: Path, shim: Shim) -> None:
     # setlocal scopes the directory change to this script, so a shell that runs
     # the shim is left where it was. The tool's exit code still propagates
     # through the implicit endlocal.
-    content = (
-        f"{MARKER} package={shim.package} version={shim.version}\r\n"
-        f"@echo off\r\n"
-        f"setlocal\r\n"
-        f'cd /d "{shim.working_directory}"\r\n'
-        f'"{shim.target}" %*\r\n'
-    )
+    content = _content(shim)
     handle, temporary = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
     try:
         with os.fdopen(handle, "w", encoding="utf-8", newline="") as output:
@@ -108,3 +146,13 @@ def _write(path: Path, shim: Shim) -> None:
     except Exception:
         Path(temporary).unlink(missing_ok=True)
         raise
+
+
+def _content(shim: Shim) -> str:
+    return (
+        f"{MARKER} package={shim.package} version={shim.version}\r\n"
+        f"@echo off\r\n"
+        f"setlocal\r\n"
+        f'cd /d "{shim.working_directory}"\r\n'
+        f'"{shim.target}" %*\r\n'
+    )

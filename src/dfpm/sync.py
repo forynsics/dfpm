@@ -15,13 +15,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import tempfile
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .catalog import INDEX_NAME, INDEX_SCHEMA_VERSION, entry_files
+from .catalog import INDEX_NAME, INDEX_SCHEMA_VERSION, build_index, check_collections, entry_files, load_catalog
 from .errors import DfpmError
 from .manifest import Tool
 from .storage import remove_tree
@@ -82,6 +83,9 @@ def plan(source: str, directory: Path) -> Plan:
     """
     published, published_collections = _read_index(source)
     local = {path.name: path for path in entry_files(directory)} if directory.is_dir() else {}
+    collections = directory / COLLECTION_PREFIX.rstrip("/")
+    if collections.is_dir():
+        local.update({f"{COLLECTION_PREFIX}{path.name}": path for path in collections.glob("*.json")})
     last_synced = _local_index(directory)
 
     result = Plan(source=source, directory=directory)
@@ -103,9 +107,6 @@ def plan(source: str, directory: Path) -> Plan:
     for entry in published_collections:
         name = entry["file"]
         path = local.pop(name, None)
-        if path is None:
-            path = directory / name
-            path = path if path.is_file() else None
         if path is None:
             kind = ADDED
         elif hashlib.sha256(path.read_bytes()).hexdigest() == entry["sha256"]:
@@ -140,7 +141,7 @@ def _must_be_a_collection(name: str, body: bytes) -> None:
 
 
 def apply(current: Plan) -> list[Change]:
-    """Fetch what differs and put it in place, having refused anything unreadable."""
+    """Fetch, validate and atomically publish one complete catalog snapshot."""
     staged: dict[str, bytes] = {}
     for change in current.fetches:
         body = _read(_locate(current.source, change.file))
@@ -166,33 +167,116 @@ def apply(current: Plan) -> list[Change]:
             _must_be_an_entry(change.file, body)
         staged[change.file] = body
 
-    # Nothing is written until every entry has been fetched and read, so a
-    # source that fails halfway leaves the catalog as it was rather than
-    # half-updated.
-    current.directory.mkdir(parents=True, exist_ok=True)
-    for name, body in staged.items():
-        target = current.directory / name
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(body)
-    for change in current.of(REMOVED):
-        (current.directory / change.file).unlink(missing_ok=True)
-
     kept = [change for change in current.changes if change.kind != REMOVED]
-    index: dict = {
-        "schema_version": INDEX_SCHEMA_VERSION,
-        "entries": [
-            {"file": item.file, "id": item.id, "version": item.version, "sha256": item.sha256}
-            for item in kept if not item.file.startswith(COLLECTION_PREFIX)
-        ],
-    }
-    groups = [
-        {"file": item.file, "id": item.id, "sha256": item.sha256}
-        for item in kept if item.file.startswith(COLLECTION_PREFIX)
-    ]
-    if groups:
-        index["collections"] = groups
-    (current.directory / INDEX_NAME).write_text(json.dumps(index, indent=2) + "\n", encoding="utf-8")
+
+    _recover_interrupted_publish(current.directory)
+    current.directory.parent.mkdir(parents=True, exist_ok=True)
+    snapshot = Path(tempfile.mkdtemp(prefix=f".{current.directory.name}.sync-", dir=current.directory.parent))
+    try:
+        for change in kept:
+            body = staged.get(change.file)
+            if body is None:
+                source = current.directory / change.file
+                try:
+                    body = source.read_bytes()
+                except OSError as exc:
+                    raise DfpmError(f"Could not carry unchanged catalog file into the new snapshot: {source}: {exc}") from exc
+                actual = hashlib.sha256(body).hexdigest()
+                if actual != change.sha256:
+                    raise DfpmError(
+                        f"{change.file} changed after the sync plan was shown. Run 'dfpm sync' again."
+                    )
+            _write_snapshot_file(snapshot / change.file, body)
+        index = build_index(snapshot)
+        _write_snapshot_file(snapshot / INDEX_NAME, (json.dumps(index, indent=2) + "\n").encode("utf-8"))
+        validate_snapshot(snapshot)
+        _publish_snapshot(snapshot, current.directory)
+    except Exception:
+        remove_tree(snapshot)
+        raise
     return current.fetches + current.of(REMOVED)
+
+
+def validate_snapshot(directory: Path) -> None:
+    """Require a complete catalog whose index exactly describes its files."""
+    tools = load_catalog(directory)
+    if not tools:
+        raise DfpmError(f"Catalog snapshot has no package entries: {directory}")
+    check_collections(directory)
+    expected = build_index(directory)
+    try:
+        recorded = json.loads((directory / INDEX_NAME).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise DfpmError(f"Catalog snapshot index could not be read: {exc}") from exc
+    if recorded != expected:
+        raise DfpmError(f"Catalog snapshot index does not describe the files in {directory}")
+
+
+def _write_snapshot_file(path: Path, body: bytes) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with path.open("wb") as output:
+            output.write(body)
+            output.flush()
+            os.fsync(output.fileno())
+    except OSError as exc:
+        raise DfpmError(f"Could not stage catalog file {path}: {exc}") from exc
+
+
+def backup_directory(directory: Path) -> Path:
+    """The recoverable previous snapshot beside an active catalog."""
+    return directory.with_name(f".{directory.name}.sync-backup")
+
+
+def staging_directories(directory: Path) -> list[Path]:
+    """Interrupted snapshot builds belonging to this catalog, never arbitrary siblings."""
+    parent = directory.parent
+    if not parent.is_dir():
+        return []
+    backup = backup_directory(directory)
+    return sorted(path for path in parent.glob(f".{directory.name}.sync-*") if path.is_dir() and path != backup)
+
+
+def _recover_interrupted_publish(directory: Path) -> None:
+    backup = backup_directory(directory)
+    if not backup.exists():
+        return
+    if not directory.exists():
+        try:
+            validate_snapshot(backup)
+        except DfpmError as exc:
+            raise DfpmError(f"The catalog backup left by an interrupted sync is not usable: {exc}") from exc
+        try:
+            os.replace(backup, directory)
+        except OSError as exc:
+            raise DfpmError(f"Could not restore the catalog left by an interrupted sync: {exc}") from exc
+        return
+    if not remove_tree(backup):
+        raise DfpmError(f"An earlier catalog sync left {backup}; run 'dfpm doctor --repair' and try again.")
+
+
+def _publish_snapshot(snapshot: Path, directory: Path) -> None:
+    backup = backup_directory(directory)
+    had_previous = directory.exists()
+    try:
+        if had_previous:
+            os.replace(directory, backup)
+        os.replace(snapshot, directory)
+    except OSError as exc:
+        if had_previous and backup.exists() and not directory.exists():
+            try:
+                os.replace(backup, directory)
+            except OSError as restore_error:
+                raise DfpmError(
+                    f"Could not publish the catalog and could not restore the previous snapshot. "
+                    f"Run 'dfpm doctor --repair'. Publish error: {exc}; restore error: {restore_error}"
+                ) from restore_error
+        raise DfpmError(f"Could not publish the new catalog snapshot: {exc}") from exc
+    if backup.exists():
+        # The active snapshot is already complete. A locked backup is harmless
+        # and doctor can remove it later; it must not turn a successful sync
+        # into a reported failure.
+        remove_tree(backup)
 
 
 def _must_be_an_entry(name: str, body: bytes) -> None:

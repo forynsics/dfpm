@@ -150,9 +150,9 @@ Installing another platform's build would put a foreign binary in the tools dire
 
 dfpm downloads into a content-addressed cache, verifies the artifact, extracts into a staging directory, validates expected files, and only then moves the version into its final directory and records it. An interrupted or invalid staged install never becomes the installed version. A cached artifact is re-hashed on every use, not only when it is first downloaded, so a cache entry that is corrupted or replaced on disk is caught before extraction.
 
-Staging is cleaned up by the install that created it, and by nothing else. A successful install leaves nothing behind, because publishing moves the staging directory into place rather than copying it; a failed one deletes it, retrying briefly first, since Windows holds a short lock on a freshly written executable while antivirus or the search indexer reads it.
+Staging is normally cleaned up by the install that created it. A successful install leaves nothing behind, because publishing moves the staging directory into place rather than copying it; a failed one deletes it, retrying briefly first, since Windows holds a short lock on a freshly written executable while antivirus or the search indexer reads it.
 
-An install that is killed outright leaves its staging directory on disk, and dfpm does not go looking for it later. Deciding that a directory belongs to no one requires a lock dfpm does not take, and guessing from a timestamp would mean deleting a directory another dfpm might be writing to.
+An install that is killed outright can leave its staging directory on disk. `dfpm doctor --repair` offers direct children of dfpm's staging directory only after they have been untouched for 24 hours, displays the exact repair plan, and requires confirmation. It never removes an unknown package directory or an unmanaged command shortcut.
 
 One version of a package is installed at a time. Installing a different version replaces the current one, and the version being replaced is removed only after the new one is in place and its command shortcuts are working, so a failed install leaves the previous version untouched. Returning to an earlier release is `dfpm install <package> --package-version <version>`, which normally needs no network because the artifact is still in the verified cache.
 
