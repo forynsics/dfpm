@@ -4,7 +4,7 @@ A package needs judgement when it first enters the catalog. Routine releases aft
 
 Update policies live in `catalog/update-policies/`. They are maintenance instructions, not install metadata, and are not shipped to dfpm users. A policy identifies the upstream GitHub repository and the expected release asset for each platform.
 
-The `catalog updates` workflow currently runs only when manually dispatched, while its policies and evidence are being observed. It:
+The `catalog updates` workflow runs daily and can also be started manually. It:
 
 1. asks GitHub for the latest applicable published release and records why newer releases were skipped;
 2. requires exactly one asset to match each declared pattern;
@@ -13,12 +13,13 @@ The `catalog updates` workflow currently runs only when manually dispatched, whi
 5. requires every established entrypoint and verification path to remain present;
 6. loads the proposed manifest through dfpm's normal validation;
 7. regenerates the catalog index;
-8. runs the complete test suite; and
-9. uploads the proposed catalog and evidence as a workflow artifact only if every check succeeds.
+8. runs the complete test suite;
+9. writes validated changes to the automation-owned `automation/catalog-updates` branch and opens or updates a pull request; and
+10. uploads the proposed catalog and evidence as a workflow artifact.
 
 It does not rewrite descriptions, classification, licensing, terms, commands or project provenance. A renamed or missing asset, ambiguous match, changed archive layout, disappeared entrypoint, unsupported artifact format, invalid manifest, or failing test stops the job rather than being guessed through. The evidence report includes the failed stage, patterns, available assets and inspected release tags where applicable. A failed multi-package apply restores manifests already changed during that invocation and does not regenerate the index.
 
-During this observation phase the workflow has read-only repository permission and cannot push to `main`. After several real updates have produced correct proposals, scheduling and automatic publication can be enabled as a separate policy decision.
+The workflow cannot push to `main` and does not merge its own pull request. A maintainer still reviews the evidence and the proposed manifest diff before merging. If every policy-managed package is already current, the run records its evidence and exits without opening a pull request.
 
 ## Adding a policy
 

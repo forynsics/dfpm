@@ -7,14 +7,35 @@ backend-path = ["."]
 
 [project]
 name = "dfpm"
-version = "0.1.0"
+dynamic = ["version"]
 description = "A package manager for digital forensics tools"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
 authors = [{ name = "forynsics" }]
+keywords = ["digital-forensics", "package-manager", "incident-response", "dfir"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Operating System :: Microsoft :: Windows",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Security",
+]
 dependencies = []
+
+[project.optional-dependencies]
+dev = ["build>=1.2"]
+
+[project.urls]
+Homepage = "https://github.com/forynsics/dfpm"
+Documentation = "https://forynsics.github.io/dfpm/"
+Repository = "https://github.com/forynsics/dfpm"
+Issues = "https://github.com/forynsics/dfpm/issues"
 
 [project.scripts]
 dfpm = "dfpm.cli:main"
@@ -24,3 +45,6 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 dfpm = ["web/*.html", "web/*.js", "web/*.css", "web/*.png", "entries/*.json", "entries/collections/*.json"]
+
+[tool.setuptools.dynamic]
+version = {attr = "dfpm.__version__"}

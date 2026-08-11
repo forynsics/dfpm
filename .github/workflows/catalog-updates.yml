@@ -1,10 +1,13 @@
 name: catalog updates
 
 on:
+  schedule:
+    - cron: "23 7 * * *"
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
 
 concurrency:
   group: catalog-updates
@@ -15,11 +18,11 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: main
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.11"
 
@@ -36,7 +39,31 @@ jobs:
       - name: Validate the resulting catalog
         run: python -m unittest discover -s tests
 
-      - uses: actions/upload-artifact@v4
+      - name: Propose validated catalog changes
+        if: success()
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if (-not (git status --porcelain -- catalog)) {
+            Write-Host "Catalog is already current."
+            exit 0
+          }
+          $branch = "automation/catalog-updates"
+          git config user.name "dfpm catalog updater"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B $branch
+          git add catalog
+          git commit -m "Update policy-managed catalog entries"
+          git push --force origin "HEAD:refs/heads/$branch"
+          $existing = gh pr list --head $branch --base main --state open --json number --jq '.[0].number'
+          if ($existing) {
+            Write-Host "Updated existing pull request #$existing."
+          } else {
+            gh pr create --base main --head $branch --title "Update policy-managed catalog entries" --body "Automated proposal from the constrained catalog updater. The workflow recomputed artifact facts, validated established layout invariants, and passed the full test suite. Review the attached evidence before merging."
+          }
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: proposed-catalog-update

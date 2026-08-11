@@ -1,0 +1,7 @@
+include build_backend.py
+recursive-include catalog *.json
+
+# These files are manufactured from catalog/ by the build backend. Keeping both
+# copies in an sdist would create two sources of truth; the wheel build from the
+# sdist recreates them before setuptools collects package data.
+prune src/dfpm/entries

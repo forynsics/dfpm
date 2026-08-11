@@ -44,7 +44,7 @@ dfpm manages forensic tooling, not forensic evidence. It does not receive, proce
 
 ## Reporting a problem
 
-Open an issue on the repository. If the issue is sensitive, say so without details and a private channel will be arranged.
+Use the repository's [security policy](../SECURITY.md), including GitHub private vulnerability reporting for sensitive issues.
 
 ---
 

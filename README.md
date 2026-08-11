@@ -148,6 +148,7 @@ The full set of rules, and what they do and do not defend against, is in the [se
 | [Local interface](docs/gui.md) | `dfpm gui`, its security controls, where files live |
 | [Security model](docs/security.md) | what dfpm guarantees, and what it does not |
 | [Manifest format](docs/manifest-v1.md) | how a catalog entry is written |
+| [Releases](docs/releases.md) | versioning and verified release artifacts |
 
 ## Project status
 
