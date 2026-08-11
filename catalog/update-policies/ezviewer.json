@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "ezviewer",
+  "provider": "rolling-url",
+  "package_version": {
+    "source": "pe-file-version",
+    "asset": 0,
+    "path": "EZViewer.exe"
+  },
+  "assets": [
+    {
+      "name": "EZViewer.zip",
+      "url": "https://download.ericzimmermanstools.com/net9/EZViewer.zip",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "etag": "\"di4bbwpr4os81iharp\""
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "rla",
+  "provider": "rolling-url",
+  "package_version": {
+    "source": "pe-file-version",
+    "asset": 0,
+    "path": "rla.exe"
+  },
+  "assets": [
+    {
+      "name": "rla.zip",
+      "url": "https://download.ericzimmermanstools.com/net9/rla.zip",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "etag": "\"di47ezivp9tw1bdsb\""
+    }
+  ]
+}

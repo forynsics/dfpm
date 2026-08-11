@@ -5,6 +5,7 @@ import importlib.util
 import io
 import json
 import shutil
+import struct
 import tempfile
 import unittest
 import zipfile
@@ -181,6 +182,85 @@ class CatalogUpdateTests(unittest.TestCase):
                 if manifest["id"] not in policies:
                     missing.append(manifest["id"])
         self.assertEqual(missing, [], f"GitHub release packages without update policies: {missing}")
+
+    def test_every_catalog_entry_has_an_update_policy(self) -> None:
+        policies = {path.stem for path in (REPOSITORY / "catalog" / "update-policies").glob("*.json")}
+        entries = {
+            path.stem
+            for path in (REPOSITORY / "catalog").glob("*.json")
+            if path.name != "index.json"
+        }
+        self.assertEqual(entries - policies, set(), f"Catalog entries without update policies: {sorted(entries - policies)}")
+        self.assertEqual(policies - entries, set(), f"Update policies without catalog entries: {sorted(policies - entries)}")
+
+    def test_rolling_url_uses_etag_digest_pe_version_and_layout(self) -> None:
+        shutil.copyfile(REPOSITORY / "catalog" / "mftecmd.json", self.catalog / "mftecmd.json")
+        policy_path = self.base / "mftecmd-policy.json"
+        policy_path.write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "id": "mftecmd",
+                    "provider": "rolling-url",
+                    "package_version": {"source": "pe-file-version", "asset": 0, "path": "MFTECmd.exe"},
+                    "assets": [
+                        {
+                            "name": "MFTECmd.zip",
+                            "url": "https://publisher.example/MFTECmd.zip",
+                            "platform": {"os": "windows", "arch": "x64"},
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        policy = updater.load_policy(policy_path)
+        artifact = self.base / "release.zip"
+        high = (2026 << 16) | 6
+        low = 1 << 16
+        version_resource = updater.VERSION_SIGNATURE + b"\0" * 4 + struct.pack("<II", high, low)
+        with zipfile.ZipFile(artifact, "w") as archive:
+            archive.writestr("MFTECmd.exe", b"MZ" + version_resource)
+            archive.writestr("MFTECmd.runtimeconfig.json", b"{}")
+            archive.writestr("MFTECmd.deps.json", b"{}")
+
+        def provide(_url: str, target: Path) -> tuple[str, int]:
+            shutil.copyfile(artifact, target)
+            return "c" * 64, artifact.stat().st_size
+
+        with mock.patch.object(updater, "rolling_metadata", return_value={"etag": '"new"'}), mock.patch.object(
+            updater, "download", side_effect=provide
+        ):
+            report = updater.update_one(self.catalog, policy, apply=True, policy_path=policy_path)
+
+        manifest = json.loads((self.catalog / "mftecmd.json").read_text(encoding="utf-8"))
+        self.assertEqual(report["status"], "updated")
+        self.assertEqual(manifest["builds"][0]["version"], "2026.6.1.0")
+        self.assertEqual(manifest["builds"][0]["package"]["sha256"], "c" * 64)
+        self.assertEqual(json.loads(policy_path.read_text(encoding="utf-8"))["assets"][0]["etag"], '"new"')
+
+    def test_rolling_url_skips_download_when_etag_is_unchanged(self) -> None:
+        policy = {
+            "schema_version": 1,
+            "id": "mftecmd",
+            "provider": "rolling-url",
+            "package_version": {"source": "pe-file-version", "asset": 0, "path": "MFTECmd.exe"},
+            "assets": [
+                {
+                    "name": "MFTECmd.zip",
+                    "url": "https://publisher.example/MFTECmd.zip",
+                    "etag": '"same"',
+                    "platform": {"os": "windows", "arch": "x64"},
+                }
+            ],
+        }
+        shutil.copyfile(REPOSITORY / "catalog" / "mftecmd.json", self.catalog / "mftecmd.json")
+        with mock.patch.object(updater, "rolling_metadata", return_value={"etag": '"same"'}), mock.patch.object(
+            updater, "download"
+        ) as download:
+            report = updater.update_one(self.catalog, policy, apply=False)
+        self.assertEqual(report["status"], "current")
+        download.assert_not_called()
 
 
 if __name__ == "__main__":

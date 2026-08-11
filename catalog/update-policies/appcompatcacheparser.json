@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "appcompatcacheparser",
+  "provider": "rolling-url",
+  "package_version": {
+    "source": "pe-file-version",
+    "asset": 0,
+    "path": "AppCompatCacheParser.exe"
+  },
+  "assets": [
+    {
+      "name": "AppCompatCacheParser.zip",
+      "url": "https://download.ericzimmermanstools.com/net9/AppCompatCacheParser.zip",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "etag": "\"di9d1ymuu9lk1d329\""
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "lecmd",
+  "provider": "rolling-url",
+  "package_version": {
+    "source": "pe-file-version",
+    "asset": 0,
+    "path": "LECmd.exe"
+  },
+  "assets": [
+    {
+      "name": "LECmd.zip",
+      "url": "https://download.ericzimmermanstools.com/net9/LECmd.zip",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "etag": "\"dihs4ha31jyg1tqbu\""
+    }
+  ]
+}

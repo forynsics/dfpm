@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "bstrings",
+  "provider": "rolling-url",
+  "package_version": {
+    "source": "pe-file-version",
+    "asset": 0,
+    "path": "bstrings.exe"
+  },
+  "assets": [
+    {
+      "name": "bstrings.zip",
+      "url": "https://download.ericzimmermanstools.com/net9/bstrings.zip",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "etag": "\"di3a7mcd8xl01708t\""
+    }
+  ]
+}

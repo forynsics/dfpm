@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "sqlecmd",
+  "provider": "rolling-url",
+  "package_version": {
+    "source": "pe-file-version",
+    "asset": 0,
+    "path": "SQLECmd.exe"
+  },
+  "assets": [
+    {
+      "name": "SQLECmd.zip",
+      "url": "https://download.ericzimmermanstools.com/net9/SQLECmd.zip",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "etag": "\"di4vd6nojvps4fh22\""
+    }
+  ]
+}

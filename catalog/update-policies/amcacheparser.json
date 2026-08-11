@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "amcacheparser",
+  "provider": "rolling-url",
+  "package_version": {
+    "source": "pe-file-version",
+    "asset": 0,
+    "path": "AmcacheParser.exe"
+  },
+  "assets": [
+    {
+      "name": "AmcacheParser.zip",
+      "url": "https://download.ericzimmermanstools.com/net9/AmcacheParser.zip",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "etag": "\"di45yaeg7gcg1e3de\""
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "evtxecmd",
+  "provider": "rolling-url",
+  "package_version": {
+    "source": "pe-file-version",
+    "asset": 0,
+    "path": "EvtxECmd.exe"
+  },
+  "assets": [
+    {
+      "name": "EvtxECmd.zip",
+      "url": "https://download.ericzimmermanstools.com/net9/EvtxECmd.zip",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "etag": "\"diazu3cau5k42ciyo\""
+    }
+  ]
+}

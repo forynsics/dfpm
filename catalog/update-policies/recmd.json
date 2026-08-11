@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "recmd",
+  "provider": "rolling-url",
+  "package_version": {
+    "source": "pe-file-version",
+    "asset": 0,
+    "path": "RECmd.exe"
+  },
+  "assets": [
+    {
+      "name": "RECmd.zip",
+      "url": "https://download.ericzimmermanstools.com/net9/RECmd.zip",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "etag": "\"dibtpgfcwc0c2ta97\""
+    }
+  ]
+}

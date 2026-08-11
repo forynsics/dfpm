@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "mftecmd",
+  "provider": "rolling-url",
+  "package_version": {
+    "source": "pe-file-version",
+    "asset": 0,
+    "path": "MFTECmd.exe"
+  },
+  "assets": [
+    {
+      "name": "MFTECmd.zip",
+      "url": "https://download.ericzimmermanstools.com/net9/MFTECmd.zip",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "etag": "\"dif1pfoftbrc1owdc\""
+    }
+  ]
+}

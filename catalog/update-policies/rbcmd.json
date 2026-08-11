@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "rbcmd",
+  "provider": "rolling-url",
+  "package_version": {
+    "source": "pe-file-version",
+    "asset": 0,
+    "path": "RBCmd.exe"
+  },
+  "assets": [
+    {
+      "name": "RBCmd.zip",
+      "url": "https://download.ericzimmermanstools.com/net9/RBCmd.zip",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "etag": "\"di3hi6fkuzms108ac\""
+    }
+  ]
+}

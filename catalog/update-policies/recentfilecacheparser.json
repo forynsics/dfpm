@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "recentfilecacheparser",
+  "provider": "rolling-url",
+  "package_version": {
+    "source": "pe-file-version",
+    "asset": 0,
+    "path": "RecentFileCacheParser.exe"
+  },
+  "assets": [
+    {
+      "name": "RecentFileCacheParser.zip",
+      "url": "https://download.ericzimmermanstools.com/net9/RecentFileCacheParser.zip",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "etag": "\"di6rcmf66oewyaa9\""
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "srumecmd",
+  "provider": "rolling-url",
+  "package_version": {
+    "source": "pe-file-version",
+    "asset": 0,
+    "path": "SrumECmd.exe"
+  },
+  "assets": [
+    {
+      "name": "SrumECmd.zip",
+      "url": "https://download.ericzimmermanstools.com/net9/SrumECmd.zip",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "etag": "\"di3aac7qofpw18817\""
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "pecmd",
+  "provider": "rolling-url",
+  "package_version": {
+    "source": "pe-file-version",
+    "asset": 0,
+    "path": "PECmd.exe"
+  },
+  "assets": [
+    {
+      "name": "PECmd.zip",
+      "url": "https://download.ericzimmermanstools.com/net9/PECmd.zip",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "etag": "\"di5tzfe8coaw1cv0s\""
+    }
+  ]
+}

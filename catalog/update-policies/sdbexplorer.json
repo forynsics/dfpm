@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "sdbexplorer",
+  "provider": "rolling-url",
+  "package_version": {
+    "source": "pe-file-version",
+    "asset": 0,
+    "path": "SDBExplorer.exe"
+  },
+  "assets": [
+    {
+      "name": "SDBExplorer.zip",
+      "url": "https://download.ericzimmermanstools.com/net9/SDBExplorer.zip",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "etag": "\"di3du3wr9svs1iew1q\""
+    }
+  ]
+}

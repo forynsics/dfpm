@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "sbecmd",
+  "provider": "rolling-url",
+  "package_version": {
+    "source": "pe-file-version",
+    "asset": 0,
+    "path": "SBECmd.exe"
+  },
+  "assets": [
+    {
+      "name": "SBECmd.zip",
+      "url": "https://download.ericzimmermanstools.com/net9/SBECmd.zip",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "etag": "\"di4avbw2sny41w3n1\""
+    }
+  ]
+}

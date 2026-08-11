@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "shellbagsexplorer",
+  "provider": "rolling-url",
+  "package_version": {
+    "source": "pe-file-version",
+    "asset": 0,
+    "path": "ShellBagsExplorer.exe"
+  },
+  "assets": [
+    {
+      "name": "ShellBagsExplorer.zip",
+      "url": "https://download.ericzimmermanstools.com/net9/ShellBagsExplorer.zip",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "etag": "\"di4av2tkmwcw1jpc58\""
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "iisgeolocate",
+  "provider": "rolling-url",
+  "package_version": {
+    "source": "pe-file-version",
+    "asset": 0,
+    "path": "iisGeolocate.exe"
+  },
+  "assets": [
+    {
+      "name": "iisGeolocate.zip",
+      "url": "https://download.ericzimmermanstools.com/net9/iisGeolocate.zip",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "etag": "\"dif1paruqu6oibfyb\""
+    }
+  ]
+}

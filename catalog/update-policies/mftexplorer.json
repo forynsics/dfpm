@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "mftexplorer",
+  "provider": "rolling-url",
+  "package_version": {
+    "source": "pe-file-version",
+    "asset": 0,
+    "path": "MFTExplorer.exe"
+  },
+  "assets": [
+    {
+      "name": "MFTExplorer.zip",
+      "url": "https://download.ericzimmermanstools.com/net9/MFTExplorer.zip",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "etag": "\"di3djqfwyqzg1if41g\""
+    }
+  ]
+}

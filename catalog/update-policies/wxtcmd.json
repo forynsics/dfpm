@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "wxtcmd",
+  "provider": "rolling-url",
+  "package_version": {
+    "source": "pe-file-version",
+    "asset": 0,
+    "path": "WxTCmd.exe"
+  },
+  "assets": [
+    {
+      "name": "WxTCmd.zip",
+      "url": "https://download.ericzimmermanstools.com/net9/WxTCmd.zip",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "etag": "\"di51r2kqbgag3mada\""
+    }
+  ]
+}

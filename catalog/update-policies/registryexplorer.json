@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "registryexplorer",
+  "provider": "rolling-url",
+  "package_version": {
+    "source": "pe-file-version",
+    "asset": 0,
+    "path": "RegistryExplorer.exe"
+  },
+  "assets": [
+    {
+      "name": "RegistryExplorer.zip",
+      "url": "https://download.ericzimmermanstools.com/net9/RegistryExplorer.zip",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "etag": "\"di3a5tt22nag1max91\""
+    }
+  ]
+}

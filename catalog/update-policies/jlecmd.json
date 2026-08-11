@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "jlecmd",
+  "provider": "rolling-url",
+  "package_version": {
+    "source": "pe-file-version",
+    "asset": 0,
+    "path": "JLECmd.exe"
+  },
+  "assets": [
+    {
+      "name": "JLECmd.zip",
+      "url": "https://download.ericzimmermanstools.com/net9/JLECmd.zip",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "etag": "\"diavy8ukgy1k1sjr2\""
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "vscmount",
+  "provider": "rolling-url",
+  "package_version": {
+    "source": "pe-file-version",
+    "asset": 0,
+    "path": "VSCMount.exe"
+  },
+  "assets": [
+    {
+      "name": "VSCMount.zip",
+      "url": "https://download.ericzimmermanstools.com/net9/VSCMount.zip",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "etag": "\"dk53y6u18x7rzzyw\""
+    }
+  ]
+}

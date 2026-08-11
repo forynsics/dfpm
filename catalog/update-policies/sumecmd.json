@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "sumecmd",
+  "provider": "rolling-url",
+  "package_version": {
+    "source": "pe-file-version",
+    "asset": 0,
+    "path": "SumECmd.exe"
+  },
+  "assets": [
+    {
+      "name": "SumECmd.zip",
+      "url": "https://download.ericzimmermanstools.com/net9/SumECmd.zip",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "etag": "\"di3e5iuq87as111p2\""
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Update policy-enabled catalog entries from GitHub releases.
+"""Update policy-enabled catalog entries from publisher releases.
 
 Policies live outside the shipped catalog under catalog/update-policies. An
 update is mechanical only when the publisher, asset name and installed layout
@@ -15,6 +15,7 @@ import json
 import os
 import re
 import shutil
+import struct
 import tempfile
 import urllib.error
 import urllib.request
@@ -28,6 +29,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CATALOG = ROOT / "catalog"
 POLICIES = CATALOG / "update-policies"
 USER_AGENT = "dfpm-catalog-updater/1"
+VERSION_SIGNATURE = b"\xbd\x04\xef\xfe"
 
 
 class UpdatePolicyError(SystemExit):
@@ -52,7 +54,7 @@ def main(argv: list[str] | None = None) -> int:
     wanted = set(args.package)
     reports = []
     changed = False
-    originals = {path: path.read_bytes() for path in args.catalog.glob("*.json")} if args.apply else {}
+    originals = {path: path.read_bytes() for path in args.catalog.rglob("*.json")} if args.apply else {}
     for path in sorted(args.policies.glob("*.json")):
         try:
             policy = load_policy(path)
@@ -68,7 +70,10 @@ def main(argv: list[str] | None = None) -> int:
         if wanted and policy["id"] not in wanted:
             continue
         try:
-            report = update_one(args.catalog, policy, apply=args.apply)
+            options = {"apply": args.apply}
+            if policy["provider"] == "rolling-url":
+                options["policy_path"] = path
+            report = update_one(args.catalog, policy, **options)
         except UpdatePolicyError as error:
             report = {
                 "id": error.package_id,
@@ -114,11 +119,13 @@ def main(argv: list[str] | None = None) -> int:
 
 def load_policy(path: Path) -> dict:
     data = json.loads(path.read_text(encoding="utf-8"))
-    required = {"schema_version", "id", "provider", "repository", "assets"}
+    required = {"schema_version", "id", "provider", "assets"}
     if not isinstance(data, dict) or not required <= set(data):
         raise SystemExit(f"{path} is missing required update-policy fields")
-    if data["schema_version"] != 1 or data["provider"] != "github-releases":
+    if data["schema_version"] != 1 or data["provider"] not in {"github-releases", "rolling-url"}:
         raise SystemExit(f"{path} uses an unsupported update policy")
+    if data["provider"] == "github-releases" and not data.get("repository"):
+        raise SystemExit(f"{path}: GitHub release policies need a repository")
     if not isinstance(data["assets"], list) or not data["assets"]:
         raise SystemExit(f"{path} must name at least one release asset")
     if "include_prereleases" in data and not isinstance(data["include_prereleases"], bool):
@@ -128,7 +135,7 @@ def load_policy(path: Path) -> dict:
     version = data.get("package_version", {"source": "release-tag"})
     if not isinstance(version, dict):
         raise SystemExit(f"{path}: package_version must be an object")
-    if version.get("source") not in {"release-tag", "asset-name"}:
+    if version.get("source") not in {"release-tag", "asset-name", "pe-file-version"}:
         raise SystemExit(f"{path}: unsupported package_version source")
     if version.get("source") == "asset-name":
         if not isinstance(version.get("asset"), int) or version["asset"] < 0 or not version.get("regex"):
@@ -139,10 +146,29 @@ def load_policy(path: Path) -> dict:
             raise SystemExit(f"{path}: invalid package_version regex: {error}") from error
         if "version" not in expression.groupindex:
             raise SystemExit(f"{path}: package_version regex needs a named 'version' group")
+    if data["provider"] == "rolling-url":
+        version_path = Path(version.get("path", ""))
+        if (
+            version.get("source") != "pe-file-version"
+            or version.get("asset", 0) != 0
+            or not version.get("path")
+            or version_path.is_absolute()
+            or ".." in version_path.parts
+        ):
+            raise SystemExit(f"{path}: rolling URLs need a PE file-version path")
+        if len(data["assets"]) != 1:
+            raise SystemExit(f"{path}: rolling URL policies currently support exactly one asset")
+        for asset in data["assets"]:
+            if not isinstance(asset, dict) or not asset.get("name") or not asset.get("url", "").startswith("https://"):
+                raise SystemExit(f"{path}: rolling assets need a name and HTTPS URL")
+            if "etag" in asset and not isinstance(asset["etag"], str):
+                raise SystemExit(f"{path}: rolling asset ETags must be strings")
     return data
 
 
-def update_one(catalog: Path, policy: dict, *, apply: bool) -> dict:
+def update_one(catalog: Path, policy: dict, *, apply: bool, policy_path: Path | None = None) -> dict:
+    if policy["provider"] == "rolling-url":
+        return update_rolling_one(catalog, policy, apply=apply, policy_path=policy_path)
     manifest_path = catalog / f"{policy['id']}.json"
     current = json.loads(manifest_path.read_text(encoding="utf-8"))
     tool = Tool.load(manifest_path)
@@ -204,6 +230,151 @@ def update_one(catalog: Path, policy: dict, *, apply: bool) -> dict:
     if apply:
         manifest_path.write_text(json.dumps(proposed, indent=2) + "\n", encoding="utf-8")
     return report
+
+
+def update_rolling_one(catalog: Path, policy: dict, *, apply: bool, policy_path: Path | None) -> dict:
+    manifest_path = catalog / f"{policy['id']}.json"
+    current = json.loads(manifest_path.read_text(encoding="utf-8"))
+    Tool.load(manifest_path)
+    current_version = max((build["version"] for build in current["builds"]), key=version_key)
+    report = {
+        "id": policy["id"],
+        "current": current_version,
+        "discovered": current_version,
+        "status": "current",
+        "provider": "rolling-url",
+        "assets": [],
+    }
+    proposed_builds = json.loads(json.dumps(current["builds"]))
+    manifest_changed = False
+    policy_changed = False
+
+    with tempfile.TemporaryDirectory(prefix=f"dfpm-update-{policy['id']}-") as temporary:
+        workspace = Path(temporary)
+        for position, asset_policy in enumerate(policy["assets"]):
+            metadata = rolling_metadata(policy["id"], asset_policy["url"])
+            asset_report = {"name": asset_policy["name"], **metadata}
+            report["assets"].append(asset_report)
+            if asset_policy.get("etag") == metadata["etag"]:
+                continue
+
+            target = workspace / asset_policy["name"]
+            try:
+                digest, size = download(asset_policy["url"], target)
+            except (OSError, urllib.error.URLError) as error:
+                raise UpdatePolicyError(
+                    policy["id"],
+                    "artifact-download",
+                    f"Could not download {asset_policy['name']}: {error}",
+                    asset=asset_policy["name"],
+                    url=asset_policy["url"],
+                ) from error
+            previous = matching_build(current["builds"], asset_policy, position)
+            asset_report.update({"sha256": digest, "size": size})
+            asset_policy["etag"] = metadata["etag"]
+            policy_changed = True
+            if digest == previous["package"]["sha256"]:
+                continue
+
+            version = artifact_pe_version(policy, target, previous)
+            if version_key(version) < version_key(previous["version"]):
+                raise UpdatePolicyError(
+                    policy["id"],
+                    "version",
+                    f"Rolling artifact version moved backwards from {previous['version']} to {version}",
+                    old=previous["version"],
+                    new=version,
+                )
+            refreshed = refreshed_build(
+                previous,
+                target,
+                asset_policy["url"],
+                digest,
+                size,
+                previous["version"],
+                version,
+                policy["id"],
+            )
+            proposed_builds[current["builds"].index(previous)] = refreshed
+            manifest_changed = True
+            report["discovered"] = version
+
+    if manifest_changed:
+        proposed = dict(current)
+        proposed["builds"] = proposed_builds
+        with tempfile.TemporaryDirectory(prefix="dfpm-policy-check-") as temporary:
+            candidate = Path(temporary) / manifest_path.name
+            candidate.write_text(json.dumps(proposed, indent=2) + "\n", encoding="utf-8")
+            Tool.load(candidate)
+        report["status"] = "updated" if apply else "available"
+        if apply:
+            manifest_path.write_text(json.dumps(proposed, indent=2) + "\n", encoding="utf-8")
+    if apply and policy_changed:
+        if policy_path is None:
+            raise UpdatePolicyError(policy["id"], "policy-state", "Cannot persist rolling URL state without a policy path")
+        policy_path.write_text(json.dumps(policy, indent=2) + "\n", encoding="utf-8")
+        report["state_updated"] = True
+    return report
+
+
+def rolling_metadata(package_id: str, url: str) -> dict:
+    try:
+        request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT}, method="HEAD")
+        with urllib.request.urlopen(request, timeout=60) as response:
+            etag = response.headers.get("ETag")
+            if not etag:
+                raise ValueError("response did not contain an ETag")
+            result = {"etag": etag}
+            if value := response.headers.get("Last-Modified"):
+                result["last_modified"] = value
+            return result
+    except (OSError, ValueError, urllib.error.URLError) as error:
+        raise UpdatePolicyError(
+            package_id,
+            "release-discovery",
+            f"Could not read rolling artifact metadata: {error}",
+            url=url,
+        ) from error
+
+
+def artifact_pe_version(policy: dict, artifact: Path, previous: dict) -> str:
+    rule = policy["package_version"]
+    position = rule.get("asset", 0)
+    if position >= len(policy["assets"]):
+        raise UpdatePolicyError(policy["id"], "version", f"package_version asset index {position} does not exist")
+    install = previous["install"]
+    if install["strategy"] != "portable-zip":
+        raise UpdatePolicyError(policy["id"], "version", "PE file-version discovery currently requires a ZIP artifact")
+    with tempfile.TemporaryDirectory(prefix="dfpm-version-") as temporary:
+        destination = Path(temporary)
+        extract_zip(
+            artifact,
+            destination,
+            install.get("strip_components", 0),
+            ArchiveLimits(free_space_margin=0),
+        )
+        binary_path = destination / rule["path"]
+        try:
+            binary = binary_path.read_bytes()
+        except OSError as error:
+            raise UpdatePolicyError(
+                policy["id"],
+                "version",
+                f"Could not read version file {rule['path']}: {error}",
+                path=rule["path"],
+            ) from error
+    version = file_version(binary)
+    if version is None:
+        raise UpdatePolicyError(policy["id"], "version", f"No Windows file version in {rule['path']}", path=rule["path"])
+    return version
+
+
+def file_version(binary: bytes) -> str | None:
+    found = binary.find(VERSION_SIGNATURE)
+    if found < 0 or len(binary) < found + 16:
+        return None
+    high, low = struct.unpack("<II", binary[found + 8 : found + 16])
+    return f"{high >> 16}.{high & 0xFFFF}.{low >> 16}.{low & 0xFFFF}"
 
 
 def release_version(policy: dict, release: dict) -> str:

@@ -2,7 +2,7 @@
 
 A package needs judgement when it first enters the catalog. Routine releases after that can be maintained mechanically when the publisher and package layout keep following the policy approved at admission.
 
-Update policies live in `catalog/update-policies/`. They are maintenance instructions, not install metadata, and are not shipped to dfpm users. A policy identifies the upstream GitHub repository and the expected release asset for each platform.
+Update policies live in `catalog/update-policies/`. They are maintenance instructions, not install metadata, and are not shipped to dfpm users. Every catalog entry has a policy. A policy either identifies an upstream GitHub repository and expected release asset or describes a publisher-controlled rolling URL.
 
 The `catalog updates` workflow runs daily and can also be started manually. It:
 
@@ -83,6 +83,33 @@ Apply a discovered update and write its evidence report:
 ```
 
 The updater intentionally supports a small policy surface. Add another release provider or artifact strategy only when a real catalog entry needs it and its invariants can be checked without guessing.
+
+## Rolling URLs
+
+Some publishers overwrite a stable download URL instead of publishing immutable, versioned release assets. A rolling policy records that URL, the publisher's current HTTP ETag, and the installed executable whose embedded Windows file version is authoritative:
+
+```json
+{
+  "schema_version": 1,
+  "id": "mftecmd",
+  "provider": "rolling-url",
+  "package_version": {
+    "source": "pe-file-version",
+    "asset": 0,
+    "path": "MFTECmd.exe"
+  },
+  "assets": [
+    {
+      "name": "MFTECmd.zip",
+      "url": "https://download.ericzimmermanstools.com/net9/MFTECmd.zip",
+      "etag": "publisher-provided-etag",
+      "platform": {"os": "windows", "arch": "x64"}
+    }
+  ]
+}
+```
+
+The scheduled job first makes a HEAD request. An unchanged ETag avoids downloading the ZIP. A new ETag causes the artifact to be downloaded and SHA-256 hashed. If its digest is unchanged, only the ETag cursor advances. If the bytes changed, the updater extracts the ZIP under dfpm's normal limits, reads the declared executable version, rejects version rollback, verifies every established path and recalculates the package facts before merging. The ETag is only a change detector; it is never treated as an integrity digest.
 
 ## Execution policy
 
