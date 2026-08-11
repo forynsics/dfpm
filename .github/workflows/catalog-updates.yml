@@ -24,7 +24,9 @@ jobs:
           python-version: "3.11"
 
       - name: Install dfpm
-        run: python -m pip install --editable .
+        run: |
+          python -m pip install "setuptools>=77"
+          python -m pip install --editable .
 
       - name: Apply policy-conforming updates
         env:

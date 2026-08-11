@@ -28,7 +28,9 @@ jobs:
           python-version: "3.11"
 
       - name: Install dfpm
-        run: python -m pip install --editable .
+        run: |
+          python -m pip install "setuptools>=77"
+          python -m pip install --editable .
 
       - name: Run the test suite
         # Includes validating every catalog entry, generating the site feed, and
