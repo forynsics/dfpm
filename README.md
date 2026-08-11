@@ -115,6 +115,7 @@ dfpm sync                      update the catalog from where it is published
 dfpm download <package-id>     save a release file without installing it
 dfpm collection [<name>]       list curated package sets, or show one set
 dfpm cache list | verify | prune | remove <digest>
+dfpm config set root <dir>     persistently relocate dfpm's data root
 dfpm paths                     where everything lives
 dfpm gui                       manage all of this in a browser instead
 ```
@@ -146,6 +147,7 @@ The full set of rules, and what they do and do not defend against, is in the [se
 | [The catalog](docs/catalog.md) | where entries come from, `dfpm sync`, upstream changes |
 | [The verified cache](docs/cache.md) | offline installs, pruning, seeding an isolated machine |
 | [Doctor and repair](docs/doctor.md) | health checks, interrupted operations, safe repairs |
+| [Storage configuration](docs/configuration.md) | persistently relocating the dfpm root |
 | [Local interface](docs/gui.md) | `dfpm gui`, its security controls, where files live |
 | [Security model](docs/security.md) | what dfpm guarantees, and what it does not |
 | [Manifest format](docs/manifest-v1.md) | how a catalog entry is written |

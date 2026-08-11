@@ -9,7 +9,7 @@ import textwrap
 from collections.abc import Mapping
 from pathlib import Path
 
-from . import __version__, cache, classification, launcher, plan, progress, removal, runtimes, shims, sync
+from . import __version__, cache, classification, configuration, launcher, plan, progress, removal, runtimes, shims, sync
 from .archive import human_size
 from . import platforms
 from .catalog import SHIPPED, build_index, check_collections, describe, load_catalog, load_collections, resolve
@@ -41,6 +41,14 @@ def build_parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="command", required=True)
 
     commands.add_parser("paths", help="Show where dfpm stores files.")
+    config = commands.add_parser("config", help="Save or inspect persistent dfpm settings.")
+    config_commands = config.add_subparsers(dest="config_command", required=True)
+    config_set = config_commands.add_parser("set", help="Save a setting for future dfpm commands.")
+    config_set.add_argument("setting", choices=["root"])
+    config_set.add_argument("value", type=Path)
+    config_unset = config_commands.add_parser("unset", help="Return a setting to its platform default.")
+    config_unset.add_argument("setting", choices=["root"])
+    config_commands.add_parser("show", help="Show the saved root setting and configuration file.")
     catalog = commands.add_parser("catalog", help="List available packages, or show one in detail.")
     catalog.add_argument("package", nargs="?", help="Show everything known about this package.")
     catalog.add_argument("--json", action="store_true")
@@ -194,9 +202,14 @@ def catalog_directory(chosen: Path | None, storage: Storage, environ: Mapping[st
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    storage = Storage(args.root.resolve()) if args.root else Storage.default()
-    args.catalog = catalog_directory(args.catalog, storage)
     try:
+        if args.command == "config":
+            return _config(args)
+        choice = configuration.choose_root(args.root, Storage.default().root)
+        storage = Storage(choice.path)
+        args.root_source = choice.source
+        args.configuration = choice.configuration
+        args.catalog = catalog_directory(args.catalog, storage)
         return _run(args, storage)
     except DfpmError as exc:
         print(f"error: {exc}", file=sys.stderr)
@@ -208,6 +221,7 @@ def main(argv: list[str] | None = None) -> int:
 
 def _run(args: argparse.Namespace, storage: Storage) -> int:
     if args.command == "paths":
+        print(f"Root:               {storage.root} ({args.root_source})")
         print(f"Tools:              {storage.tools}")
         print(f"Verified downloads: {storage.cache}")
         print(f"Command shortcuts:  {storage.bin}")
@@ -222,6 +236,7 @@ def _run(args: argparse.Namespace, storage: Storage) -> int:
             print("                    Not this machine's catalog, which is:")
             print(f"                    {storage.catalog}")
         print(f"Package records:    {storage.state / 'packages'}")
+        print(f"Configuration:      {args.configuration}")
         return 0
     if args.command == "catalog":
         return _catalog(args)
@@ -254,6 +269,43 @@ def _run(args: argparse.Namespace, storage: Storage) -> int:
     if args.command == "doctor":
         return _doctor(args, storage)
     return 1
+
+
+def _config(args: argparse.Namespace) -> int:
+    path = configuration.file()
+    default = Storage.default().root
+    if args.config_command == "set":
+        try:
+            previous = configuration.configured_root() or default
+        except DfpmError:
+            # Setting the root is also the recovery path for a damaged
+            # configuration file; overwriting it must not require reading it.
+            previous = None
+        chosen = configuration.set_root(args.value)
+        print(f"Saved dfpm root:    {chosen}")
+        print(f"Configuration:      {path}")
+        if previous is None:
+            print("The unreadable previous setting was replaced.")
+            print("Existing files were not moved. Future commands will use the saved root.")
+        elif previous != chosen:
+            print(f"Previous root:      {previous}")
+            print("Existing files were not moved. Future commands will use the saved root.")
+        return 0
+    if args.config_command == "unset":
+        removed = configuration.unset_root()
+        print(f"Using default root: {default}")
+        print(f"Configuration:      {path}")
+        if not removed:
+            print("No saved root setting was present.")
+        print("Existing files were not moved.")
+        return 0
+    saved = configuration.configured_root()
+    if saved is None:
+        print(f"Root:               {default} (platform default)")
+    else:
+        print(f"Root:               {saved} (saved configuration)")
+    print(f"Configuration:      {path}")
+    return 0
 
 
 def _other_builds(catalog: Path, manifest) -> int:

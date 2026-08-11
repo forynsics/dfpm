@@ -3,9 +3,12 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from dfpm.catalog import SHIPPED
-from dfpm.cli import catalog_directory
+from dfpm import configuration
+from dfpm.cli import catalog_directory, main
+from dfpm.errors import DfpmError
 from dfpm.storage import Storage
 
 
@@ -44,6 +47,92 @@ class DefaultRootTests(unittest.TestCase):
         storage = Storage(Path("/srv/dfpm"))
         for directory in (storage.tools, storage.cache, storage.state, storage.bin):
             self.assertEqual(directory.parts[: len(storage.root.parts)], storage.root.parts)
+
+
+class PersistentRootTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
+        self.environ = {"LOCALAPPDATA": str(self.base / "local")}
+
+    def test_configuration_file_has_a_fixed_bootstrap_location(self) -> None:
+        self.assertEqual(
+            configuration.file(self.environ, "nt"),
+            self.base / "local" / "dfpm" / "config.json",
+        )
+
+    def test_a_root_round_trips_through_the_saved_configuration(self) -> None:
+        root = self.base / "chosen"
+        configuration.set_root(root, self.environ, "nt")
+        self.assertEqual(configuration.configured_root(self.environ, "nt"), root)
+        self.assertTrue(configuration.unset_root(self.environ, "nt"))
+        self.assertIsNone(configuration.configured_root(self.environ, "nt"))
+
+    def test_the_command_persists_a_root_for_later_commands(self) -> None:
+        root = self.base / "chosen"
+        with mock.patch.dict("os.environ", self.environ, clear=False):
+            self._main_output(["config", "set", "root", str(root)])
+            output = self._main_output(["paths"])
+        self.assertIn(f"Root:               {root} (saved configuration)", output)
+        self.assertIn(f"Tools:              {root / 'tools'}", output)
+
+    def test_the_command_line_override_beats_the_saved_root(self) -> None:
+        saved = self.base / "saved"
+        override = self.base / "one-command"
+        configuration.set_root(saved, self.environ, "nt")
+        with mock.patch.dict("os.environ", self.environ, clear=False):
+            output = self._main_output(["--root", str(override), "paths"])
+        self.assertIn(f"Root:               {override} (command line)", output)
+
+    def test_config_show_reports_the_saved_root_and_bootstrap_file(self) -> None:
+        saved = self.base / "saved"
+        path = configuration.file(self.environ, "nt")
+        configuration.set_root(saved, self.environ, "nt")
+        with mock.patch.dict("os.environ", self.environ, clear=False):
+            output = self._main_output(["config", "show"])
+        self.assertIn(f"Root:               {saved} (saved configuration)", output)
+        self.assertIn(f"Configuration:      {path}", output)
+
+    def test_unset_returns_future_commands_to_the_platform_default(self) -> None:
+        configuration.set_root(self.base / "chosen", self.environ, "nt")
+        default = self.base / "local" / "dfpm"
+        with mock.patch.dict("os.environ", self.environ, clear=False):
+            self._main_output(["config", "unset", "root"])
+            output = self._main_output(["paths"])
+        self.assertIn(f"Root:               {default} (platform default)", output)
+
+    def test_setting_a_root_does_not_move_or_initialize_data(self) -> None:
+        old_root = self.base / "local" / "dfpm"
+        old_root.mkdir(parents=True)
+        marker = old_root / "existing-tool.txt"
+        marker.write_text("leave me here", encoding="utf-8")
+        chosen = self.base / "chosen"
+        with mock.patch.dict("os.environ", self.environ, clear=False):
+            self._main_output(["config", "set", "root", str(chosen)])
+        self.assertEqual(marker.read_text(encoding="utf-8"), "leave me here")
+        self.assertFalse(chosen.exists())
+
+    def test_an_unreadable_setting_fails_loudly_but_can_be_replaced(self) -> None:
+        path = configuration.file(self.environ, "nt")
+        path.parent.mkdir(parents=True)
+        path.write_text("not json", encoding="utf-8")
+        with self.assertRaises(DfpmError):
+            configuration.configured_root(self.environ, "nt")
+        chosen = self.base / "replacement"
+        with mock.patch.dict("os.environ", self.environ, clear=False):
+            self._main_output(["config", "set", "root", str(chosen)])
+        self.assertEqual(configuration.configured_root(self.environ, "nt"), chosen)
+
+    @staticmethod
+    def _main_output(arguments: list[str]) -> str:
+        import contextlib
+        import io
+
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            result = main(arguments)
+        if result != 0:
+            raise AssertionError(f"dfpm returned {result}: {output.getvalue()}")
+        return output.getvalue()
 
 
 if __name__ == "__main__":

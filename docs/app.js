@@ -14,6 +14,7 @@ const state = { packages: [], vocabulary: null, discipline: null, error: null };
 
 const COMMANDS = [
   ["dfpm paths", "Show where dfpm stores files."],
+  ["dfpm config set root D:\\dfpm", "Persistently relocate dfpm's data root."],
   ["dfpm catalog", "List available packages."],
   ["dfpm sync", "Update the catalog from where it is published."],
   ["dfpm install <package>", "Install a package, replacing any version already installed."],
