@@ -16,8 +16,27 @@ ENTRYPOINT_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 SHA256 = re.compile(r"^[a-f0-9]{64}$")
 SUPPORTED_KINDS = {"tool", "runtime", "ruleset", "artifact-pack", "parser-pack", "integration", "config-pack"}
 
+# How an artifact becomes a package directory. Three things vary -- unpacking a
+# zip, unpacking a tarball, copying a file into place -- and only the last step
+# differs between them, so they are named for what the artifact IS rather than
+# for a procedure.
+PORTABLE_ZIP = "portable-zip"
+STANDALONE_FILE = "standalone-file"
+STRATEGIES = (PORTABLE_ZIP, STANDALONE_FILE)
+
 IMMUTABLE, ROLLING = "immutable", "rolling"
 STABILITIES = (IMMUTABLE, ROLLING)
+
+
+def published_filename(url: str) -> str:
+    """The name a project published a file under, made safe to join to a directory.
+
+    Used both when saving a download and when installing an artifact that is
+    itself the payload, so the two cannot disagree about what upstream called
+    something.
+    """
+    tail = url.replace("\\", "/").rstrip("/").rsplit("/", 1)[-1]
+    return re.sub(r"[^A-Za-z0-9._-]", "_", tail).lstrip(".")
 
 
 @dataclass(frozen=True)
@@ -102,6 +121,7 @@ class Build:
     version: str
     platform: Platform | None
     package: Package
+    strategy: str
     strip_components: int
     extracted_size: int | None
     entry_count: int | None
@@ -111,6 +131,17 @@ class Build:
 
     def __str__(self) -> str:
         return f"{self.version} ({self.platform})" if self.platform else self.version
+
+    @property
+    def installable(self) -> bool:
+        """Whether this dfpm knows how to turn this artifact into a package.
+
+        A catalog describes what a project publishes. What this version can
+        install is a smaller and separately changing thing, and conflating them
+        would mean either omitting builds that exist or refusing entries that
+        are perfectly correct.
+        """
+        return self.strategy in STRATEGIES
 
 
 @dataclass(frozen=True)
@@ -134,6 +165,7 @@ class Manifest:
     use_cases: tuple[str, ...]
     evidence: tuple[str, ...]
     package: Package
+    strategy: str
     strip_components: int
     extracted_size: int | None
     entry_count: int | None
@@ -259,6 +291,7 @@ class Tool:
             use_cases=self.use_cases,
             evidence=self.evidence,
             package=build.package,
+            strategy=build.strategy,
             strip_components=build.strip_components,
             extracted_size=build.extracted_size,
             entry_count=build.entry_count,
@@ -306,8 +339,13 @@ def _build(data: dict[str, Any]) -> Build:
     stability = stability.strip().lower()
 
     install = _object(data.get("install"), "build.install")
-    if install.get("strategy") != "portable-zip":
-        raise ManifestError("Only the portable-zip install strategy is currently supported")
+    strategy = install.get("strategy")
+    if not isinstance(strategy, str) or not strategy.strip():
+        raise ManifestError("install.strategy is required")
+    strategy = strategy.strip()
+    # An unknown strategy describes an artifact this version cannot materialize,
+    # not a broken entry. It is kept so the catalog can say what a project
+    # publishes, and refused where it would actually be acted on.
     strip_components = install.get("strip_components", 0)
     if not isinstance(strip_components, int) or isinstance(strip_components, bool) or strip_components < 0:
         raise ManifestError("install.strip_components must be a non-negative integer")
@@ -339,10 +377,32 @@ def _build(data: dict[str, Any]) -> Build:
             f"verify repeats an entrypoint, which is already checked: {', '.join(sorted(duplicated))}"
         )
 
+    if strategy == STANDALONE_FILE:
+        # The artifact is the payload, so there is exactly one thing to name and
+        # nothing to unpack. Saying otherwise in the manifest would describe a
+        # shape this strategy cannot produce.
+        if len(entrypoints) != 1:
+            raise ManifestError(f"{STANDALONE_FILE} needs exactly one entrypoint, which is the file itself")
+        if strip_components:
+            raise ManifestError(f"{STANDALONE_FILE} has nothing to strip, so install.strip_components must be 0")
+        if "/" in entrypoints[0].path or "\\" in entrypoints[0].path:
+            raise ManifestError(f"{STANDALONE_FILE} places the file at the package root, so its path cannot be nested")
+        # Installed under the name its project published it under. An archive
+        # decides its own contents' names, but here dfpm chooses, and choosing
+        # anything else would put a file on disk that cannot be matched against
+        # the release it came from without consulting dfpm's own records.
+        published = published_filename(package_url)
+        if entrypoints[0].path != published:
+            raise ManifestError(
+                f"{STANDALONE_FILE} installs the published file under its own name, so this entrypoint's "
+                f"path must be {published!r} rather than {entrypoints[0].path!r}"
+            )
+
     return Build(
         version=_version(data.get("version")),
         platform=_platform(data.get("platform")),
         package=Package(package_url, package_hash, size, stability),
+        strategy=strategy,
         strip_components=strip_components,
         extracted_size=_optional_count(install.get("extracted_size"), "install.extracted_size"),
         entry_count=_optional_count(install.get("entries"), "install.entries"),

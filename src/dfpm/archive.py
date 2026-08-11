@@ -119,17 +119,21 @@ def extract_zip(
         declared = sum(info.file_size for info in entries)
         budget = _space_budget(destination, declared if expected_size is None else expected_size, limits)
         expected_entries = sum(1 for info in entries if not info.filename.replace("\\", "/").endswith("/"))
-        claimed: dict[str, tuple[str, bool]] = {}
+        claimed: dict[str, tuple[str, bool, str]] = {}
         files: list[dict[str, str | int]] = []
         extracted = 0
         for info in entries:
             raw = info.filename.replace("\\", "/")
             is_directory = raw.endswith("/")
             relative = _safe_relative_path(info, raw)
-            _claim(claimed, relative, info.filename, is_directory)
             stripped = relative.parts[strip_components:]
             if not stripped:
                 continue
+            installed = PurePosixPath(*stripped)
+            # Collision checks apply to the path that will actually be written.
+            # Different archive paths can become the same installed path after
+            # their leading components are removed.
+            _claim(claimed, installed, info.filename, is_directory)
             target = destination / Path(*stripped)
             if is_directory:
                 target.mkdir(parents=True, exist_ok=True)
@@ -137,7 +141,7 @@ def extract_zip(
             target.parent.mkdir(parents=True, exist_ok=True)
             size = _write_entry(source, info, target, extracted, budget)
             extracted += size
-            files.append({"path": str(PurePosixPath(*stripped)), "size": size})
+            files.append({"path": str(installed), "size": size})
             if on_progress is not None:
                 on_progress("extract", len(files), expected_entries)
     if not files:
@@ -168,7 +172,12 @@ def _safe_relative_path(info: zipfile.ZipInfo, raw: str) -> PurePosixPath:
     return PurePosixPath(*parts)
 
 
-def _claim(claimed: dict[str, tuple[str, bool]], relative: PurePosixPath, original: str, is_directory: bool) -> None:
+def _claim(
+    claimed: dict[str, tuple[str, bool, str]],
+    relative: PurePosixPath,
+    original: str,
+    is_directory: bool,
+) -> None:
     """Record a path so duplicates and case-only collisions are rejected.
 
     Not a security rule. Two entries differing only by capitalization merge on a
@@ -178,15 +187,15 @@ def _claim(claimed: dict[str, tuple[str, bool]], relative: PurePosixPath, origin
     key = str(relative).lower()
     existing = claimed.get(key)
     if existing is None:
-        claimed[key] = (original, is_directory)
+        claimed[key] = (original, is_directory, str(relative))
         return
-    previous, previously_directory = existing
+    previous, previously_directory, previous_relative = existing
     if is_directory and previously_directory:
         return
     if is_directory != previously_directory:
         raise InstallError(f"Archive uses one path as both a file and a directory: {original}")
-    if previous == original:
-        raise InstallError(f"Archive contains a duplicate path: {original}")
+    if previous_relative == str(relative):
+        raise InstallError(f"Archive contains paths that install to the same location: {previous} and {original}")
     raise InstallError(
         f"Archive contains paths that differ only by capitalization, which a case-insensitive "
         f"filesystem would merge: {previous} and {original}"

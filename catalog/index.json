@@ -20,6 +20,18 @@
       "sha256": "c03186e35f0bc2b8656888394fea2abec69d0dc9dc5fe9eeaa8e5c3d846493a6"
     },
     {
+      "file": "capa.json",
+      "id": "capa",
+      "version": "9.4.0",
+      "sha256": "de161adf7faa1f906d3f16b5af34e8aa2a659cc20c13fed3488d6aad987f4225"
+    },
+    {
+      "file": "chainsaw.json",
+      "id": "chainsaw",
+      "version": "2.16.3",
+      "sha256": "30bd8af96a7af5a881b355437652c7bf2c9c0fecab05c4528bc9902f440fcd14"
+    },
+    {
       "file": "evtxecmd.json",
       "id": "evtxecmd",
       "version": "2026.5.0.0",
@@ -30,6 +42,12 @@
       "id": "ezviewer",
       "version": "2026.5.0.0",
       "sha256": "6a860f3d48ea377d0014baa5cdc7828506c79ad19ca12b41714537bd84b2f6d4"
+    },
+    {
+      "file": "floss.json",
+      "id": "floss",
+      "version": "3.1.1",
+      "sha256": "073e34d097d702550b1e3700c00aa0fdcc5b807bfb8ee8baeb40ca8e0ce1c062"
     },
     {
       "file": "hayabusa.json",
@@ -60,6 +78,12 @@
       "id": "lecmd",
       "version": "2026.5.0.0",
       "sha256": "a64ed262ce8e53d17484ff5aaf54731efdc79034598d3a3d6fb68bb08f56539d"
+    },
+    {
+      "file": "memprocfs.json",
+      "id": "memprocfs",
+      "version": "5.18.3",
+      "sha256": "9c1b5395f3593f484a0d5a6efc713c99b944cc51a61467d71d8dc535a271178c"
     },
     {
       "file": "mftecmd.json",
@@ -152,10 +176,28 @@
       "sha256": "c0805daabfc34970b432b25cb0740137af40d570f13290a544a71487d6942dc3"
     },
     {
+      "file": "velociraptor.json",
+      "id": "velociraptor",
+      "version": "0.77.2",
+      "sha256": "f39fb23a6519c9a32847047e38300026e53b6da1cdc61c8d3179617d304f8f86"
+    },
+    {
+      "file": "volatility3.json",
+      "id": "volatility3",
+      "version": "2.28.0",
+      "sha256": "7c922fb48c3c8d13bae4305ded7854898db949305a6a39c2c898ed39119429cb"
+    },
+    {
       "file": "vscmount.json",
       "id": "vscmount",
       "version": "2026.5.0.0",
       "sha256": "0b35c16fc8085682dbbdf0fc645b4565efeddf248bb950a830a6b1d4bf4560e4"
+    },
+    {
+      "file": "winpmem.json",
+      "id": "winpmem",
+      "version": "4.0.rc1",
+      "sha256": "ca71fcad933581e74393b07cabb89e34efd4aa7c288c83ac52f7292c290991f7"
     },
     {
       "file": "wxtcmd.json",

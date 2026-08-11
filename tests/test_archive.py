@@ -75,10 +75,24 @@ class ArchiveTests(unittest.TestCase):
         self.assertRejected([("bin/tool.exe ", "unsafe")], "ends with a space or a dot")
 
     def test_rejects_duplicate_paths(self) -> None:
-        self.assertRejected([("bin/tool.cmd", "first"), ("bin/tool.cmd", "second")], "duplicate path")
+        self.assertRejected([("bin/tool.cmd", "first"), ("bin/tool.cmd", "second")], "same location")
 
     def test_rejects_case_colliding_paths(self) -> None:
         self.assertRejected([("bin/Tool.cmd", "first"), ("bin/tool.cmd", "second")], "differ only by capitalization")
+
+    def test_rejects_paths_that_collide_after_stripping(self) -> None:
+        self.assertRejected(
+            [("one/tool.cmd", "first"), ("two/tool.cmd", "second")],
+            "same location",
+            strip=1,
+        )
+
+    def test_rejects_case_collisions_created_by_stripping(self) -> None:
+        self.assertRejected(
+            [("one/Tool.cmd", "first"), ("two/tool.cmd", "second")],
+            "differ only by capitalization",
+            strip=1,
+        )
 
     def test_rejects_path_used_as_file_and_directory(self) -> None:
         self.assertRejected([("bin/tool/", ""), ("bin/tool", "data")], "both a file and a directory")

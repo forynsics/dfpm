@@ -89,6 +89,19 @@ def select(tools: list[Tool], package_id: str, version: str | None = None, platf
         raise ManifestError(
             f"{package_id} has no build for {wanted[0]}/{wanted[1]}. It ships builds for: {offered}"
         )
+
+    # A build published in a format this version cannot materialize is real and
+    # worth listing; it just cannot be chosen. Saying so here, rather than
+    # failing once the download is already on disk, is the difference between a
+    # catalog that describes upstream and one that misleads about it.
+    installable = [build for build in usable if build.installable]
+    if not installable:
+        formats = ", ".join(sorted({build.strategy for build in usable}))
+        raise ManifestError(
+            f"{package_id} publishes a {wanted[0]}/{wanted[1]} build, but as {formats}, "
+            f"which this dfpm cannot install."
+        )
+    usable = installable
     usable.sort(key=lambda build: version_key(build.version))
     return tool.release(usable[-1])
 

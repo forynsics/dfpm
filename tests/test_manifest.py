@@ -118,14 +118,26 @@ class ManifestTests(unittest.TestCase):
             with self.subTest(value=value):
                 self.assertRaisesManifestError({"package": {"stability": value}})
 
-    def test_rejects_unknown_install_strategy(self) -> None:
+    def test_an_install_strategy_this_version_cannot_use_is_described_not_refused(self) -> None:
+        # A catalog says what a project publishes. What this dfpm can install is
+        # a smaller, separately moving thing, and refusing the entry would mean
+        # a tool shipping one format dfpm cannot read becomes uninstallable in
+        # the formats it can -- and takes the rest of the catalog down with it,
+        # since every entry is loaded together.
+        from dfpm.manifest import Tool
+
         with tempfile.TemporaryDirectory() as temporary:
             _, manifest_path = create_package(Path(temporary).resolve())
             data = json.loads(manifest_path.read_text(encoding="utf-8"))
-            data["builds"][0]["install"]["strategy"] = "run-anything"
+            data["builds"][0]["install"]["strategy"] = "portable-tar"
             manifest_path.write_text(json.dumps(data), encoding="utf-8")
-            with self.assertRaises(ManifestError):
-                Manifest.load(manifest_path)
+
+            build = Tool.load(manifest_path).builds[0]
+            self.assertEqual(build.strategy, "portable-tar")
+            self.assertFalse(build.installable)
+
+    def test_a_build_must_still_say_how_it_is_installed(self) -> None:
+        self.assertRaisesManifestError({"install": {"strategy": ""}})
 
 
 if __name__ == "__main__":

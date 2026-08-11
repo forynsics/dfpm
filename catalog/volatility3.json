@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "id": "volatility3",
+  "name": "Volatility 3",
+  "kind": "tool",
+  "description": "Analyse memory images with a plugin for each question: processes, network connections, injected code and more.",
+  "about": "Volatility reads a memory image and reconstructs what the operating system was doing when it was captured. Rather than one report it offers a plugin per question -- the process tree, loaded modules, open handles, network connections, command history, registry hives held in memory, and regions whose permissions or contents suggest injected code. Structures are located using symbol tables downloaded or supplied for the exact kernel build, which is what lets one tool read images from many versions of Windows, Linux and macOS. Two commands are installed: the analysis driver, and a shell for exploring an image interactively when no existing plugin asks the right question.",
+  "disciplines": [
+    "memory-forensics"
+  ],
+  "capabilities": [
+    "memory-analysis",
+    "data-export"
+  ],
+  "use_cases": [
+    "incident-response",
+    "threat-hunting",
+    "evidence-review"
+  ],
+  "evidence": [
+    "memory-images"
+  ],
+  "project": {
+    "homepage": "https://volatilityfoundation.org/",
+    "repository": "https://github.com/volatilityfoundation/volatility3",
+    "license": "LicenseRef-VSL-1.0"
+  },
+  "builds": [
+    {
+      "version": "2.28.0",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://github.com/volatilityfoundation/volatility3/releases/download/v2.28.0/volatility3-win-exes-2.28.0.zip",
+        "sha256": "bf2d561b37857b9feb4c6a972a6143e1398e99990b783361aa44c5b833256e62",
+        "size": 43578854
+      },
+      "install": {
+        "strategy": "portable-zip",
+        "strip_components": 0,
+        "extracted_size": 44518237,
+        "entries": 4,
+        "entrypoints": [
+          {
+            "name": "vol",
+            "path": "vol.exe"
+          },
+          {
+            "name": "volshell",
+            "path": "volshell.exe"
+          }
+        ]
+      }
+    }
+  ]
+}

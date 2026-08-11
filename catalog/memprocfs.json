@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "id": "memprocfs",
+  "name": "MemProcFS",
+  "kind": "tool",
+  "description": "Mount a memory image as a file system and browse processes, handles and network activity as files.",
+  "about": "MemProcFS presents a memory image the way an operating system presents a disk: as a tree of directories and files. Each process becomes a folder holding its modules, handles, threads, virtual memory map and recovered files, so examining memory becomes reading and copying rather than running a query and interpreting a table. It reads raw dumps, crash dumps and hibernation files, and can also attach to live memory through a driver. A plugin directory extends what appears in the tree, and a bundled rule engine allows scanning the mounted image for known patterns. Mounting it as a drive letter needs a file system driver installed separately; without one the same data is reachable through its other interfaces.",
+  "disciplines": [
+    "memory-forensics"
+  ],
+  "capabilities": [
+    "memory-analysis",
+    "visualisation",
+    "data-export"
+  ],
+  "use_cases": [
+    "incident-response",
+    "forensic-triage",
+    "threat-hunting"
+  ],
+  "evidence": [
+    "memory-images"
+  ],
+  "project": {
+    "homepage": "https://github.com/ufrisk/MemProcFS",
+    "repository": "https://github.com/ufrisk/MemProcFS",
+    "license": "AGPL-3.0-only"
+  },
+  "builds": [
+    {
+      "version": "5.18.3",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://github.com/ufrisk/MemProcFS/releases/download/v5.18/MemProcFS_files_and_binaries_v5.18.3-win_x64-20260808.zip",
+        "sha256": "d9cf79d9a66461f234a643b7f12e862ea15116c9de9946a1dc968a7a7f2377ad",
+        "size": 6210658
+      },
+      "install": {
+        "strategy": "portable-zip",
+        "strip_components": 0,
+        "extracted_size": 14011945,
+        "entries": 45,
+        "entrypoints": [
+          {
+            "name": "memprocfs",
+            "path": "MemProcFS.exe"
+          }
+        ]
+      },
+      "verify": [
+        {
+          "type": "file",
+          "path": "vmm.dll"
+        },
+        {
+          "type": "file",
+          "path": "info.db"
+        }
+      ]
+    }
+  ]
+}

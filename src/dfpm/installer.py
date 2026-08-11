@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import json
 import os
+import shutil
 import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
@@ -13,7 +14,7 @@ from .archive import DEFAULT_LIMITS, ArchiveLimits, check_path_lengths, extract_
 from .downloads import Acquired, Decision, acquire
 from .errors import InstallError
 from .inventory import forget_package, read_package, write_package
-from .manifest import Manifest
+from .manifest import PORTABLE_ZIP, STANDALONE_FILE, STRATEGIES, Manifest
 from .progress import Reporter
 from .storage import Storage, remove_tree
 
@@ -63,6 +64,47 @@ def check_destination(manifest: Manifest, storage: Storage) -> str | None:
     return current
 
 
+def _materialize(
+    manifest: Manifest,
+    artifact: Acquired,
+    staging: Path,
+    limits: ArchiveLimits,
+    expected_size: int | None,
+    on_progress: Reporter | None,
+) -> list[dict[str, Any]]:
+    """Turn a downloaded artifact into the files a package directory holds.
+
+    Everything either side of this is the same for every package: fetch it,
+    verify it, then find the entrypoints and write the shims. Only this step
+    depends on what was downloaded, so the kinds of artifact dfpm understands
+    are the cases here and nowhere else.
+    """
+    if manifest.strategy == PORTABLE_ZIP:
+        return extract_zip(
+            artifact.path, staging, manifest.strip_components, limits, expected_size, on_progress
+        )
+    if manifest.strategy == STANDALONE_FILE:
+        return _place_file(manifest, artifact, staging)
+    raise InstallError(
+        f"{manifest.id} {manifest.version} is published as {manifest.strategy}, which this dfpm cannot install. "
+        f"It understands: {', '.join(STRATEGIES)}."
+    )
+
+
+def _place_file(manifest: Manifest, artifact: Acquired, staging: Path) -> list[dict[str, Any]]:
+    """Copy a standalone binary in as the package's only file.
+
+    There is no archive, so none of the unpacking questions arise: no paths to
+    make safe, no depth to strip, nothing to overwrite. The digest was checked
+    before this ran, and the name comes from the entrypoint rather than from
+    the URL, so what a package installs does not change when a project renames
+    a release file.
+    """
+    target = staging / manifest.entrypoints[0].path
+    shutil.copyfile(artifact.path, target)
+    return [{"path": manifest.entrypoints[0].path, "size": target.stat().st_size}]
+
+
 def _stage(
     manifest: Manifest,
     artifact: Acquired,
@@ -80,9 +122,7 @@ def _stage(
         # it was recorded from. For anything else it is a figure describing a
         # different file, so the archive's own totals are all there is to go on.
         expected_size = manifest.extracted_size if artifact.verified else None
-        managed_files = extract_zip(
-            artifact.path, staging, manifest.strip_components, limits, expected_size, on_progress
-        )
+        managed_files = _materialize(manifest, artifact, staging, limits, expected_size, on_progress)
         check_path_lengths(destination, managed_files, limits)
         if artifact.verified:
             _check_recorded_extraction(manifest, managed_files)

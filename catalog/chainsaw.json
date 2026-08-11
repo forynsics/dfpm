@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "id": "chainsaw",
+  "name": "Chainsaw",
+  "kind": "tool",
+  "description": "Search and detect across Windows artifacts at speed, applying Sigma rules to event logs and more.",
+  "about": "Chainsaw searches Windows forensic artifacts quickly and applies detection logic to what it finds. It reads event logs, and also the master file table, shimcache, shellbags, SRUM and registry hives, so one pass covers several artifact types rather than one. Detections come from Sigma rules translated through the mapping files shipped beside the executable, which say how a rule's fields correspond to what each log actually contains. Results print as a table or timeline, or export as CSV or JSON. **The Sigma rules themselves are not included in this build** and must be supplied with the appropriate option; the mappings that interpret them are.",
+  "disciplines": [
+    "windows-forensics"
+  ],
+  "capabilities": [
+    "sigma-detection",
+    "event-log-parsing",
+    "timeline-generation",
+    "data-export"
+  ],
+  "use_cases": [
+    "threat-hunting",
+    "incident-response",
+    "forensic-triage"
+  ],
+  "evidence": [
+    "windows-event-logs",
+    "registry-hives",
+    "master-file-table"
+  ],
+  "project": {
+    "homepage": "https://github.com/WithSecureLabs/chainsaw",
+    "repository": "https://github.com/WithSecureLabs/chainsaw",
+    "license": "GPL-3.0-only"
+  },
+  "builds": [
+    {
+      "version": "2.16.3",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://github.com/WithSecureLabs/chainsaw/releases/download/v2.16.3/chainsaw_x86_64-pc-windows-msvc.zip",
+        "sha256": "3623ddbd71b32623692db563f3d78f9359c484330a983f9e5e480b624984d338",
+        "size": 3352171
+      },
+      "install": {
+        "strategy": "portable-zip",
+        "strip_components": 1,
+        "extracted_size": 9410375,
+        "entries": 5,
+        "entrypoints": [
+          {
+            "name": "chainsaw",
+            "path": "chainsaw.exe"
+          }
+        ]
+      },
+      "verify": [
+        {
+          "type": "file",
+          "path": "mappings/sigma-event-logs-all.yml"
+        }
+      ]
+    }
+  ]
+}

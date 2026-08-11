@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "id": "winpmem",
+  "name": "WinPmem",
+  "kind": "tool",
+  "description": "Acquire physical memory from a running Windows machine to a raw image file.",
+  "about": "WinPmem captures the contents of physical memory so it can be examined afterwards with something else. It loads a signed driver, reads memory through it, and writes a raw image that memory analysis tools read directly. Acquisition is the step everything else depends on and cannot be repeated: the machine keeps running while the capture proceeds, so the image is a smear across the time it took rather than an instant, and anything overwritten in the meantime is gone. Administrator rights are required, since loading a driver is what reading physical memory needs.",
+  "disciplines": [
+    "memory-forensics"
+  ],
+  "capabilities": [
+    "evidence-collection"
+  ],
+  "use_cases": [
+    "incident-response",
+    "forensic-triage"
+  ],
+  "evidence": [
+    "memory-images"
+  ],
+  "project": {
+    "homepage": "https://github.com/Velocidex/WinPmem",
+    "repository": "https://github.com/Velocidex/WinPmem",
+    "license": "Apache-2.0"
+  },
+  "builds": [
+    {
+      "version": "4.0.rc1",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://github.com/Velocidex/WinPmem/releases/download/v4.0.rc1/winpmem_mini_x64_rc2.exe",
+        "sha256": "a4d516b6fcaf3b5b1d4ee709ce86f8eabf1d8028b3a83101479b7568b933d21b",
+        "size": 527640
+      },
+      "install": {
+        "strategy": "standalone-file",
+        "strip_components": 0,
+        "extracted_size": 527640,
+        "entries": 1,
+        "entrypoints": [
+          {
+            "name": "winpmem",
+            "path": "winpmem_mini_x64_rc2.exe"
+          }
+        ]
+      }
+    }
+  ]
+}

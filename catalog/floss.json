@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "id": "floss",
+  "name": "FLOSS",
+  "kind": "tool",
+  "description": "Recover strings a program hides from ordinary string extraction, including ones it builds at runtime.",
+  "about": "Malware routinely keeps its strings out of plain sight, so the addresses, filenames and commands that would explain what it does are missing from ordinary string output. FLOSS finds them anyway. Alongside the static strings any tool would report, it identifies the routine a program uses to decode its own text and emulates it to recover the result, reconstructs strings assembled on the stack one character at a time, and pulls out those built directly in memory. Output separates each category, so it is clear whether something was sitting in the file or had to be reconstructed, and results can be written as JSON for further processing.",
+  "disciplines": [
+    "malware-analysis"
+  ],
+  "capabilities": [
+    "string-extraction",
+    "data-export"
+  ],
+  "use_cases": [
+    "threat-hunting",
+    "incident-response"
+  ],
+  "evidence": [
+    "files"
+  ],
+  "project": {
+    "homepage": "https://github.com/mandiant/flare-floss",
+    "repository": "https://github.com/mandiant/flare-floss",
+    "license": "Apache-2.0"
+  },
+  "builds": [
+    {
+      "version": "3.1.1",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://github.com/mandiant/flare-floss/releases/download/v3.1.1/floss-v3.1.1-windows.zip",
+        "sha256": "6c71089b8c629c69424b042769f1565f71adc6cd24b2f8d3713c96fa7fdac2fb",
+        "size": 31580022
+      },
+      "install": {
+        "strategy": "portable-zip",
+        "strip_components": 0,
+        "extracted_size": 31866819,
+        "entries": 1,
+        "entrypoints": [
+          {
+            "name": "floss",
+            "path": "floss.exe"
+          }
+        ]
+      }
+    }
+  ]
+}

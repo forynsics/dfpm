@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "id": "capa",
+  "name": "capa",
+  "kind": "tool",
+  "description": "Identify what an executable is capable of, expressed as named behaviours rather than signatures.",
+  "about": "capa examines a program and reports what it can do: encrypt data, log keystrokes, persist through a registry run key, communicate over HTTP, inject into another process. It reaches those conclusions from rules describing combinations of imported functions, strings, constants and control flow, so a match names a behaviour rather than a particular family or sample. That makes it useful on something never seen before, where a signature has nothing to match. It reads executables, shellcode and sandbox reports, prints its findings as a table or as JSON, and can show the evidence behind each match so a conclusion can be checked rather than trusted.",
+  "disciplines": [
+    "malware-analysis"
+  ],
+  "capabilities": [
+    "signature-scanning",
+    "data-export"
+  ],
+  "use_cases": [
+    "threat-hunting",
+    "incident-response",
+    "evidence-review"
+  ],
+  "evidence": [
+    "files"
+  ],
+  "project": {
+    "homepage": "https://github.com/mandiant/capa",
+    "repository": "https://github.com/mandiant/capa",
+    "license": "Apache-2.0"
+  },
+  "builds": [
+    {
+      "version": "9.4.0",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://github.com/mandiant/capa/releases/download/v9.4.0/capa-v9.4.0-windows.zip",
+        "sha256": "670ab1a58b81f59cb57533bf4021ac1e7033fbe9b5d5cc180f796976081e3bb5",
+        "size": 35994071
+      },
+      "install": {
+        "strategy": "portable-zip",
+        "strip_components": 0,
+        "extracted_size": 36616388,
+        "entries": 1,
+        "entrypoints": [
+          {
+            "name": "capa",
+            "path": "capa.exe"
+          }
+        ]
+      }
+    }
+  ]
+}
