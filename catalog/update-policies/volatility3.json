@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "id": "volatility3",
+  "provider": "github-releases",
+  "repository": "volatilityfoundation/volatility3",
+  "tag_prefix": "v",
+  "assets": [
+    {
+      "name": "volatility3-win-exes-{version}.zip",
+      "platform": {"os": "windows", "arch": "x64"}
+    }
+  ]
+}

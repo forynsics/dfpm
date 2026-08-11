@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "id": "floss",
+  "provider": "github-releases",
+  "repository": "mandiant/flare-floss",
+  "tag_prefix": "v",
+  "assets": [
+    {
+      "name": "floss-v{version}-windows.zip",
+      "platform": {"os": "windows", "arch": "x64"}
+    }
+  ]
+}

@@ -1,5 +1,7 @@
 # The catalog
 
+Routine releases for suitable packages can be maintained through [policy-constrained automation](catalog-updates.md). Initial admission and changes to publisher, asset selection, layout, commands, licensing or terms remain explicit catalog decisions.
+
 The catalog is the set of entries dfpm can install from. Each entry names the release file its project published, records its SHA-256, and records the upstream project, its license and the platform it was built for. It also records the download size and the size on disk, so the install plan can tell you the cost before you agree to it.
 
 Each entry describes one tool and every build of it dfpm can install, so a tool shipping for three systems is one entry rather than three.

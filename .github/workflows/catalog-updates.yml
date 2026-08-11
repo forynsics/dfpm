@@ -1,0 +1,43 @@
+name: catalog updates
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: catalog-updates
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dfpm
+        run: python -m pip install --editable .
+
+      - name: Apply policy-conforming updates
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python scripts/update-catalog.py --apply --evidence catalog-update-evidence.json
+
+      - name: Validate the resulting catalog
+        run: python -m unittest discover -s tests
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: proposed-catalog-update
+          path: |
+            catalog/
+            catalog-update-evidence.json

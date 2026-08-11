@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "id": "velociraptor",
+  "provider": "github-releases",
+  "repository": "Velocidex/velociraptor",
+  "tag_prefix": "v",
+  "assets": [
+    {
+      "name": "velociraptor-v{version}-windows-amd64.exe",
+      "platform": {"os": "windows", "arch": "x64"}
+    }
+  ]
+}

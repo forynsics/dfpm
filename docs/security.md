@@ -4,7 +4,7 @@ What dfpm guarantees, and what it does not.
 
 ## What it guarantees
 
-**The bytes are the ones a reviewer pinned.** Every entry records a SHA-256. The download is refused unless it matches, and refused again if an HTTPS source redirects to plain HTTP. Cached artifacts are re-hashed on every use, not only when first downloaded.
+**The bytes match the digest the catalog records.** Every entry records a SHA-256, and cached artifacts are re-hashed on every use rather than only when first downloaded. This is the artifact identity check. HTTPS protects transport but does not authenticate the catalog or make its contents trustworthy; dfpm also refuses a redirect from encrypted to unencrypted transport because silently weakening the requested connection provides no useful package behavior.
 
 **Nothing changes without a plan.** Package, version, platform, license, source, digest, download size, size on disk, destination, free space, and what will be replaced — printed every time, before anything is fetched. `--yes` confirms a plan you have read; it never implies acceptance of a package's usage terms, and never accepts an artifact that failed verification.
 

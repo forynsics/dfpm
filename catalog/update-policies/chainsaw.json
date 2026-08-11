@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "id": "chainsaw",
+  "provider": "github-releases",
+  "repository": "WithSecureLabs/chainsaw",
+  "tag_prefix": "v",
+  "assets": [
+    {
+      "name": "chainsaw_x86_64-pc-windows-msvc.zip",
+      "platform": {"os": "windows", "arch": "x64"}
+    }
+  ]
+}

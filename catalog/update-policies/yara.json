@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "yara",
+  "provider": "github-releases",
+  "repository": "VirusTotal/yara",
+  "tag_prefix": "v",
+  "assets": [
+    {
+      "name": "yara-{version}-*-win64.zip",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      }
+    }
+  ]
+}

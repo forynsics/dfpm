@@ -2,9 +2,11 @@
 
 This directory contains the package manifests that make up the dfpm catalog. Each manifest describes one tool and the builds of that tool that dfpm can install.
 
-Every change to this catalog must be reviewed and approved by a person before it is merged. Tooling may discover releases, download assets, calculate hashes, inspect archives, or generate manifests, but it must not add or update catalog entries on its own.
+Every package admission, and every change outside an established update policy, must be reviewed and approved by a person before it is merged. Tooling may discover releases, download assets, calculate hashes, inspect archives, or generate manifests; approved automation may apply later releases only while those recorded invariants continue to hold.
 
-**Discovery proposes; a person merges.**
+**A person establishes the policy; automation handles releases that remain inside it.**
+
+That rule governs initial admission and changes outside an established policy. Once a package's publisher, asset selection and installed layout have been reviewed, routine releases may be maintained by the constrained automation described in [automated catalog updates](../docs/catalog-updates.md). Automation stops when those established facts change; it does not silently make a new judgement.
 
 ## What reviewing a package means
 
@@ -20,12 +22,14 @@ The process below describes doing that work manually.
 
 The complete field reference is [docs/manifest-v1.md](../docs/manifest-v1.md). Read it once; you will not need to reread it for every entry.
 
+Review and first execution should happen in a disposable Windows VM or Windows Sandbox, not on a forensic workstation or a machine holding case evidence. Take a clean snapshot before downloading the artifact, keep the review environment free of credentials and sensitive data, and discard or restore it afterwards. The first run is the point of least assurance: the manifest is being created precisely because these bytes have not yet been vouched for by this catalog.
+
 The fastest way to begin is to copy an existing manifest with a similar shape and edit it. `yara.json` is a small tool with two entrypoints and no runtime dependency. `hayabusa.json` covers three platforms in one manifest. `mftecmd.json` is a single Windows build that needs the .NET runtime.
 
 There is also a script that fills in the mechanical fields for you:
 
 ```powershell
-python scripts\draft-manifest.py <url> --id <package-id> --name <DisplayName>
+.venv\Scripts\python.exe scripts\draft-manifest.py <url> --id <package-id> --name <DisplayName>
 ```
 
 It downloads the archive and derives the digest, size, version, architecture, archive depth, entrypoints, installed size, entry count, and any runtime the package declares. It prints a manifest to standard output.
@@ -186,7 +190,7 @@ $env:DFPM_CATALOG = "catalog"
 Then validate it:
 
 ```powershell
-dfpm catalog
+.venv\Scripts\python.exe -m dfpm catalog
 ```
 
 This loads and validates every manifest in the catalog. Fix any validation errors before continuing.
@@ -195,12 +199,14 @@ Install the package through dfpm and confirm that the installed tool actually ru
 
 If a tool cannot be verified — because it requires elevation, particular hardware, or evidence you do not have — say so in the pull request rather than implying it was tested.
 
+Record the result in the pull request or review record: the artifact URL and digest, any independent digest or signature checked, the archive layout inspected, the command invoked, the observed version or help output, and any limitation that prevented a complete run. Keep this evidence out of the manifest itself; the catalog describes the package, while the review record explains why the change was approved.
+
 ### 10. Regenerate the catalog index
 
 After adding or changing a manifest, regenerate the index:
 
 ```powershell
-dfpm catalog --index > catalog\index.json
+.venv\Scripts\python.exe -m dfpm catalog --index > catalog\index.json
 ```
 
 `index.json` tells remote dfpm clients which manifests exist and which ones have changed. A new manifest that is not included in the index is invisible to clients using `dfpm sync`.
@@ -214,8 +220,8 @@ At minimum, these commands should succeed:
 ```powershell
 $env:DFPM_CATALOG = "catalog"
 
-dfpm catalog
-dfpm catalog --index > catalog\index.json
+.venv\Scripts\python.exe -m dfpm catalog
+.venv\Scripts\python.exe -m dfpm catalog --index > catalog\index.json
 ```
 
 You should also have installed the package through dfpm and confirmed that its entrypoint runs.

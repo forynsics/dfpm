@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "memprocfs",
+  "provider": "github-releases",
+  "repository": "ufrisk/MemProcFS",
+  "tag_prefix": "v",
+  "package_version": {
+    "source": "asset-name",
+    "asset": 0,
+    "regex": "^MemProcFS_files_and_binaries_v(?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)-win_x64-[0-9]+\\.zip$"
+  },
+  "assets": [
+    {
+      "name": "MemProcFS_files_and_binaries_v{release_version}.*-win_x64-*.zip",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      }
+    }
+  ]
+}

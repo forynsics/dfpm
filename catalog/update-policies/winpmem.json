@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "id": "winpmem",
+  "provider": "github-releases",
+  "repository": "Velocidex/WinPmem",
+  "tag_prefix": "v",
+  "include_prereleases": false,
+  "assets": [
+    {
+      "name": "winpmem_mini_x64_rc2.exe",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      }
+    }
+  ]
+}
