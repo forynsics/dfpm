@@ -21,7 +21,9 @@ It does not rewrite descriptions, classification, licensing, terms, commands or 
 
 The pull request is an audit record, not a recurring approval queue. Routine changes merge without a human when every policy succeeds, the established archive layout remains intact, manifest validation succeeds, and the complete test suite passes. The workflow then explicitly starts the normal test matrix and site deployment because events created by GitHub's workflow token do not recursively start other workflows.
 
-New packages and changes to update policies still require normal review. An ambiguous asset, prerelease outside an explicit policy, changed archive layout, missing entrypoint, download failure, or failed test stops without merging. If every policy-managed package is already current, the run records its evidence and exits without opening a pull request.
+New packages and changes to update policies still require normal review. An ambiguous asset, prerelease outside an explicit policy, changed archive layout, missing entrypoint or download failure leaves that package unchanged and records structured evidence, while unrelated valid updates may continue. The complete resulting catalog must still pass validation before anything merges. If validation or publication fails, nothing new is merged.
+
+The workflow maintains one `Catalog update automation failures` issue rather than opening a new issue every day. It updates that issue with the current failed packages and stages, and closes it automatically after a clean run. If every policy-managed package is already current, the run records its evidence and exits without opening a pull request.
 
 ## Adding a policy
 
@@ -110,6 +112,8 @@ Some publishers overwrite a stable download URL instead of publishing immutable,
 ```
 
 The scheduled job first makes a HEAD request. An unchanged ETag avoids downloading the ZIP. A new ETag causes the artifact to be downloaded and SHA-256 hashed. If its digest is unchanged, only the ETag cursor advances. If the bytes changed, the updater extracts the ZIP under dfpm's normal limits, reads the declared executable version, rejects version rollback, verifies every established path and recalculates the package facts before merging. The ETag is only a change detector; it is never treated as an integrity digest.
+
+Local `--apply` remains all-or-nothing by default. `--continue-on-policy-error` is an explicit unattended-maintenance mode: it retains independently valid package updates and returns structured failures for the rest. The scheduled workflow uses this mode, validates the combined result, and reports failures before publication.
 
 ## Execution policy
 

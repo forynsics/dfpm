@@ -34,6 +34,34 @@ class CatalogUpdateTests(unittest.TestCase):
             "assets": [{"name": name, "browser_download_url": f"https://github.example/{name}"}],
         }
 
+    def rolling_policy(self, *, version_path: str = "MFTECmd.exe", etag: str = '"old"') -> dict:
+        return {
+            "schema_version": 1,
+            "id": "mftecmd",
+            "provider": "rolling-url",
+            "package_version": {"source": "pe-file-version", "asset": 0, "path": version_path},
+            "assets": [
+                {
+                    "name": "MFTECmd.zip",
+                    "url": "https://publisher.example/MFTECmd.zip",
+                    "etag": etag,
+                    "platform": {"os": "windows", "arch": "x64"},
+                }
+            ],
+        }
+
+    def versioned_zip(self, version: tuple[int, int, int, int], *, executable: str = "MFTECmd.exe") -> Path:
+        artifact = self.base / f"{executable}.zip"
+        major, minor, patch, revision = version
+        resource = updater.VERSION_SIGNATURE + b"\0" * 4 + struct.pack(
+            "<II", (major << 16) | minor, (patch << 16) | revision
+        )
+        with zipfile.ZipFile(artifact, "w") as archive:
+            archive.writestr(executable, b"MZ" + resource)
+            archive.writestr("MFTECmd.runtimeconfig.json", b"{}")
+            archive.writestr("MFTECmd.deps.json", b"{}")
+        return artifact
+
     def test_a_current_release_changes_nothing(self) -> None:
         with mock.patch.object(
             updater,
@@ -170,6 +198,41 @@ class CatalogUpdateTests(unittest.TestCase):
         self.assertEqual(result, 1)
         self.assertEqual((self.catalog / "yara.json").read_bytes(), original)
 
+    def test_partial_mode_keeps_successes_and_reports_failures(self) -> None:
+        policies = self.base / "policies"
+        policies.mkdir()
+        (policies / "a.json").write_text(json.dumps(self.policy), encoding="utf-8")
+        (policies / "b.json").write_text(json.dumps(dict(self.policy, id="broken")), encoding="utf-8")
+        evidence = self.base / "evidence.json"
+
+        def attempt(_catalog: Path, policy: dict, *, apply: bool) -> dict:
+            if policy["id"] == "broken":
+                raise updater.UpdatePolicyError("broken", "release-discovery", "publisher unavailable")
+            manifest_path = self.catalog / "yara.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["description"] = "valid independent update"
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            return {"id": "yara", "status": "updated"}
+
+        with mock.patch.object(updater, "update_one", side_effect=attempt), contextlib.redirect_stdout(io.StringIO()):
+            result = updater.main(
+                [
+                    "--catalog",
+                    str(self.catalog),
+                    "--policies",
+                    str(policies),
+                    "--apply",
+                    "--continue-on-policy-error",
+                    "--evidence",
+                    str(evidence),
+                ]
+            )
+        reports = json.loads(evidence.read_text(encoding="utf-8"))["packages"]
+        self.assertEqual(result, 0)
+        self.assertEqual(json.loads((self.catalog / "yara.json").read_text())["description"], "valid independent update")
+        self.assertTrue((self.catalog / "index.json").exists())
+        self.assertEqual([item["status"] for item in reports], ["updated", "failed"])
+
     def test_every_github_release_download_has_an_update_policy(self) -> None:
         policies = {path.stem for path in (REPOSITORY / "catalog" / "update-policies").glob("*.json")}
         missing = []
@@ -261,6 +324,88 @@ class CatalogUpdateTests(unittest.TestCase):
             report = updater.update_one(self.catalog, policy, apply=False)
         self.assertEqual(report["status"], "current")
         download.assert_not_called()
+
+    def test_changed_etag_with_same_digest_only_advances_cursor(self) -> None:
+        shutil.copyfile(REPOSITORY / "catalog" / "mftecmd.json", self.catalog / "mftecmd.json")
+        manifest_before = (self.catalog / "mftecmd.json").read_bytes()
+        policy_path = self.base / "policy.json"
+        policy = self.rolling_policy()
+        policy_path.write_text(json.dumps(policy), encoding="utf-8")
+        digest = json.loads(manifest_before)["builds"][0]["package"]["sha256"]
+
+        with mock.patch.object(updater, "rolling_metadata", return_value={"etag": '"new"'}), mock.patch.object(
+            updater, "download", return_value=(digest, 123)
+        ):
+            report = updater.update_one(self.catalog, policy, apply=True, policy_path=policy_path)
+        self.assertEqual(report["status"], "current")
+        self.assertTrue(report["state_updated"])
+        self.assertEqual((self.catalog / "mftecmd.json").read_bytes(), manifest_before)
+        self.assertEqual(json.loads(policy_path.read_text())["assets"][0]["etag"], '"new"')
+
+    def test_republished_same_version_refreshes_digest_and_layout_facts(self) -> None:
+        shutil.copyfile(REPOSITORY / "catalog" / "mftecmd.json", self.catalog / "mftecmd.json")
+        policy_path = self.base / "policy.json"
+        policy = self.rolling_policy()
+        policy_path.write_text(json.dumps(policy), encoding="utf-8")
+        artifact = self.versioned_zip((2026, 5, 0, 0))
+
+        def provide(_url: str, target: Path) -> tuple[str, int]:
+            shutil.copyfile(artifact, target)
+            return "d" * 64, artifact.stat().st_size
+
+        with mock.patch.object(updater, "rolling_metadata", return_value={"etag": '"new"'}), mock.patch.object(
+            updater, "download", side_effect=provide
+        ):
+            report = updater.update_one(self.catalog, policy, apply=True, policy_path=policy_path)
+        build = json.loads((self.catalog / "mftecmd.json").read_text())["builds"][0]
+        self.assertEqual(report["status"], "updated")
+        self.assertEqual(build["version"], "2026.5.0.0")
+        self.assertEqual(build["package"]["sha256"], "d" * 64)
+        self.assertEqual(build["install"]["entries"], 3)
+
+    def test_rolling_version_rollback_is_rejected(self) -> None:
+        shutil.copyfile(REPOSITORY / "catalog" / "mftecmd.json", self.catalog / "mftecmd.json")
+        artifact = self.versioned_zip((2025, 12, 0, 0))
+        policy = self.rolling_policy()
+
+        def provide(_url: str, target: Path) -> tuple[str, int]:
+            shutil.copyfile(artifact, target)
+            return "e" * 64, artifact.stat().st_size
+
+        with mock.patch.object(updater, "rolling_metadata", return_value={"etag": '"new"'}), mock.patch.object(
+            updater, "download", side_effect=provide
+        ), self.assertRaises(updater.UpdatePolicyError) as caught:
+            updater.update_one(self.catalog, policy, apply=False)
+        self.assertEqual(caught.exception.stage, "version")
+
+    def test_corrupt_rolling_zip_has_structured_failure(self) -> None:
+        shutil.copyfile(REPOSITORY / "catalog" / "mftecmd.json", self.catalog / "mftecmd.json")
+
+        def provide(_url: str, target: Path) -> tuple[str, int]:
+            target.write_bytes(b"not a zip")
+            return "f" * 64, target.stat().st_size
+
+        with mock.patch.object(updater, "rolling_metadata", return_value={"etag": '"new"'}), mock.patch.object(
+            updater, "download", side_effect=provide
+        ), self.assertRaises(updater.UpdatePolicyError) as caught:
+            updater.update_one(self.catalog, self.rolling_policy(), apply=False)
+        self.assertEqual(caught.exception.stage, "artifact-inspection")
+        self.assertIn("valid ZIP", str(caught.exception))
+
+    def test_missing_established_entrypoint_is_rejected(self) -> None:
+        shutil.copyfile(REPOSITORY / "catalog" / "mftecmd.json", self.catalog / "mftecmd.json")
+        artifact = self.versioned_zip((2026, 6, 0, 0), executable="Helper.exe")
+
+        def provide(_url: str, target: Path) -> tuple[str, int]:
+            shutil.copyfile(artifact, target)
+            return "1" * 64, artifact.stat().st_size
+
+        with mock.patch.object(updater, "rolling_metadata", return_value={"etag": '"new"'}), mock.patch.object(
+            updater, "download", side_effect=provide
+        ), self.assertRaises(updater.UpdatePolicyError) as caught:
+            updater.update_one(self.catalog, self.rolling_policy(version_path="Helper.exe"), apply=False)
+        self.assertEqual(caught.exception.stage, "layout-validation")
+        self.assertIn("MFTECmd.exe", str(caught.exception))
 
 
 if __name__ == "__main__":

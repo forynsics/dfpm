@@ -8,6 +8,7 @@ on:
 permissions:
   actions: write
   contents: write
+  issues: write
   pull-requests: write
 
 concurrency:
@@ -33,14 +34,17 @@ jobs:
           python -m pip install --editable .
 
       - name: Apply policy-conforming updates
+        id: apply
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: python scripts/update-catalog.py --apply --evidence catalog-update-evidence.json
+        run: python scripts/update-catalog.py --apply --continue-on-policy-error --evidence catalog-update-evidence.json
 
       - name: Validate the resulting catalog
+        id: validate
         run: python -m unittest discover -s tests
 
       - name: Publish validated catalog changes
+        id: publish
         if: success()
         shell: pwsh
         env:
@@ -70,6 +74,61 @@ jobs:
           gh pr merge $pullRequest --squash --delete-branch --match-head-commit $headCommit
           gh workflow run tests.yml --ref main
           gh workflow run pages.yml --ref main
+
+      - name: Maintain catalog automation failure issue
+        if: always()
+        continue-on-error: true
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          APPLY_OUTCOME: ${{ steps.apply.outcome }}
+          VALIDATE_OUTCOME: ${{ steps.validate.outcome }}
+          PUBLISH_OUTCOME: ${{ steps.publish.outcome }}
+        run: |
+          $title = "Catalog update automation failures"
+          $failures = @()
+          if (Test-Path catalog-update-evidence.json) {
+            $evidence = Get-Content catalog-update-evidence.json -Raw | ConvertFrom-Json
+            foreach ($package in @($evidence.packages | Where-Object status -eq "failed")) {
+              $message = ([string]$package.failure.message) -replace "[\r\n]+", " "
+              if ($message.Length -gt 500) { $message = $message.Substring(0, 500) + "..." }
+              $failures += "- ``$($package.id)`` at ``$($package.failure.stage)``: $message"
+            }
+          }
+          foreach ($step in @(
+            @{ Name = "updater"; Outcome = $env:APPLY_OUTCOME },
+            @{ Name = "catalog validation"; Outcome = $env:VALIDATE_OUTCOME },
+            @{ Name = "publication"; Outcome = $env:PUBLISH_OUTCOME }
+          )) {
+            if ($step.Outcome -in @("failure", "cancelled")) {
+              $failures += "- Workflow $($step.Name) step ended with ``$($step.Outcome)``."
+            }
+          }
+
+          $existing = @(gh issue list --state open --limit 100 --json number,title | ConvertFrom-Json |
+            Where-Object title -eq $title)[0]
+          if ($failures.Count -gt 0) {
+            $bodyPath = Join-Path $env:RUNNER_TEMP "catalog-update-failures.md"
+            @(
+              "The unattended catalog updater needs attention.",
+              "",
+              "Latest run: $env:RUN_URL",
+              "",
+              "## Current failures",
+              ""
+            ) + $failures + @(
+              "",
+              "Successful package updates remain eligible for independent validation and publication. This issue updates in place and closes automatically after a clean run."
+            ) | Set-Content -Path $bodyPath -Encoding utf8
+            if ($existing) {
+              gh issue edit $existing.number --body-file $bodyPath
+            } else {
+              gh issue create --title $title --body-file $bodyPath
+            }
+          } elseif ($existing) {
+            gh issue close $existing.number --comment "Catalog update automation recovered successfully. $env:RUN_URL"
+          }
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()

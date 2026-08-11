@@ -23,6 +23,7 @@ from pathlib import Path
 
 from dfpm.archive import ArchiveLimits, extract_zip
 from dfpm.catalog import build_index, version_key
+from dfpm.errors import DfpmError
 from dfpm.manifest import STANDALONE_FILE, Tool
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -48,6 +49,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--policies", type=Path, default=POLICIES)
     parser.add_argument("--package", action="append", default=[], help="Only check this package id; repeatable.")
     parser.add_argument("--apply", action="store_true", help="Write policy-conforming updates and regenerate the index.")
+    parser.add_argument(
+        "--continue-on-policy-error",
+        action="store_true",
+        help="Keep valid package updates when another policy fails; intended for unattended maintenance.",
+    )
     parser.add_argument("--evidence", type=Path, help="Write a JSON report of checks and proposed changes.")
     args = parser.parse_args(argv)
 
@@ -92,6 +98,12 @@ def main(argv: list[str] | None = None) -> int:
                 "status": "failed",
                 "failure": {"stage": "local-catalog", "message": str(error)},
             }
+        except DfpmError as error:
+            report = {
+                "id": policy["id"],
+                "status": "failed",
+                "failure": {"stage": "artifact-inspection", "message": str(error)},
+            }
         reports.append(report)
         changed |= report["status"] == "updated"
 
@@ -99,14 +111,14 @@ def main(argv: list[str] | None = None) -> int:
         missing = ", ".join(sorted(wanted - {item["id"] for item in reports}))
         raise SystemExit(f"No update policy for: {missing}")
     failed = any(report["status"] == "failed" for report in reports)
-    if args.apply and failed:
+    if args.apply and failed and not args.continue_on_policy_error:
         for path, content in originals.items():
             path.write_bytes(content)
         for report in reports:
             if report["status"] == "updated":
                 report["status"] = "available"
                 report["not_applied"] = "another policy failed"
-    if args.apply and changed and not failed:
+    if args.apply and changed and (not failed or args.continue_on_policy_error):
         (args.catalog / "index.json").write_text(json.dumps(build_index(args.catalog), indent=2) + "\n", encoding="utf-8")
     document = {"schema_version": 1, "packages": reports}
     rendered = json.dumps(document, indent=2) + "\n"
@@ -114,7 +126,7 @@ def main(argv: list[str] | None = None) -> int:
         args.evidence.parent.mkdir(parents=True, exist_ok=True)
         args.evidence.write_text(rendered, encoding="utf-8")
     print(rendered, end="")
-    return 1 if failed else 0
+    return 1 if failed and not args.continue_on_policy_error else 0
 
 
 def load_policy(path: Path) -> dict:
@@ -276,7 +288,15 @@ def update_rolling_one(catalog: Path, policy: dict, *, apply: bool, policy_path:
             if digest == previous["package"]["sha256"]:
                 continue
 
-            version = artifact_pe_version(policy, target, previous)
+            try:
+                version = artifact_pe_version(policy, target, previous)
+            except DfpmError as error:
+                raise UpdatePolicyError(
+                    policy["id"],
+                    "artifact-inspection",
+                    str(error),
+                    asset=asset_policy["name"],
+                ) from error
             if version_key(version) < version_key(previous["version"]):
                 raise UpdatePolicyError(
                     policy["id"],
@@ -285,16 +305,24 @@ def update_rolling_one(catalog: Path, policy: dict, *, apply: bool, policy_path:
                     old=previous["version"],
                     new=version,
                 )
-            refreshed = refreshed_build(
-                previous,
-                target,
-                asset_policy["url"],
-                digest,
-                size,
-                previous["version"],
-                version,
-                policy["id"],
-            )
+            try:
+                refreshed = refreshed_build(
+                    previous,
+                    target,
+                    asset_policy["url"],
+                    digest,
+                    size,
+                    previous["version"],
+                    version,
+                    policy["id"],
+                )
+            except DfpmError as error:
+                raise UpdatePolicyError(
+                    policy["id"],
+                    "artifact-inspection",
+                    str(error),
+                    asset=asset_policy["name"],
+                ) from error
             proposed_builds[current["builds"].index(previous)] = refreshed
             manifest_changed = True
             report["discovered"] = version
