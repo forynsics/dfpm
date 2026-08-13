@@ -9,7 +9,6 @@ permissions:
   actions: write
   contents: write
   issues: write
-  pull-requests: write
 
 concurrency:
   group: catalog-updates
@@ -54,24 +53,15 @@ jobs:
             Write-Host "Catalog is already current."
             exit 0
           }
-          $branch = "automation/catalog-updates"
           git config user.name "dfpm catalog updater"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -B $branch
           git add catalog
           git commit -m "Update policy-managed catalog entries"
-          $headCommit = git rev-parse HEAD
-          git push --force origin "HEAD:refs/heads/$branch"
-          $existing = gh pr list --head $branch --base main --state open --json number --jq '.[0].number'
-          if ($existing) {
-            Write-Host "Updated existing pull request #$existing."
-            $pullRequest = $existing
-          } else {
-            gh pr create --base main --head $branch --title "Update policy-managed catalog entries" --body "Automated update from the constrained catalog updater. The workflow recomputed artifact facts, validated established layout invariants, and passed the full test suite before merging. The pull request remains as the audit record."
-            $pullRequest = gh pr list --head $branch --base main --state open --json number --jq '.[0].number'
-          }
-          if (-not $pullRequest) { throw "Could not identify the catalog update pull request." }
-          gh pr merge $pullRequest --squash --delete-branch --match-head-commit $headCommit
+          # Straight to main, and the push must fast-forward. A rejection means
+          # main moved after this run read it, so these facts were computed
+          # against a catalog that no longer exists. Failing is right: the next
+          # run recomputes them from whatever main holds by then.
+          git push origin HEAD:main
           gh workflow run tests.yml --ref main
           gh workflow run pages.yml --ref main
 

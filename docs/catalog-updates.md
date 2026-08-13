@@ -14,16 +14,16 @@ The `catalog updates` workflow runs daily and can also be started manually. It:
 6. loads the proposed manifest through dfpm's normal validation;
 7. regenerates the catalog index;
 8. runs the complete test suite;
-9. writes validated changes to the automation-owned `automation/catalog-updates` branch, opens or updates a pull request, and merges that exact validated commit; and
+9. commits the validated changes and pushes them to `main`; and
 10. uploads the proposed catalog and evidence as a workflow artifact.
 
 It does not rewrite descriptions, classification, licensing, terms, commands or project provenance. A renamed or missing asset, ambiguous match, changed archive layout, disappeared entrypoint, unsupported artifact format, invalid manifest, or failing test stops the job rather than being guessed through. The evidence report includes the failed stage, patterns, available assets and inspected release tags where applicable. A failed multi-package apply restores manifests already changed during that invocation and does not regenerate the index.
 
-The pull request is an audit record, not a recurring approval queue. Routine changes merge without a human when every policy succeeds, the established archive layout remains intact, manifest validation succeeds, and the complete test suite passes. The workflow then explicitly starts the normal test matrix and site deployment because events created by GitHub's workflow token do not recursively start other workflows.
+Routine changes land without a human when every policy succeeds, the established archive layout remains intact, manifest validation succeeds, and the complete test suite passes. The commit is the audit record: it carries only what the policy recomputed, and the run that produced it holds the evidence report. The workflow then explicitly starts the normal test matrix and site deployment because events created by GitHub's workflow token do not recursively start other workflows.
 
-New packages and changes to update policies still require normal review. An ambiguous asset, prerelease outside an explicit policy, changed archive layout, missing entrypoint or download failure leaves that package unchanged and records structured evidence, while unrelated valid updates may continue. The complete resulting catalog must still pass validation before anything merges. If validation or publication fails, nothing new is merged.
+New packages and changes to update policies still require normal review. An ambiguous asset, prerelease outside an explicit policy, changed archive layout, missing entrypoint or download failure leaves that package unchanged and records structured evidence, while unrelated valid updates may continue. The complete resulting catalog must still pass validation before anything is pushed. If validation or publication fails, nothing new lands.
 
-The workflow maintains one `Catalog update automation failures` issue rather than opening a new issue every day. It updates that issue with the current failed packages and stages, and closes it automatically after a clean run. If every policy-managed package is already current, the run records its evidence and exits without opening a pull request.
+The workflow maintains one `Catalog update automation failures` issue rather than opening a new issue every day. It updates that issue with the current failed packages and stages, and closes it automatically after a clean run. If every policy-managed package is already current, the run records its evidence and exits without committing anything.
 
 ## Adding a policy
 
