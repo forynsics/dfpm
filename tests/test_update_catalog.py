@@ -233,6 +233,46 @@ class CatalogUpdateTests(unittest.TestCase):
         self.assertTrue((self.catalog / "index.json").exists())
         self.assertEqual([item["status"] for item in reports], ["updated", "failed"])
 
+    def test_applied_updates_are_written_with_lf_endings(self) -> None:
+        # The updater runs unattended on Windows, where text-mode writes would
+        # turn every newline into CRLF. The index hashes each catalog file's
+        # bytes, so a translated manifest hashes differently from the LF copy
+        # the repository stores, and the proposed change is unreproducible.
+        policies = self.base / "policies"
+        policies.mkdir()
+        (policies / "yara.json").write_text(json.dumps(self.policy), encoding="utf-8")
+        policy_path = self.base / "rolling.json"
+        policy_path.write_text(json.dumps(self.rolling_policy()), encoding="utf-8")
+        shutil.copyfile(REPOSITORY / "catalog" / "mftecmd.json", self.catalog / "mftecmd.json")
+        artifact = self.versioned_zip((2026, 5, 0, 0))
+
+        def provide(_url: str, target: Path) -> tuple[str, int]:
+            shutil.copyfile(artifact, target)
+            return "d" * 64, artifact.stat().st_size
+
+        with mock.patch.object(updater, "rolling_metadata", return_value={"etag": '"new"'}), mock.patch.object(
+            updater, "download", side_effect=provide
+        ):
+            updater.update_one(self.catalog, updater.load_policy(policy_path), apply=True, policy_path=policy_path)
+        evidence = self.base / "evidence.json"
+        with mock.patch.object(
+            updater, "update_one", return_value={"id": "yara", "status": "updated"}
+        ), contextlib.redirect_stdout(io.StringIO()):
+            updater.main(
+                [
+                    "--catalog",
+                    str(self.catalog),
+                    "--policies",
+                    str(policies),
+                    "--apply",
+                    "--evidence",
+                    str(evidence),
+                ]
+            )
+
+        written = [self.catalog / "mftecmd.json", policy_path, evidence, self.catalog / "index.json"]
+        self.assertEqual([path.name for path in written if b"\r\n" in path.read_bytes()], [])
+
     def test_every_github_release_download_has_an_update_policy(self) -> None:
         policies = {path.stem for path in (REPOSITORY / "catalog" / "update-policies").glob("*.json")}
         missing = []

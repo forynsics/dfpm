@@ -33,6 +33,17 @@ USER_AGENT = "dfpm-catalog-updater/1"
 VERSION_SIGNATURE = b"\xbd\x04\xef\xfe"
 
 
+def write_json(path: Path, document: object) -> None:
+    """Write a JSON document with LF endings whatever platform this runs on.
+
+    The index records a digest of each catalog file's bytes, so line endings
+    are part of what is hashed. Text mode on Windows would translate every
+    newline to CRLF, producing an entry that hashes differently from the LF
+    copy the repository stores and that nobody else can reproduce.
+    """
+    path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8", newline="\n")
+
+
 class UpdatePolicyError(SystemExit):
     """A policy stopped safely, with structured evidence for its operator."""
 
@@ -119,12 +130,12 @@ def main(argv: list[str] | None = None) -> int:
                 report["status"] = "available"
                 report["not_applied"] = "another policy failed"
     if args.apply and changed and (not failed or args.continue_on_policy_error):
-        (args.catalog / "index.json").write_text(json.dumps(build_index(args.catalog), indent=2) + "\n", encoding="utf-8")
+        write_json(args.catalog / "index.json", build_index(args.catalog))
     document = {"schema_version": 1, "packages": reports}
     rendered = json.dumps(document, indent=2) + "\n"
     if args.evidence:
         args.evidence.parent.mkdir(parents=True, exist_ok=True)
-        args.evidence.write_text(rendered, encoding="utf-8")
+        write_json(args.evidence, document)
     print(rendered, end="")
     return 1 if failed and not args.continue_on_policy_error else 0
 
@@ -236,11 +247,11 @@ def update_one(catalog: Path, policy: dict, *, apply: bool, policy_path: Path | 
     proposed["builds"] = builds
     with tempfile.TemporaryDirectory(prefix="dfpm-policy-check-") as temporary:
         candidate = Path(temporary) / manifest_path.name
-        candidate.write_text(json.dumps(proposed, indent=2) + "\n", encoding="utf-8")
+        write_json(candidate, proposed)
         Tool.load(candidate)
     report["status"] = "updated" if apply else "available"
     if apply:
-        manifest_path.write_text(json.dumps(proposed, indent=2) + "\n", encoding="utf-8")
+        write_json(manifest_path, proposed)
     return report
 
 
@@ -332,15 +343,15 @@ def update_rolling_one(catalog: Path, policy: dict, *, apply: bool, policy_path:
         proposed["builds"] = proposed_builds
         with tempfile.TemporaryDirectory(prefix="dfpm-policy-check-") as temporary:
             candidate = Path(temporary) / manifest_path.name
-            candidate.write_text(json.dumps(proposed, indent=2) + "\n", encoding="utf-8")
+            write_json(candidate, proposed)
             Tool.load(candidate)
         report["status"] = "updated" if apply else "available"
         if apply:
-            manifest_path.write_text(json.dumps(proposed, indent=2) + "\n", encoding="utf-8")
+            write_json(manifest_path, proposed)
     if apply and policy_changed:
         if policy_path is None:
             raise UpdatePolicyError(policy["id"], "policy-state", "Cannot persist rolling URL state without a policy path")
-        policy_path.write_text(json.dumps(policy, indent=2) + "\n", encoding="utf-8")
+        write_json(policy_path, policy)
         report["state_updated"] = True
     return report
 
