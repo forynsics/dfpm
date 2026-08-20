@@ -28,8 +28,8 @@
     {
       "file": "chainsaw.json",
       "id": "chainsaw",
-      "version": "2.16.3",
-      "sha256": "30bd8af96a7af5a881b355437652c7bf2c9c0fecab05c4528bc9902f440fcd14"
+      "version": "2.16.4",
+      "sha256": "4f3c33c67f853f2468a9c0a0b6b06acc7755f9495519672094ed714f332fd1ae"
     },
     {
       "file": "evtxecmd.json",
