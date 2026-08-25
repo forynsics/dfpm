@@ -184,8 +184,8 @@
     {
       "file": "suzaku.json",
       "id": "suzaku",
-      "version": "2.0.0",
-      "sha256": "895349b958d9f3f2f10f651f4a9ac99b8036477b99bb034de3798466fb579eda"
+      "version": "2.0.1",
+      "sha256": "827b6b36cfa5224de8b7a55a7feabe1bb904caac4dec6adbad2cb3873606f787"
     },
     {
       "file": "takajo.json",
