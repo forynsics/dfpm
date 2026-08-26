@@ -28,8 +28,8 @@
     {
       "file": "chainsaw.json",
       "id": "chainsaw",
-      "version": "2.16.4",
-      "sha256": "4f3c33c67f853f2468a9c0a0b6b06acc7755f9495519672094ed714f332fd1ae"
+      "version": "2.16.5",
+      "sha256": "d9ca7b708e26269394c3ffbf3a53de64dff7ab52b0cd9c263839ff34f710b108"
     },
     {
       "file": "evtxecmd.json",
@@ -88,8 +88,8 @@
     {
       "file": "memprocfs.json",
       "id": "memprocfs",
-      "version": "5.18.5",
-      "sha256": "d6c3ebb5613d40e574c0d8414f184275187049f152e3487fa06ceb53785f8893"
+      "version": "5.18.6",
+      "sha256": "d5acc5afd3e1e5edeaf94a8b1ab3165495526b01523d2055263128e6f42bc34c"
     },
     {
       "file": "mftecmd.json",

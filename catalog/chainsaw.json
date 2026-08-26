@@ -31,20 +31,20 @@
   },
   "builds": [
     {
-      "version": "2.16.4",
+      "version": "2.16.5",
       "platform": {
         "os": "windows",
         "arch": "x64"
       },
       "package": {
-        "url": "https://github.com/WithSecureLabs/chainsaw/releases/download/v2.16.4/chainsaw_x86_64-pc-windows-msvc.zip",
-        "sha256": "d6020b0bdbf7b295fbb280ad153f3a1677026f04d9dc95e9dbdf08ec48c39d56",
-        "size": 3356116
+        "url": "https://github.com/WithSecureLabs/chainsaw/releases/download/v2.16.5/chainsaw_x86_64-pc-windows-msvc.zip",
+        "sha256": "f47a724ea61547056a0128f201d160c0c4a81c02c481c80bd3c138669c44989a",
+        "size": 3366729
       },
       "install": {
         "strategy": "portable-zip",
         "strip_components": 1,
-        "extracted_size": 9412935,
+        "extracted_size": 9459527,
         "entries": 5,
         "entrypoints": [
           {
