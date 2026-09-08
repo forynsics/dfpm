@@ -28,20 +28,20 @@
   },
   "builds": [
     {
-      "version": "5.18.8",
+      "version": "5.18.9",
       "platform": {
         "os": "windows",
         "arch": "x64"
       },
       "package": {
-        "url": "https://github.com/ufrisk/MemProcFS/releases/download/v5.18/MemProcFS_files_and_binaries_v5.18.8-win_x64-20260906.zip",
-        "sha256": "fece966ef5f5222ab336b78a2eb623d3f996cd8d8e19bd95d8f1caa0099121d6",
-        "size": 6684210
+        "url": "https://github.com/ufrisk/MemProcFS/releases/download/v5.18/MemProcFS_files_and_binaries_v5.18.9-win_x64-20260907.zip",
+        "sha256": "c74456f753343a645a9ad1d0535db07e724779f2a78de41b7ce8c954a9a437d6",
+        "size": 6694894
       },
       "install": {
         "strategy": "portable-zip",
         "strip_components": 0,
-        "extracted_size": 14649385,
+        "extracted_size": 14669563,
         "entries": 45,
         "entrypoints": [
           {
