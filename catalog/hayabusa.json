@@ -29,25 +29,25 @@
   },
   "builds": [
     {
-      "version": "4.0.0",
+      "version": "4.1.0",
       "platform": {
         "os": "windows",
         "arch": "x64"
       },
       "package": {
-        "url": "https://github.com/Yamato-Security/hayabusa/releases/download/v4.0.0/hayabusa-4.0.0-win-x64.zip",
-        "sha256": "6e173c9fd1fa8ee4d95931ea1e1997723330c4779f4f83a96dcd3f1b00d31ff5",
-        "size": 44165228
+        "url": "https://github.com/Yamato-Security/hayabusa/releases/download/v4.1.0/hayabusa-4.1.0-win-x64.zip",
+        "sha256": "4d304cc5baaa750ed08cc24b7b89c58ea058740c7e344502d7b82554637543a8",
+        "size": 44765237
       },
       "install": {
         "strategy": "portable-zip",
         "strip_components": 0,
-        "extracted_size": 56053054,
-        "entries": 5077,
+        "extracted_size": 56725638,
+        "entries": 5092,
         "entrypoints": [
           {
             "name": "hayabusa",
-            "path": "hayabusa-4.0.0-win-x64.exe"
+            "path": "hayabusa-4.1.0-win-x64.exe"
           }
         ]
       },
@@ -63,25 +63,25 @@
       ]
     },
     {
-      "version": "4.0.0",
+      "version": "4.1.0",
       "platform": {
         "os": "linux",
         "arch": "x64"
       },
       "package": {
-        "url": "https://github.com/Yamato-Security/hayabusa/releases/download/v4.0.0/hayabusa-4.0.0-lin-x64-gnu.zip",
-        "sha256": "1137e27c795e83f8837c962f2136cf1634a67a655d7ba8efa8b2d38a33ba09b4",
-        "size": 46242571
+        "url": "https://github.com/Yamato-Security/hayabusa/releases/download/v4.1.0/hayabusa-4.1.0-lin-x64-gnu.zip",
+        "sha256": "ed2c4595f95b8e765d37f392212587304ce89ed7cfb6682b425a96d126ed67eb",
+        "size": 46761249
       },
       "install": {
         "strategy": "portable-zip",
         "strip_components": 0,
-        "extracted_size": 60813076,
-        "entries": 5043,
+        "extracted_size": 61407877,
+        "entries": 5092,
         "entrypoints": [
           {
             "name": "hayabusa",
-            "path": "hayabusa-4.0.0-lin-x64-gnu"
+            "path": "hayabusa-4.1.0-lin-x64-gnu"
           }
         ]
       },
@@ -97,25 +97,25 @@
       ]
     },
     {
-      "version": "4.0.0",
+      "version": "4.1.0",
       "platform": {
         "os": "macos",
         "arch": "arm64"
       },
       "package": {
-        "url": "https://github.com/Yamato-Security/hayabusa/releases/download/v4.0.0/hayabusa-4.0.0-mac-aarch64.zip",
-        "sha256": "64e913f623c57fc2247e22b61c63fac0493b834f13985dfe8f7e73a301446718",
-        "size": 45351117
+        "url": "https://github.com/Yamato-Security/hayabusa/releases/download/v4.1.0/hayabusa-4.1.0-mac-aarch64.zip",
+        "sha256": "08a65fc7f65225fbcd3daa2cc82b59f0a099ab862d7a2252fca3e2f02077255e",
+        "size": 45943739
       },
       "install": {
         "strategy": "portable-zip",
         "strip_components": 0,
-        "extracted_size": 56411046,
-        "entries": 5077,
+        "extracted_size": 57149662,
+        "entries": 5092,
         "entrypoints": [
           {
             "name": "hayabusa",
-            "path": "hayabusa-4.0.0-mac-aarch64"
+            "path": "hayabusa-4.1.0-mac-aarch64"
           }
         ]
       },
