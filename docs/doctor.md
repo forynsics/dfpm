@@ -22,6 +22,7 @@ dfpm doctor --repair --yes
 Repairs are deliberately narrow:
 
 - missing, stale and obsolete dfpm-owned command shortcuts are reconciled;
+- on Linux, execute permission is restored to a recorded entrypoint that has lost it, and only to files the install record names inside that package's own directory;
 - a state record is forgotten when its recorded installation directory no longer exists;
 - install and catalog staging directories untouched for at least 24 hours are removed;
 - a previous catalog snapshot is restored when an interrupted directory swap left no active catalog;

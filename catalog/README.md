@@ -22,7 +22,7 @@ The process below describes doing that work manually.
 
 The complete field reference is [docs/manifest-v1.md](../docs/manifest-v1.md). Read it once; you will not need to reread it for every entry.
 
-Review and first execution should happen in a disposable Windows VM or Windows Sandbox, not on a forensic workstation or a machine holding case evidence. Take a clean snapshot before downloading the artifact, keep the review environment free of credentials and sensitive data, and discard or restore it afterwards. The first run is the point of least assurance: the manifest is being created precisely because these bytes have not yet been vouched for by this catalog.
+Review and first execution should happen in a disposable environment matching the build — a Windows VM or Windows Sandbox for a Windows build, a throwaway Linux container or VM for a Linux one — not on a forensic workstation or a machine holding case evidence. Take a clean snapshot before downloading the artifact, keep the review environment free of credentials and sensitive data, and discard or restore it afterwards. The first run is the point of least assurance: the manifest is being created precisely because these bytes have not yet been vouched for by this catalog.
 
 The fastest way to begin is to copy an existing manifest with a similar shape and edit it. `yara.json` is a small tool with two entrypoints and no runtime dependency. `hayabusa.json` covers three platforms in one manifest. `mftecmd.json` is a single Windows build that needs the .NET runtime.
 

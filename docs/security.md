@@ -17,7 +17,8 @@ What dfpm guarantees, and what it does not.
 The digest already settles what the bytes are, so these rules are about keeping an archive inside the directory it was granted and failing readably instead of filling a disk. Any entry breaking one of them fails the whole install before anything is installed:
 
 - No absolute paths, parent traversal, drive letters or alternate data streams. dfpm builds each destination path itself rather than delegating it, because the standard library silently rewrites a `..` component instead of refusing it.
-- No symbolic links, device files or other non-regular entries.
+- No symbolic links, hard links, device files or other non-regular entries, in ZIP and tar archives alike.
+- On Linux, execute permission comes from the reviewed manifest's entrypoints and from the archive's own execute bits, granted only where read permission already is. An archive never makes a file setuid, setgid or writable by everyone.
 - No encrypted entries, whose contents cannot be reviewed.
 - No reserved Windows device names, and no path component ending in a space or a dot.
 - No duplicate paths, and none differing only by capitalisation, which a case-insensitive filesystem would merge.

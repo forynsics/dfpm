@@ -28,7 +28,7 @@ bin\                           Command shortcuts
 state\packages\                Records of what was installed
 ```
 
-On Windows these sit under `%LOCALAPPDATA%\dfpm` by default. `dfpm paths` prints the real locations, `dfpm config set root <dir>` saves a different root for future commands, and `--root <dir>` overrides it for one command. Changing the setting does not move an existing installation.
+On Windows these sit under `%LOCALAPPDATA%\dfpm` by default, and on Linux under `~/.local/share/dfpm`. `dfpm paths` prints the real locations, `dfpm config set root <dir>` saves a different root for future commands, and `--root <dir>` overrides it for one command. Changing the setting does not move an existing installation.
 
 ## The public site
 

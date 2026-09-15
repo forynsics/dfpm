@@ -26,15 +26,25 @@ yara -> C:\Users\you\AppData\Local\dfpm\tools\yara\4.5.5\yara64.exe
             or add C:\Users\you\AppData\Local\dfpm\bin to your PATH yourself.
 ```
 
+On Linux the shortcut is a small shell script named exactly like the command, with no extension: `~/.local/share/dfpm/bin/yara`.
+
 ## Where a tool runs from
 
 A command launches from the directory holding its executable rather than from wherever you happen to be standing, so a tool that keeps its rules, maps or configuration beside itself finds them from any working directory. A package can name a different directory if it expects one, and `dfpm which` shows it.
 
 ## Putting dfpm's bin directory on PATH
 
-The second option. `dfpm paths` shows where it is. Use the Windows *Environment Variables* dialog rather than `setx`, which silently truncates PATH at 1024 characters and has wrecked a lot of environments. Newly opened terminals pick up the change.
+The second option. `dfpm paths` shows where it is.
 
-Putting it first means dfpm's copy of a tool wins over any other copy on the machine, which is usually what you want from a toolchain manager but does mean a `yara` installed by something else is shadowed. Windows scans PATH left to right and, within a directory, tries extensions in `PATHEXT` order — where `.EXE` comes before `.CMD` — so another tool's `yara.exe` earlier on PATH beats dfpm's `yara.cmd`. `dfpm which` reports when that is happening.
+On Windows, use the *Environment Variables* dialog rather than `setx`, which silently truncates PATH at 1024 characters and has wrecked a lot of environments. Newly opened terminals pick up the change.
+
+On Linux, add it in your shell's startup file — `~/.profile` or `~/.bashrc` for bash, `~/.zshrc` for zsh — using the directory `dfpm paths` printed:
+
+```sh
+export PATH="$HOME/.local/share/dfpm/bin:$PATH"
+```
+
+Putting it first means dfpm's copy of a tool wins over any other copy on the machine, which is usually what you want from a toolchain manager but does mean a `yara` installed by something else is shadowed. A Linux shell takes the first directory on PATH holding an executable of that name. Windows scans PATH left to right too, but within a directory tries extensions in `PATHEXT` order — where `.EXE` comes before `.CMD` — so another tool's `yara.exe` earlier on PATH beats dfpm's `yara.cmd`. `dfpm which` reports when either is happening.
 
 The third option is to run the full path `dfpm which` prints, which is what the command shortcut does anyway.
 
@@ -70,9 +80,15 @@ The package is installed but cannot be run yet. Run 'dfpm doctor <package-id>' f
 
 This is checked live rather than recorded at install time, because a runtime can appear or disappear long afterwards. dfpm looks for one dfpm installed first, then on PATH, then where that runtime's installer normally puts it — a .NET application does not need `dotnet` to be a command in order to run.
 
-## Arguments through .cmd and .bat entrypoints
+## Arguments through .cmd and .bat entrypoints on Windows
 
 When a package's entrypoint is a `.cmd` or `.bat`, Windows runs it through `cmd`, which re-reads the command line before the script ever sees it. An argument containing `&`, `|`, `<`, `>`, `^`, `(`, `)`, `"` or `%` would not arrive intact, so dfpm refuses it and points you at the file to run directly.
+
+Linux hands arguments to a program as a list, whatever language it is written in, so nothing is refused there.
+
+## A tool that will not start on Linux
+
+A Linux program only runs if its file carries permission to execute. dfpm grants that to every command a package declares, and keeps it on any other file the archive marked executable. If something later removes it, `dfpm run` refuses with exit code `126` and `dfpm doctor --repair` offers to restore it. An archive never gets to make a file setuid, setgid or writable by everyone.
 
 ---
 

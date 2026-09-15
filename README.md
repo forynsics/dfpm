@@ -20,7 +20,7 @@ dfpm does not acquire or interpret evidence, manage cases, or run investigation 
 
 <img align="right" width="110" src="docs/assets/brix-laptop.png" alt="">
 
-You need Python 3.11 or newer. dfpm currently runs on Windows.
+You need Python 3.11 or newer. dfpm runs on Windows and on Linux, including WSL.
 
 ```powershell
 pipx install git+https://github.com/forynsics/dfpm.git
@@ -161,9 +161,9 @@ dfpm is in early development, and interfaces, manifests and behaviour may still 
 
 **Working today:** installing, replacing and removing packages from verified artifacts; install plans; contained extraction; `dfpm run` and `dfpm which`; a verified download cache; transactional catalog sync; runtime detection; downloads of builds meant for other machines; a local management interface; health checks; and explicit repair plans for safe dfpm-owned inconsistencies.
 
-**Not built yet:** health checks that actually execute a tool rather than checking its files are present. Installable artifacts currently include portable ZIP archives and standalone files; other published formats can be described in the catalog but are not selected for installation. Policy-enabled catalog entries can be checked against upstream releases by the catalog-maintenance workflow.
+**Not built yet:** health checks that actually execute a tool rather than checking its files are present. Installable artifacts currently include portable ZIP and tar archives and standalone files; other published formats can be described in the catalog but are not selected for installation. Policy-enabled catalog entries can be checked against upstream releases by the catalog-maintenance workflow.
 
-Windows is supported today. Linux and macOS are longer-term.
+Windows and Linux are supported, including WSL. Most catalog entries are Windows builds so far; `dfpm catalog <package-id>` shows which platforms a tool ships for. macOS is longer-term.
 
 ## Data handling
 
