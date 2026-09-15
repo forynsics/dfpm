@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import io
 import os
 import stat
+import tarfile
 import tempfile
 import unittest
 import warnings
@@ -11,7 +13,7 @@ from collections.abc import Iterable
 from pathlib import Path
 from unittest import mock
 
-from dfpm.archive import ArchiveLimits, check_path_lengths, extract_zip
+from dfpm.archive import ArchiveLimits, check_path_lengths, extract_tar, extract_zip
 from dfpm.errors import InstallError
 
 
@@ -131,6 +133,139 @@ class ArchiveTests(unittest.TestCase):
 
     def test_an_empty_result_points_at_strip_components(self) -> None:
         self.assertRejected([("tool/readme.txt", "notes")], "strip_components", strip=4)
+
+
+@unittest.skipIf(os.name == "nt", "Windows has no execute permission to carry")
+class ZipModeTests(unittest.TestCase):
+    def test_an_executable_member_stays_executable_and_others_do_not_become_so(self) -> None:
+        base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
+        archive = build(base, [
+            (entry("bin/tool", mode=stat.S_IFREG | 0o755), "#!/bin/sh\n"),
+            (entry("share/notes.txt", mode=stat.S_IFREG | 0o644), "notes\n"),
+            ("share/no-mode.txt", "made where modes are not recorded\n"),
+        ])
+        destination = base / "out"
+        destination.mkdir()
+        extract_zip(archive, destination, 0)
+        self.assertTrue(os.access(destination / "bin" / "tool", os.X_OK))
+        self.assertFalse(os.access(destination / "share" / "notes.txt", os.X_OK))
+        self.assertFalse(os.access(destination / "share" / "no-mode.txt", os.X_OK))
+
+
+def member(name: str, *, kind: bytes = tarfile.REGTYPE, mode: int = 0o644, linkname: str = "") -> tarfile.TarInfo:
+    info = tarfile.TarInfo(name)
+    info.type = kind
+    info.mode = mode
+    info.linkname = linkname
+    return info
+
+
+def build_tar(
+    base: Path,
+    members: Iterable[tuple[tarfile.TarInfo, bytes | None]],
+    name: str = "test.tar.gz",
+    mode: str = "w:gz",
+) -> Path:
+    path = base / name
+    with tarfile.open(path, mode) as output:
+        for info, data in members:
+            if data is None:
+                output.addfile(info)
+            else:
+                info.size = len(data)
+                output.addfile(info, io.BytesIO(data))
+    return path
+
+
+class TarArchiveTests(unittest.TestCase):
+    """A tarball is held to exactly the rules a ZIP is."""
+
+    def setUp(self) -> None:
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
+        self.destination = self.base / "out"
+        self.destination.mkdir()
+
+    def extract(self, members, *, strip: int = 0, limits: ArchiveLimits | None = None, mode: str = "w:gz"):
+        archive = build_tar(self.base, members, mode=mode)
+        return extract_tar(archive, self.destination, strip, limits or ArchiveLimits())
+
+    def assertRejected(self, members, message: str, **kwargs) -> None:
+        with self.assertRaises(InstallError) as caught:
+            self.extract(members, **kwargs)
+        self.assertIn(message, str(caught.exception))
+
+    def test_a_top_level_directory_is_stripped_like_any_other(self) -> None:
+        files = self.extract([
+            (member("chainsaw/", kind=tarfile.DIRTYPE, mode=0o755), None),
+            (member("chainsaw/chainsaw", mode=0o755), b"\x7fELF binary"),
+            (member("chainsaw/mappings/sigma.yml"), b"groups: []\n"),
+        ], strip=1)
+        self.assertEqual([item["path"] for item in files], ["chainsaw", "mappings/sigma.yml"])
+        self.assertEqual((self.destination / "chainsaw").read_bytes(), b"\x7fELF binary")
+
+    def test_the_archive_root_recorded_as_a_member_is_passed_over(self) -> None:
+        files = self.extract([(member("./", kind=tarfile.DIRTYPE, mode=0o755), None), (member("./yr"), b"yr")])
+        self.assertEqual([item["path"] for item in files], ["yr"])
+
+    def test_every_compression_tarfile_reads_is_accepted(self) -> None:
+        for mode, name in (("w", "plain.tar"), ("w:gz", "t.tar.gz"), ("w:bz2", "t.tar.bz2"), ("w:xz", "t.tar.xz")):
+            with self.subTest(mode=mode):
+                archive = build_tar(self.base, [(member("tool"), b"payload")], name=name, mode=mode)
+                destination = self.base / f"out-{name}"
+                destination.mkdir()
+                files = extract_tar(archive, destination, 0)
+                self.assertEqual(files, [{"path": "tool", "size": len(b"payload")}])
+
+    def test_rejects_a_symbolic_link(self) -> None:
+        self.assertRejected([(member("lib/libfoo.so", kind=tarfile.SYMTYPE, linkname="/etc/passwd"), None)], "unsupported link")
+
+    def test_rejects_a_hard_link(self) -> None:
+        self.assertRejected(
+            [(member("a"), b"data"), (member("b", kind=tarfile.LNKTYPE, linkname="a"), None)], "unsupported link"
+        )
+
+    def test_rejects_special_files(self) -> None:
+        for kind in (tarfile.FIFOTYPE, tarfile.CHRTYPE, tarfile.BLKTYPE):
+            with self.subTest(kind=kind):
+                self.assertRejected([(member("dev/thing", kind=kind), None)], "special file")
+
+    def test_rejects_absolute_and_escaping_paths(self) -> None:
+        self.assertRejected([(member("/etc/cron.d/job"), b"x")], "absolute path")
+        self.assertRejected([(member("../outside"), b"x")], "parent or self reference")
+        self.assertRejected([(member("tool/../../outside"), b"x")], "parent or self reference")
+
+    def test_rejects_case_colliding_paths(self) -> None:
+        self.assertRejected([(member("bin/Tool"), b"1"), (member("bin/tool"), b"2")], "differ only by capitalization")
+
+    def test_rejects_more_entries_than_it_will_extract(self) -> None:
+        members = [(member(f"f{index}"), b"x") for index in range(4)]
+        self.assertRejected(members, "above the 3", limits=ArchiveLimits(max_entries=3))
+
+    def test_rejects_something_that_is_not_a_tar_archive(self) -> None:
+        archive = self.base / "fake.tar.gz"
+        archive.write_bytes(os.urandom(512))
+        with self.assertRaises(InstallError) as caught:
+            extract_tar(archive, self.destination, 0)
+        self.assertIn("not a valid tar archive", str(caught.exception))
+
+    def test_a_truncated_archive_fails_cleanly(self) -> None:
+        archive = build_tar(self.base, [(member("tool"), os.urandom(64 * 1024))], mode="w")
+        archive.write_bytes(archive.read_bytes()[: 32 * 1024])
+        with self.assertRaises(InstallError):
+            extract_tar(archive, self.destination, 0)
+
+    @unittest.skipIf(os.name == "nt", "Windows has no execute permission to carry")
+    def test_execute_permission_is_kept_but_never_setuid(self) -> None:
+        self.extract([
+            (member("bin/tool", mode=0o4755), b"\x7fELF"),
+            (member("share/data.bin", mode=0o666), b"data"),
+        ])
+        tool = (self.destination / "bin" / "tool").stat().st_mode
+        self.assertTrue(tool & stat.S_IXUSR)
+        self.assertFalse(tool & (stat.S_ISUID | stat.S_ISGID))
+        data = (self.destination / "share" / "data.bin").stat().st_mode
+        self.assertFalse(data & stat.S_IXUSR)
+        self.assertFalse(data & stat.S_IWOTH, "an archive does not get to make a file world-writable")
 
 
 def fake_usage(free: int):

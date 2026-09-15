@@ -15,14 +15,16 @@ concurrency:
 
 jobs:
   test:
-    # Windows is the platform dfpm supports, and the suite checks things that
-    # only exist there: command shims, path-length limits, reserved device names.
-    name: Windows / Python ${{ matrix.python-version }}
-    runs-on: windows-latest
+    # Each system runs the suite natively, because what it checks differs
+    # between them: cmd shims and path-length limits on Windows, shell shims and
+    # execute permissions on Linux. Neither can stand in for the other.
+    name: ${{ matrix.os == 'windows-latest' && 'Windows' || 'Linux' }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
+        os: [windows-latest, ubuntu-latest]
         python-version: ["3.11", "3.14"]
 
     steps:
@@ -43,9 +45,21 @@ jobs:
         # one derived file that has to be committed.
         run: python -m unittest discover -s tests
 
-      - name: Confirm wheel and source distribution work cleanly
+      - name: Confirm wheel and source distribution work cleanly (Linux)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          python -m build
+          python -m venv fresh
+          fresh/bin/python -m pip install --no-index --find-links dist dfpm
+          fresh/bin/dfpm --version
+          fresh/bin/dfpm catalog
+          python -m pip wheel dist/*.tar.gz --no-deps --wheel-dir rebuilt
+
+      - name: Confirm wheel and source distribution work cleanly (Windows)
         # The editable install above shares the working tree, so it cannot show
         # whether the entries and web assets are actually packaged. This can.
+        if: runner.os == 'Windows'
         run: |
           python -m build
           python -m venv fresh

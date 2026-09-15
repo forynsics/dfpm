@@ -21,7 +21,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from dfpm.archive import ArchiveLimits, extract_zip
+from dfpm.archive import ArchiveLimits, extract_tar, extract_zip
 from dfpm.catalog import build_index, version_key
 from dfpm.errors import DfpmError
 from dfpm.manifest import STANDALONE_FILE, Tool
@@ -572,10 +572,11 @@ def refreshed_build(
         install["extracted_size"] = size
         install["entrypoints"][0]["path"] = installed_name
         return build
-    if install["strategy"] != "portable-zip":
+    extractors = {"portable-zip": extract_zip, "portable-tar": extract_tar}
+    if install["strategy"] not in extractors:
         raise SystemExit(f"Automation cannot inspect {install['strategy']}")
     with tempfile.TemporaryDirectory(prefix="dfpm-update-extract-") as temporary:
-        files = extract_zip(
+        files = extractors[install["strategy"]](
             artifact,
             Path(temporary),
             install.get("strip_components", 0),

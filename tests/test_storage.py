@@ -52,7 +52,10 @@ class DefaultRootTests(unittest.TestCase):
 class PersistentRootTests(unittest.TestCase):
     def setUp(self) -> None:
         self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
-        self.environ = {"LOCALAPPDATA": str(self.base / "local")}
+        # Every variable either platform reads points at the same place, so the
+        # command-line tests below stay inside this directory on any system.
+        local = str(self.base / "local")
+        self.environ = {"LOCALAPPDATA": local, "XDG_CONFIG_HOME": local, "XDG_DATA_HOME": local}
 
     def test_configuration_file_has_a_fixed_bootstrap_location(self) -> None:
         self.assertEqual(

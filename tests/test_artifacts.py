@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from dfpm import shims
 from dfpm.catalog import select
 from dfpm.errors import InstallError, ManifestError
 from dfpm.installer import install
@@ -78,7 +79,7 @@ class StandaloneFileTests(ArtifactFixture):
 
     def test_a_command_is_published_for_it(self) -> None:
         install(Manifest.load(self.write(self.entry())), self.storage)
-        self.assertTrue((self.storage.bin / "demo.cmd").is_file())
+        self.assertTrue(shims.path(self.storage, "demo").is_file())
 
     def test_more_than_one_entrypoint_is_refused(self) -> None:
         # One file cannot be two commands, and a manifest saying so describes
@@ -122,22 +123,22 @@ class UnsupportedArtifactTests(ArtifactFixture):
     def test_an_entry_survives_a_build_this_version_cannot_install(self) -> None:
         # Refusing it would take the whole entry down, and with it every other
         # entry in the catalog, since they are loaded together.
-        tool = self.tool_with(("standalone-file", "windows", "1.0.0"), ("portable-tar", "linux", "1.0.0"))
+        tool = self.tool_with(("standalone-file", "windows", "1.0.0"), ("disk-image", "linux", "1.0.0"))
         self.assertEqual([build.installable for build in tool.builds], [True, False])
 
     def test_a_newer_build_in_an_unreadable_format_does_not_hide_an_older_usable_one(self) -> None:
         # Newest-wins runs after the filter, not before it, or a project
         # switching release format would make its whole history unreachable.
-        tool = self.tool_with(("standalone-file", "windows", "1.0.0"), ("portable-tar", "windows", "2.0.0"))
+        tool = self.tool_with(("standalone-file", "windows", "1.0.0"), ("disk-image", "windows", "2.0.0"))
         chosen = select([tool], "standalone.demo", platform="windows/x64")
         self.assertEqual((chosen.strategy, chosen.version), ("standalone-file", "1.0.0"))
 
     def test_a_platform_served_only_by_an_unreadable_format_says_so(self) -> None:
-        tool = self.tool_with(("portable-tar", "windows", "1.0.0"))
+        tool = self.tool_with(("disk-image", "windows", "1.0.0"))
         with self.assertRaises(ManifestError) as caught:
             select([tool], "standalone.demo", platform="windows/x64")
         message = str(caught.exception)
-        self.assertIn("portable-tar", message)
+        self.assertIn("disk-image", message)
         self.assertIn("cannot install", message)
 
     def test_installing_one_directly_is_still_refused(self) -> None:
@@ -145,7 +146,7 @@ class UnsupportedArtifactTests(ArtifactFixture):
         # holding one, and materializing an unknown artifact is not a guess
         # worth making.
         entry = self.entry()
-        entry["builds"][0]["install"]["strategy"] = "portable-tar"
+        entry["builds"][0]["install"]["strategy"] = "disk-image"
         manifest = Manifest.load(self.write(entry))
         with self.assertRaises(InstallError) as caught:
             install(manifest, self.storage)

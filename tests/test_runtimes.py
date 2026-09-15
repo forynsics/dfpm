@@ -17,9 +17,9 @@ from dfpm.installer import install
 from dfpm.manifest import Manifest, Requirement
 from dfpm.runtimes import Runtime
 from dfpm.storage import Storage
-from tests.helpers import create_package
+from tests.helpers import create_package, exit_script, script_name
 
-JAVA = [{"runtime": "java", "version": ">=21"}]
+JAVA =[{"runtime": "java", "version": ">=21"}]
 
 
 class VersionReadingTests(unittest.TestCase):
@@ -123,11 +123,11 @@ class InterpreterGuardTests(unittest.TestCase):
     def test_a_runtime_dfpm_installed_wins_over_one_on_path(self) -> None:
         base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         storage = Storage(base / "dfpm-data")
-        _, manifest_path = create_package(base, commands=("perl",), body="@exit /b 0\r\n")
+        _, manifest_path = create_package(base, commands=("perl",), body=exit_script(0))
         destination = install(Manifest.load(manifest_path), storage)
 
         detection = runtimes.detect("perl", storage)
-        self.assertEqual(detection.path, destination / "bin" / "perl.cmd")
+        self.assertEqual(detection.path, destination / "bin" / script_name("perl"))
         self.assertTrue(detection.source.startswith("dfpm:"))
 
 
@@ -306,7 +306,7 @@ class BlockedPackageTests(unittest.TestCase):
                 blocked = main(["--root", str(self.storage.root), "doctor"])
             self.assertEqual(blocked, 2)
 
-            (destination / "bin" / "example-tool.cmd").unlink()
+            (destination / "bin" / script_name("example-tool")).unlink()
             with contextlib.redirect_stdout(io.StringIO()):
                 broken = main(["--root", str(self.storage.root), "doctor"])
             self.assertEqual(broken, 1, "something dfpm owns being broken outranks a missing runtime")

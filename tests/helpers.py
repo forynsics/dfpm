@@ -2,11 +2,44 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import zipfile
 from collections.abc import Sequence
 from pathlib import Path
 
 README_TEXT = "Synthetic dfpm test package\n"
+
+# Synthetic commands are scripts in whatever language this system runs natively,
+# so the same tests exercise real launching on Windows and on POSIX.
+WINDOWS = os.name == "nt"
+SCRIPT_SUFFIX = ".cmd" if WINDOWS else ".sh"
+
+
+def script_name(command: str) -> str:
+    """The file a synthetic command is packaged as."""
+    return f"{command}{SCRIPT_SUFFIX}"
+
+
+def echo_script(text: str) -> str:
+    return f"@echo {text}\r\n" if WINDOWS else f"#!/bin/sh\necho '{text}'\n"
+
+
+def exit_script(code: int) -> str:
+    return f"@exit /b {code}\r\n" if WINDOWS else f"#!/bin/sh\nexit {code}\n"
+
+
+def record_arguments_script() -> str:
+    """A command that writes the arguments it received to args.txt beside itself."""
+    if WINDOWS:
+        return '@echo %* > "%~dp0args.txt"\r\n'
+    return '#!/bin/sh\nprintf \'%s\\n\' "$@" > "$(dirname "$0")/args.txt"\n'
+
+
+def report_directory_script(exit_code: int) -> str:
+    """A command that writes the directory it was started in to where.txt in the package root."""
+    if WINDOWS:
+        return f'@echo off\r\n@echo %CD% > "%~dp0..\\where.txt"\r\nexit /b {exit_code}\r\n'
+    return f'#!/bin/sh\npwd -P > "$(dirname "$0")/../where.txt"\nexit {exit_code}\n'
 
 
 def create_package(
@@ -36,8 +69,8 @@ def create_package(
     archive = artifacts / f"{package_id}-{version}.zip"
     with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as output:
         for command in commands:
-            script = body if body is not None else f"@echo {command} {version}\r\n"
-            output.writestr(f"example-tool/bin/{command}.cmd", script)
+            script = body if body is not None else echo_script(f"{command} {version}")
+            output.writestr(f"example-tool/bin/{script_name(command)}", script)
         output.writestr("example-tool/data/readme.txt", README_TEXT)
     artifact_bytes = archive.read_bytes()
 
@@ -45,7 +78,7 @@ def create_package(
         "strategy": "portable-zip",
         "strip_components": 1,
         "entrypoints": [
-            {"name": command, "path": f"bin/{command}.cmd"}
+            {"name": command, "path": f"bin/{script_name(command)}"}
             | ({"working_directory": working_directory} if working_directory else {})
             for command in commands
         ],

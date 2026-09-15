@@ -123,7 +123,9 @@ class BulkUninstallTests(BulkFixture):
         # so this is what proves the single reconcile still did the full job.
         self.run_cli("install", "alpha", "beta", "gamma", "--yes")
         self.run_cli("uninstall", "alpha", "beta", "--yes")
-        remaining = {path.stem for path in self.storage.bin.glob("*.cmd")}
+        from dfpm import shims
+
+        remaining = {shims.command_of(path) for path in shims.existing(self.storage)}
         self.assertEqual(remaining, {"gamma"})
 
     def test_removing_everything_needs_no_names(self) -> None:

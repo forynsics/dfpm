@@ -9,6 +9,7 @@ from typing import Any
 
 from . import cache as download_cache
 from . import runtimes, shims, sync
+from .archive import make_executable
 from .errors import DfpmError
 from .inventory import forget_package, list_packages
 from .manifest import Requirement
@@ -122,6 +123,8 @@ def _file_problems(storage: Storage, package: dict[str, Any]) -> list[str]:
     for entrypoint in package.get("entrypoints", []):
         if not (root / entrypoint["path"]).is_file():
             problems.append(f"Missing entrypoint: {entrypoint['path']}")
+        elif not _executable(root / entrypoint["path"]):
+            problems.append(f"Entrypoint is not executable: {entrypoint['path']}")
     for check in package.get("verify", []):
         if check["type"] == "file" and not (root / check["path"]).is_file():
             problems.append(f"Health check failed: {check['path']}")
@@ -136,7 +139,7 @@ def _shim_problems(storage: Storage, package: dict[str, Any]) -> list[str]:
     except DfpmError as exc:
         return [f"Command shortcuts cannot be planned: {exc}"]
     for entrypoint in package.get("entrypoints", []):
-        path = storage.bin / f"{entrypoint['name']}.cmd"
+        path = shims.path(storage, entrypoint["name"])
         if not path.is_file():
             problems.append(f"Missing command shortcut: {path.name}")
         elif not shims.owned(path):
@@ -163,6 +166,16 @@ def repair_plan(storage: Storage) -> list[Repair]:
                 )
             )
             forgotten.append(package["id"])
+        elif version:
+            for target in _unexecutable_entrypoints(storage, package):
+                actions.append(
+                    Repair(
+                        "restore-executable",
+                        target,
+                        f"Make {package['id']} {version} entrypoint {target.name} executable again",
+                        package["id"],
+                    )
+                )
 
     try:
         expected = shims.planned(storage)
@@ -172,14 +185,14 @@ def repair_plan(storage: Storage) -> list[Repair]:
     for shim in expected.values():
         if shim.package in forgotten:
             continue
-        path = storage.bin / f"{shim.name}.cmd"
+        path = shims.path(storage, shim.name)
         if not path.exists():
             shim_changes.append(f"recreate {path.name}")
         elif shims.owned(path) and not shims.current(path, shim):
             shim_changes.append(f"refresh {path.name}")
-    if storage.bin.is_dir() and shims.state_records_readable(storage):
-        for path in sorted(storage.bin.glob("*.cmd")):
-            if path.stem not in expected and shims.owned(path):
+    if shims.state_records_readable(storage):
+        for path in shims.existing(storage):
+            if shims.command_of(path) not in expected and shims.owned(path):
                 shim_changes.append(f"remove stale {path.name}")
     if shim_changes or forgotten:
         detail = "; ".join(shim_changes) if shim_changes else "Remove shortcuts left by missing installations"
@@ -219,6 +232,14 @@ def apply_repairs(storage: Storage, actions: list[Repair]) -> list[Repair]:
             if record and record.get("version") and not storage.package_version(action.package, record["version"]).exists():
                 forget_package(storage, action.package)
                 forgot_package = True
+        elif action.kind == "restore-executable":
+            record = next((item for item in list_packages(storage) if item["id"] == action.package), None)
+            if record is None or action.target not in _unexecutable_entrypoints(storage, record):
+                raise DfpmError(f"Refusing an invalid executable repair target: {action.target}")
+            try:
+                make_executable(action.target)
+            except OSError as exc:
+                raise DfpmError(f"Could not make {action.target} executable: {exc}") from exc
         elif action.kind == "reconcile-shims":
             shims.repair(storage)
         elif action.kind == "remove-staging":
@@ -314,9 +335,9 @@ def _maintenance_findings(storage: Storage) -> list[Finding]:
     except DfpmError as exc:
         findings.append(Finding("dfpm", "-", "failed", f"Command shortcuts cannot be planned: {exc}"))
         expected = {}
-    if storage.bin.is_dir() and shims.state_records_readable(storage):
-        for path in sorted(storage.bin.glob("*.cmd")):
-            if path.stem not in expected and shims.owned(path):
+    if shims.state_records_readable(storage):
+        for path in shims.existing(storage):
+            if shims.command_of(path) not in expected and shims.owned(path):
                 findings.append(Finding("dfpm", "-", "failed", f"Stale command shortcut: {path.name}"))
 
     survey = download_cache.survey(storage, storage.catalog if storage.catalog.exists() else None)
@@ -327,6 +348,47 @@ def _maintenance_findings(storage: Storage) -> list[Finding]:
         if problem is not None:
             findings.append(Finding("dfpm", "-", "failed", f"Corrupt cached artifact {entry.digest}: {problem}"))
     return findings
+
+
+def _executable(path: Path) -> bool:
+    """Whether the system will run a file. Windows decides by extension, so there it always will."""
+    return os.name == "nt" or os.access(path, os.X_OK)
+
+
+def _unexecutable_entrypoints(storage: Storage, package: dict[str, Any]) -> list[Path]:
+    """Recorded entrypoints that exist inside their package but have lost the permission to run.
+
+    Only files the install record names, beneath the directory this store owns
+    for that exact version, are ever candidates: restoring a permission is a
+    repair dfpm can prove is its own to make.
+
+    The file is judged where it actually is, not where its name suggests.
+    Changing a mode follows links, so an entrypoint something has replaced
+    with a link to a file elsewhere would otherwise hand that file the
+    permission to run.
+    """
+    version = package.get("version")
+    if not version:
+        return []
+    root = storage.package_version(package["id"], version)
+    if not storage.contains_package(root):
+        return []
+    try:
+        resolved_root = root.resolve()
+    except OSError:
+        return []
+    found = []
+    for entrypoint in package.get("entrypoints", []):
+        target = root / entrypoint["path"]
+        if not target.is_file() or _executable(target):
+            continue
+        try:
+            inside = resolved_root in target.resolve().parents
+        except OSError:
+            continue
+        if inside:
+            found.append(target)
+    return found
 
 
 def _install_staging(storage: Storage) -> list[Path]:

@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from dfpm import removal
+from dfpm import removal, shims
 from dfpm.errors import DfpmError, InstallError
 from dfpm.installer import install
 from dfpm.inventory import read_package
@@ -39,7 +39,7 @@ class RemovalTests(unittest.TestCase):
         self.assertEqual(plan.commands, ("example-tool",))
         self.assertFalse(destination.exists())
         self.assertFalse((self.storage.tools / "example.tool").exists())
-        self.assertFalse((self.storage.bin / "example-tool.cmd").exists())
+        self.assertFalse(shims.path(self.storage, "example-tool").exists())
         self.assertIsNone(read_package(self.storage, "example.tool"))
 
     def test_the_plan_measures_what_is_there_now(self) -> None:
@@ -95,7 +95,7 @@ class RemovalTests(unittest.TestCase):
 
         self.assertIsNone(read_package(self.storage, "example.tool"))
         self.assertEqual(read_package(self.storage, "other.tool")["version"], "2.0.0")
-        self.assertTrue((self.storage.bin / "other-tool.cmd").is_file())
+        self.assertTrue(shims.path(self.storage, "other-tool").is_file())
 
     def test_a_directory_that_will_not_delete_is_reported(self) -> None:
         from unittest import mock

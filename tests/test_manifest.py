@@ -7,7 +7,7 @@ from pathlib import Path
 
 from dfpm.errors import ManifestError
 from dfpm.manifest import Manifest
-from tests.helpers import create_package
+from tests.helpers import create_package, script_name
 
 
 class ManifestTests(unittest.TestCase):
@@ -88,7 +88,7 @@ class ManifestTests(unittest.TestCase):
         # Entrypoints are checked at install and by doctor whether or not they
         # are listed again, so repeating one only makes the manifest look like
         # it is asserting something it is not.
-        self.assertRaisesManifestError({"verify": [{"type": "file", "path": "bin/example-tool.cmd"}]})
+        self.assertRaisesManifestError({"verify": [{"type": "file", "path": f"bin/{script_name('example-tool')}"}]})
 
     def test_verify_still_accepts_a_file_that_is_not_an_entrypoint(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -129,11 +129,11 @@ class ManifestTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             _, manifest_path = create_package(Path(temporary).resolve())
             data = json.loads(manifest_path.read_text(encoding="utf-8"))
-            data["builds"][0]["install"]["strategy"] = "portable-tar"
+            data["builds"][0]["install"]["strategy"] = "disk-image"
             manifest_path.write_text(json.dumps(data), encoding="utf-8")
 
             build = Tool.load(manifest_path).builds[0]
-            self.assertEqual(build.strategy, "portable-tar")
+            self.assertEqual(build.strategy, "disk-image")
             self.assertFalse(build.installable)
 
     def test_a_build_must_still_say_how_it_is_installed(self) -> None:

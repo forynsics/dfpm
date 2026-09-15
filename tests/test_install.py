@@ -4,13 +4,16 @@ import contextlib
 import hashlib
 import io
 import json
+import os
+import stat
+import tarfile
 import tempfile
 import unittest
 import zipfile
 from pathlib import Path
 from unittest import mock
 
-from dfpm import platforms
+from dfpm import launcher, platforms, shims
 from dfpm.cli import main
 from dfpm.doctor import inspect
 from dfpm.errors import InstallError, VerificationError
@@ -18,7 +21,7 @@ from dfpm.installer import install
 from dfpm.inventory import read_package
 from dfpm.manifest import Manifest
 from dfpm.storage import Storage
-from tests.helpers import create_package
+from tests.helpers import create_package, exit_script, script_name
 
 
 class InstallTests(unittest.TestCase):
@@ -33,7 +36,7 @@ class InstallTests(unittest.TestCase):
     def test_install_tracks_files_and_writes_a_shim(self) -> None:
         destination = self.install_version()
         self.assertEqual((destination / "data" / "readme.txt").read_text(encoding="utf-8"), "Synthetic dfpm test package\n")
-        self.assertTrue((self.storage.bin / "example-tool.cmd").is_file())
+        self.assertTrue((shims.path(self.storage, "example-tool")).is_file())
 
         state = read_package(self.storage, "example.tool")
         self.assertEqual(state["version"], "1.0.0")
@@ -47,7 +50,7 @@ class InstallTests(unittest.TestCase):
         self.assertFalse(old.exists(), "the superseded version is removed from disk")
         self.assertTrue(new.is_dir())
         self.assertEqual(read_package(self.storage, "example.tool")["version"], "1.1.0")
-        self.assertIn("1.1.0", (self.storage.bin / "example-tool.cmd").read_text(encoding="utf-8"))
+        self.assertIn("1.1.0", (shims.path(self.storage, "example-tool")).read_text(encoding="utf-8"))
         self.assertEqual(sorted(path.name for path in (self.storage.tools / "example.tool").iterdir()), ["1.1.0"])
 
     def test_installing_an_older_version_replaces_the_newer_one(self) -> None:
@@ -64,9 +67,9 @@ class InstallTests(unittest.TestCase):
 
     def test_a_stale_shim_is_removed_when_a_command_disappears(self) -> None:
         self.install_version("1.0.0", commands=("alpha", "beta"))
-        self.assertTrue((self.storage.bin / "beta.cmd").is_file())
+        self.assertTrue((shims.path(self.storage, "beta")).is_file())
         self.install_version("1.1.0", commands=("alpha",))
-        self.assertFalse((self.storage.bin / "beta.cmd").exists())
+        self.assertFalse((shims.path(self.storage, "beta")).exists())
 
     def test_wrong_digest_never_creates_an_install_directory(self) -> None:
         _, manifest_path = create_package(self.base)
@@ -80,8 +83,8 @@ class InstallTests(unittest.TestCase):
     def test_a_failed_install_leaves_the_previous_version_in_place(self) -> None:
         self.install_version("1.0.0")
         self.storage.initialize()
-        (self.storage.bin / "example-tool.cmd").unlink()
-        (self.storage.bin / "example-tool.cmd").write_bytes(b"@echo not managed by dfpm\r\n")
+        (shims.path(self.storage, "example-tool")).unlink()
+        (shims.path(self.storage, "example-tool")).write_bytes(b"@echo not managed by dfpm\r\n")
 
         with self.assertRaises(InstallError):
             self.install_version("1.1.0")
@@ -138,10 +141,10 @@ class InstallTests(unittest.TestCase):
 
     def test_install_refuses_to_replace_an_unmanaged_command(self) -> None:
         self.storage.initialize()
-        (self.storage.bin / "example-tool.cmd").write_bytes(b"@echo not managed by dfpm\r\n")
+        (shims.path(self.storage, "example-tool")).write_bytes(b"@echo not managed by dfpm\r\n")
         with self.assertRaises(InstallError):
             self.install_version("1.0.0")
-        self.assertEqual((self.storage.bin / "example-tool.cmd").read_bytes(), b"@echo not managed by dfpm\r\n")
+        self.assertEqual((shims.path(self.storage, "example-tool")).read_bytes(), b"@echo not managed by dfpm\r\n")
         self.assertIsNone(read_package(self.storage, "example.tool"))
         self.assertFalse(self.storage.package_version("example.tool", "1.0.0").exists())
 
@@ -152,7 +155,116 @@ class InstallTests(unittest.TestCase):
             install(Manifest.load(other), self.storage)
         self.assertIsNone(read_package(self.storage, "other.tool"))
         self.assertFalse(self.storage.package_version("other.tool", "2.0.0").exists())
-        self.assertIn("example.tool", (self.storage.bin / "shared.cmd").read_text(encoding="utf-8"))
+        self.assertIn("example.tool", shims.path(self.storage, "shared").read_text(encoding="utf-8"))
+
+    def test_an_entrypoint_that_cannot_be_made_executable_fails_the_install_cleanly(self) -> None:
+        # A read-only mount or files owned by someone else refuse a mode change.
+        # That is an install failure to explain, not a traceback to print.
+        _, manifest_path = create_package(self.base)
+        with mock.patch("dfpm.installer.make_executable", side_effect=PermissionError("read-only file system")):
+            with self.assertRaises(InstallError) as caught:
+                install(Manifest.load(manifest_path), self.storage)
+        self.assertIn("read-only file system", str(caught.exception))
+        self.assertIsNone(read_package(self.storage, "example.tool"))
+        self.assertFalse(self.storage.package_version("example.tool", "1.0.0").exists())
+        staging = self.storage.root / "staging"
+        self.assertEqual(list(staging.iterdir()) if staging.exists() else [], [])
+
+
+@unittest.skipIf(os.name == "nt", "Windows decides what runs by extension, not by permission")
+class ExecutablePermissionTests(unittest.TestCase):
+    """What an install may run is decided by the reviewed manifest, not by chance in the archive."""
+
+    def setUp(self) -> None:
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
+        self.storage = Storage(self.base / "dfpm-data")
+
+    def repack(self, manifest_path: Path, members: list[tuple[str, int]]) -> None:
+        """Rewrite the synthetic archive with explicit Unix modes, keeping the manifest's digest honest."""
+        archive = manifest_path.parent / "artifacts" / "example.tool-1.0.0.zip"
+        with zipfile.ZipFile(archive, "w") as output:
+            for name, mode in members:
+                info = zipfile.ZipInfo(name)
+                info.create_system = 3
+                info.external_attr = (stat.S_IFREG | mode) << 16
+                output.writestr(info, "#!/bin/sh\nexit 0\n" if name.endswith(".sh") else "data\n")
+        data = json.loads(manifest_path.read_text(encoding="utf-8"))
+        payload = archive.read_bytes()
+        data["builds"][0]["package"].update(sha256=hashlib.sha256(payload).hexdigest(), size=len(payload))
+        manifest_path.write_text(json.dumps(data), encoding="utf-8")
+
+    def test_an_entrypoint_is_executable_even_when_the_archive_recorded_no_mode(self) -> None:
+        _, manifest_path = create_package(self.base)
+        destination = install(Manifest.load(manifest_path), self.storage)
+        self.assertTrue(os.access(destination / "bin" / "example-tool.sh", os.X_OK))
+        self.assertFalse(os.access(destination / "data" / "readme.txt", os.X_OK))
+
+    def test_a_helper_the_archive_marks_executable_stays_executable(self) -> None:
+        _, manifest_path = create_package(self.base)
+        self.repack(manifest_path, [
+            ("example-tool/bin/example-tool.sh", 0o755),
+            ("example-tool/bin/helper.sh", 0o755),
+            ("example-tool/data/readme.txt", 0o644),
+        ])
+        destination = install(Manifest.load(manifest_path), self.storage)
+        self.assertTrue(os.access(destination / "bin" / "helper.sh", os.X_OK))
+        self.assertFalse(os.access(destination / "data" / "readme.txt", os.X_OK))
+
+    def test_an_archive_cannot_grant_setuid_or_world_write(self) -> None:
+        _, manifest_path = create_package(self.base)
+        self.repack(manifest_path, [
+            ("example-tool/bin/example-tool.sh", 0o6777),
+            ("example-tool/data/readme.txt", 0o666),
+        ])
+        destination = install(Manifest.load(manifest_path), self.storage)
+        mode = (destination / "bin" / "example-tool.sh").stat().st_mode
+        self.assertFalse(mode & (stat.S_ISUID | stat.S_ISGID), "an archive never decides the authority a program runs with")
+        self.assertFalse(mode & stat.S_IWOTH)
+        self.assertFalse((destination / "data" / "readme.txt").stat().st_mode & stat.S_IWOTH)
+
+
+class PortableTarInstallTests(unittest.TestCase):
+    """A tarball installs, verifies and runs through exactly the path a ZIP does."""
+
+    def setUp(self) -> None:
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
+        self.storage = Storage(self.base / "dfpm-data")
+
+    def test_a_tarball_installs_and_its_command_runs(self) -> None:
+        script = exit_script(9).encode("utf-8")
+        readme = b"notes\n"
+        archive = self.base / "tool-1.0.0.tar.gz"
+        with tarfile.open(archive, "w:gz") as output:
+            for name, data in ((f"tool-1.0.0/bin/{script_name('tarred')}", script), ("tool-1.0.0/README", readme)):
+                info = tarfile.TarInfo(name)
+                info.size = len(data)
+                output.addfile(info, io.BytesIO(data))
+        payload = archive.read_bytes()
+        manifest_path = self.base / "tarred.tool.json"
+        manifest_path.write_text(json.dumps({
+            "schema_version": 1,
+            "id": "tarred.tool",
+            "name": "Tarred Tool",
+            "kind": "tool",
+            "description": "A synthetic tool published as a tarball.",
+            "builds": [{
+                "version": "1.0.0",
+                "package": {"url": str(archive), "sha256": hashlib.sha256(payload).hexdigest(), "size": len(payload)},
+                "install": {
+                    "strategy": "portable-tar",
+                    "strip_components": 1,
+                    "extracted_size": len(script) + len(readme),
+                    "entries": 2,
+                    "entrypoints": [{"name": "tarred", "path": f"bin/{script_name('tarred')}"}],
+                },
+                "verify": [{"type": "file", "path": "README"}],
+            }],
+        }), encoding="utf-8")
+
+        install(Manifest.load(manifest_path), self.storage)
+        self.assertTrue(shims.path(self.storage, "tarred").is_file())
+        self.assertEqual(launcher.run(self.storage, "tarred", []), 9)
+        self.assertEqual(inspect(self.storage)[0].status, "passing")
 
 
 class ReplacementPlanTests(unittest.TestCase):

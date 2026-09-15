@@ -3,10 +3,12 @@ from __future__ import annotations
 import os
 import shutil
 import stat
+import tarfile
 import zipfile
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
+from typing import IO
 
 from .errors import InstallError
 from .names import unsafe_reason
@@ -37,12 +39,39 @@ class ArchiveLimits:
 DEFAULT_LIMITS = ArchiveLimits()
 
 
+@dataclass(frozen=True)
+class _Entry:
+    """One member of an archive, already checked, in terms every format shares."""
+
+    name: str
+    parts: tuple[str, ...]
+    is_directory: bool
+    size: int
+    executable: bool
+    open: Callable[[], IO[bytes]]
+
+
 def human_size(size: float) -> str:
     for unit in ("bytes", "KiB", "MiB", "GiB", "TiB"):
         if size < 1024 or unit == "TiB":
             return f"{size:,.0f} {unit}" if unit == "bytes" else f"{size:,.1f} {unit}"
         size /= 1024
     raise AssertionError("unreachable")
+
+
+def make_executable(path: Path) -> None:
+    """Let whoever may read a file also run it, on a system where that is a permission.
+
+    Execute is granted exactly where read already is, so the result follows the
+    umask the file was created under instead of dfpm choosing who may run it.
+    Nothing else about the mode changes, and setuid, setgid and sticky bits are
+    never set: an archive gets to say a file is a program, not what authority it
+    runs with. Windows has no execute bit, so there this does nothing.
+    """
+    if os.name == "nt":
+        return
+    mode = path.stat().st_mode
+    path.chmod(stat.S_IMODE(mode) | ((mode & 0o444) >> 2))
 
 
 def _space_budget(destination: Path, required: int, limits: ArchiveLimits) -> int:
@@ -111,65 +140,157 @@ def extract_zip(
     except (OSError, zipfile.BadZipFile) as exc:
         raise InstallError("Artifact is not a valid ZIP archive") from exc
     with source:
-        entries = source.infolist()
-        if len(entries) > limits.max_entries:
-            raise InstallError(
-                f"Archive holds {len(entries):,} entries, above the {limits.max_entries:,} dfpm will extract"
-            )
-        declared = sum(info.file_size for info in entries)
-        budget = _space_budget(destination, declared if expected_size is None else expected_size, limits)
-        expected_entries = sum(1 for info in entries if not info.filename.replace("\\", "/").endswith("/"))
-        claimed: dict[str, tuple[str, bool, str]] = {}
-        files: list[dict[str, str | int]] = []
-        extracted = 0
-        for info in entries:
-            raw = info.filename.replace("\\", "/")
-            is_directory = raw.endswith("/")
-            relative = _safe_relative_path(info, raw)
-            stripped = relative.parts[strip_components:]
-            if not stripped:
-                continue
-            installed = PurePosixPath(*stripped)
-            # Collision checks apply to the path that will actually be written.
-            # Different archive paths can become the same installed path after
-            # their leading components are removed.
-            _claim(claimed, installed, info.filename, is_directory)
-            target = destination / Path(*stripped)
-            if is_directory:
-                target.mkdir(parents=True, exist_ok=True)
-                continue
-            target.parent.mkdir(parents=True, exist_ok=True)
-            size = _write_entry(source, info, target, extracted, budget)
-            extracted += size
-            files.append({"path": str(installed), "size": size})
-            if on_progress is not None:
-                on_progress("extract", len(files), expected_entries)
-    if not files:
-        raise InstallError(
-            "Archive did not contain any installable files. Check whether install.strip_components is set too high."
-        )
-    return sorted(files, key=lambda item: str(item["path"]))
+        members = source.infolist()
+        _check_entry_count(len(members), limits)
+        entries = [_zip_entry(source, info) for info in members]
+        return _extract(entries, destination, strip_components, limits, expected_size, on_progress)
 
 
-def _safe_relative_path(info: zipfile.ZipInfo, raw: str) -> PurePosixPath:
+def extract_tar(
+    archive: Path,
+    destination: Path,
+    strip_components: int,
+    limits: ArchiveLimits = DEFAULT_LIMITS,
+    expected_size: int | None = None,
+    on_progress: Reporter | None = None,
+) -> list[dict[str, str | int]]:
+    """Extract a tar archive, compressed or not, under exactly the rules a ZIP gets.
+
+    Members are read one at a time and written by dfpm rather than handed to
+    tarfile's own extraction, so what reaches the disk is decided here and does
+    not depend on which filters a particular Python release applies by default.
+    """
+    try:
+        source = tarfile.open(archive, "r:*")
+    except (OSError, tarfile.TarError) as exc:
+        raise InstallError("Artifact is not a valid tar archive") from exc
+    with source:
+        try:
+            members = source.getmembers()
+        except (OSError, EOFError, tarfile.TarError) as exc:
+            raise InstallError("Artifact is not a valid tar archive") from exc
+        _check_entry_count(len(members), limits)
+        entries = [entry for member in members if (entry := _tar_entry(source, member)) is not None]
+        return _extract(entries, destination, strip_components, limits, expected_size, on_progress)
+
+
+def _check_entry_count(count: int, limits: ArchiveLimits) -> None:
+    if count > limits.max_entries:
+        raise InstallError(f"Archive holds {count:,} entries, above the {limits.max_entries:,} dfpm will extract")
+
+
+def _zip_entry(source: zipfile.ZipFile, info: zipfile.ZipInfo) -> _Entry:
+    raw = info.filename.replace("\\", "/")
     if info.flag_bits & 0x1:
         raise InstallError(f"Archive contains an encrypted entry: {info.filename}")
+    # A ZIP made on a Unix system keeps the file's mode in the high bits of its
+    # external attributes. One made elsewhere has no type bits there at all.
     mode = info.external_attr >> 16
     if stat.S_IFMT(mode):
         if stat.S_ISLNK(mode):
             raise InstallError(f"Archive contains an unsupported symbolic link: {info.filename}")
         if not (stat.S_ISREG(mode) or stat.S_ISDIR(mode)):
             raise InstallError(f"Archive contains an unsupported special file: {info.filename}")
+    return _Entry(
+        name=info.filename,
+        parts=_safe_parts(raw, info.filename),
+        is_directory=raw.endswith("/"),
+        size=info.file_size,
+        executable=stat.S_ISREG(mode) and bool(mode & 0o111),
+        open=lambda: source.open(info),
+    )
+
+
+def _tar_entry(source: tarfile.TarFile, member: tarfile.TarInfo) -> _Entry | None:
+    if member.issym() or member.islnk():
+        # Links are refused for the same reason in both formats: one resolving
+        # outside the package would let a later write land somewhere dfpm never
+        # granted, and following them safely is more than a package needs.
+        raise InstallError(f"Archive contains an unsupported link: {member.name}")
+    if not (member.isfile() or member.isdir()):
+        raise InstallError(f"Archive contains an unsupported special file: {member.name}")
+    raw = member.name.replace("\\", "/")
+    if member.isdir() and not PurePosixPath(raw).parts:
+        # Tools that archive "." record the archive's own root as a member.
+        return None
+    return _Entry(
+        name=member.name,
+        parts=_safe_parts(raw, member.name),
+        is_directory=member.isdir(),
+        size=member.size,
+        executable=member.isfile() and bool(member.mode & 0o111),
+        open=lambda: _tar_reader(source, member),
+    )
+
+
+def _tar_reader(source: tarfile.TarFile, member: tarfile.TarInfo) -> IO[bytes]:
+    reader = source.extractfile(member)
+    if reader is None:
+        raise InstallError(f"Could not read archive entry: {member.name}")
+    return reader
+
+
+def _safe_parts(raw: str, name: str) -> tuple[str, ...]:
     if raw.startswith("/"):
-        raise InstallError(f"Archive contains an absolute path: {info.filename}")
+        raise InstallError(f"Archive contains an absolute path: {name}")
     parts = PurePosixPath(raw).parts
     if not parts:
         raise InstallError("Archive contains an entry with an empty path")
     for part in parts:
         reason = unsafe_reason(part)
         if reason is not None:
-            raise InstallError(f"Archive contains a path component that {reason}: {info.filename}")
-    return PurePosixPath(*parts)
+            raise InstallError(f"Archive contains a path component that {reason}: {name}")
+    return parts
+
+
+def _extract(
+    entries: list[_Entry],
+    destination: Path,
+    strip_components: int,
+    limits: ArchiveLimits,
+    expected_size: int | None,
+    on_progress: Reporter | None,
+) -> list[dict[str, str | int]]:
+    """Write checked entries into *destination*, whatever format they were read from.
+
+    Every entry is validated before anything is written, so an archive with one
+    bad member at the end leaves nothing behind but an empty staging directory.
+    """
+    declared = sum(entry.size for entry in entries)
+    budget = _space_budget(destination, declared if expected_size is None else expected_size, limits)
+    expected_files = sum(1 for entry in entries if not entry.is_directory)
+    claimed: dict[str, tuple[str, bool, str]] = {}
+    files: list[dict[str, str | int]] = []
+    extracted = 0
+    for entry in entries:
+        stripped = entry.parts[strip_components:]
+        if not stripped:
+            continue
+        installed = PurePosixPath(*stripped)
+        # Collision checks apply to the path that will actually be written.
+        # Different archive paths can become the same installed path after
+        # their leading components are removed.
+        _claim(claimed, installed, entry.name, entry.is_directory)
+        target = destination / Path(*stripped)
+        if entry.is_directory:
+            target.mkdir(parents=True, exist_ok=True)
+            continue
+        target.parent.mkdir(parents=True, exist_ok=True)
+        size = _write_entry(entry, target, extracted, budget)
+        if entry.executable:
+            try:
+                make_executable(target)
+            except OSError as exc:
+                raise InstallError(f"Could not make archive entry executable: {entry.name}") from exc
+        extracted += size
+        files.append({"path": str(installed), "size": size})
+        if on_progress is not None:
+            on_progress("extract", len(files), expected_files)
+    if not files:
+        raise InstallError(
+            "Archive did not contain any installable files. Check whether install.strip_components is set too high."
+        )
+    return sorted(files, key=lambda item: str(item["path"]))
 
 
 def _claim(
@@ -202,28 +323,22 @@ def _claim(
     )
 
 
-def _write_entry(
-    source: zipfile.ZipFile,
-    info: zipfile.ZipInfo,
-    target: Path,
-    already_extracted: int,
-    budget: int,
-) -> int:
+def _write_entry(entry: _Entry, target: Path, already_extracted: int, budget: int) -> int:
     size = 0
     try:
-        with source.open(info) as reader, target.open("wb") as writer:
+        with entry.open() as reader, target.open("wb") as writer:
             while chunk := reader.read(CHUNK_SIZE):
                 size += len(chunk)
                 # The budget is re-checked against bytes actually written because
-                # the sizes in the central directory are the archive's own claim.
+                # the sizes in an archive's headers are the archive's own claim.
                 if already_extracted + size > budget:
                     raise InstallError(
                         f"Archive is expanding past the {human_size(budget)} there is room for, "
-                        f"so its recorded sizes understate it: {info.filename}"
+                        f"so its recorded sizes understate it: {entry.name}"
                     )
                 writer.write(chunk)
-    except (OSError, RuntimeError, zipfile.BadZipFile) as exc:
-        raise InstallError(f"Could not extract archive entry: {info.filename}") from exc
-    if size != info.file_size:
-        raise InstallError(f"Archive entry does not match the size recorded in its header: {info.filename}")
+    except (OSError, EOFError, RuntimeError, zipfile.BadZipFile, tarfile.TarError) as exc:
+        raise InstallError(f"Could not extract archive entry: {entry.name}") from exc
+    if size != entry.size:
+        raise InstallError(f"Archive entry does not match the size recorded in its header: {entry.name}")
     return size

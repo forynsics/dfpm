@@ -3,21 +3,22 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import os
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
-from dfpm import launcher
+from dfpm import launcher, shims
 from dfpm.cli import main
 from dfpm.errors import CommandNotFound, CommandNotRunnable, ManifestError
 from dfpm.installer import install
 from dfpm.manifest import Manifest
 from dfpm.storage import Storage
-from tests.helpers import create_package
+from tests.helpers import create_package, exit_script, report_directory_script, script_name
 
 # Reports the directory it was launched from, and exits with a code of its own.
-REPORT_CWD = '@echo off\r\n@echo %CD% > "%~dp0..\\where.txt"\r\nexit /b 3\r\n'
+REPORT_CWD = report_directory_script(3)
 
 
 class WorkingDirectoryTests(unittest.TestCase):
@@ -56,8 +57,6 @@ class WorkingDirectoryTests(unittest.TestCase):
     def test_the_callers_directory_does_not_decide_it(self) -> None:
         # The whole point: running from an unrelated directory changes nothing.
         destination = self.install_with()
-        import os
-
         previous = Path.cwd()
         os.chdir(self.elsewhere)
         try:
@@ -84,15 +83,26 @@ class WorkingDirectoryTests(unittest.TestCase):
 
     def test_the_shim_runs_in_the_same_place_and_leaves_the_caller_alone(self) -> None:
         destination = self.install_with(working_directory=".")
-        shim = self.storage.bin / "example-tool.cmd"
+        shim = shims.path(self.storage, "example-tool")
         completed = subprocess.run([str(shim)], cwd=str(self.elsewhere), capture_output=True)
         self.assertEqual(completed.returncode, 3, "the tool's exit code survives the shim")
         self.assertEqual(self.where_it_ran(destination), destination)
-        # setlocal scopes the directory change, so a shell running the shim stays put.
-        after = subprocess.run(
-            ["cmd", "/c", "echo %CD%"], cwd=str(self.elsewhere), capture_output=True, text=True
-        )
-        self.assertEqual(Path(after.stdout.strip()), self.elsewhere)
+        if os.name == "nt":
+            # setlocal scopes the directory change, so a shell running the shim stays put.
+            after = subprocess.run(
+                ["cmd", "/c", "echo %CD%"], cwd=str(self.elsewhere), capture_output=True, text=True
+            )
+            self.assertEqual(Path(after.stdout.strip()), self.elsewhere)
+        else:
+            # The shim changes directory in a process of its own, so the shell
+            # that ran it is still where it started once the tool has finished.
+            after = subprocess.run(
+                ["sh", "-c", '"$1"; pwd -P', "sh", str(shim)],
+                cwd=str(self.elsewhere),
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(Path(after.stdout.strip().splitlines()[-1]), self.elsewhere)
 
 
 class ExitCodeTests(unittest.TestCase):
@@ -107,7 +117,7 @@ class ExitCodeTests(unittest.TestCase):
         return install(Manifest.load(manifest_path), self.storage)
 
     def test_the_tools_own_exit_code_passes_through(self) -> None:
-        self.install_version("@exit /b 1\r\n")
+        self.install_version(exit_script(1))
         self.assertEqual(launcher.run(self.storage, "example-tool", []), 1)
 
     def test_an_unresolvable_command_is_127(self) -> None:
@@ -116,14 +126,14 @@ class ExitCodeTests(unittest.TestCase):
         self.assertEqual(caught.exception.exit_code, 127)
 
     def test_a_command_that_cannot_be_launched_is_126(self) -> None:
-        destination = self.install_version("@exit /b 0\r\n")
-        (destination / "bin" / "example-tool.cmd").unlink()
+        destination = self.install_version(exit_script(0))
+        (destination / "bin" / script_name("example-tool")).unlink()
         with self.assertRaises(CommandNotRunnable) as caught:
             launcher.run(self.storage, "example-tool", [])
         self.assertEqual(caught.exception.exit_code, 126)
 
     def test_a_missing_working_directory_is_126(self) -> None:
-        destination = self.install_version("@exit /b 0\r\n")
+        destination = self.install_version(exit_script(0))
         import shutil
 
         shutil.rmtree(destination / "bin")
@@ -131,8 +141,9 @@ class ExitCodeTests(unittest.TestCase):
             launcher.run(self.storage, "example-tool", [])
         self.assertEqual(caught.exception.exit_code, 126)
 
+    @unittest.skipUnless(os.name == "nt", "only Windows re-parses a batch script's arguments")
     def test_an_undeliverable_argument_is_126(self) -> None:
-        self.install_version("@exit /b 0\r\n")
+        self.install_version(exit_script(0))
         with self.assertRaises(CommandNotRunnable) as caught:
             launcher.run(self.storage, "example-tool", ["a&whoami"])
         self.assertEqual(caught.exception.exit_code, 126)
@@ -170,9 +181,12 @@ class WorkingDirectoryManifestTests(unittest.TestCase):
         self.assertIn("working_directory", str(caught.exception))
 
     def test_an_absolute_directory_is_rejected(self) -> None:
-        with self.assertRaises(ManifestError) as caught:
-            Manifest.load(self.with_value("C:/Windows"))
-        self.assertIn("working_directory", str(caught.exception))
+        # Refused on every system, not only the one it is absolute to: one
+        # catalog serves them all, and must mean the same thing on each.
+        for value in ("C:/Windows", "C:relative", "/opt/elsewhere", "//server/share"):
+            with self.subTest(value=value), self.assertRaises(ManifestError) as caught:
+                Manifest.load(self.with_value(value))
+            self.assertIn("working_directory", str(caught.exception))
 
 
 if __name__ == "__main__":

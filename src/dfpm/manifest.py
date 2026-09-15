@@ -4,7 +4,7 @@ import hashlib
 import json
 import re
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 
 from . import classification, runtimes
@@ -21,8 +21,9 @@ SUPPORTED_KINDS = {"tool", "runtime", "ruleset", "artifact-pack", "parser-pack",
 # differs between them, so they are named for what the artifact IS rather than
 # for a procedure.
 PORTABLE_ZIP = "portable-zip"
+PORTABLE_TAR = "portable-tar"
 STANDALONE_FILE = "standalone-file"
-STRATEGIES = (PORTABLE_ZIP, STANDALONE_FILE)
+STRATEGIES = (PORTABLE_ZIP, PORTABLE_TAR, STANDALONE_FILE)
 
 IMMUTABLE, ROLLING = "immutable", "rolling"
 STABILITIES = (IMMUTABLE, ROLLING)
@@ -553,7 +554,11 @@ def _object_list(value: Any, field: str) -> list[dict[str, Any]]:
 
 def _relative_path(value: Any, field: str) -> str:
     text = _text(value, field).replace("\\", "/")
-    candidate = Path(text)
-    if candidate.is_absolute() or ".." in candidate.parts:
+    # Judged by both systems' rules rather than this machine's. One catalog
+    # serves every platform, and an entry must not be valid on one and refused
+    # on another: "C:/Windows" is a relative path to a POSIX system, and a
+    # drive-relative "/tools" is not absolute to Windows.
+    windows, posix = PureWindowsPath(text), PurePosixPath(text)
+    if windows.drive or windows.is_absolute() or posix.is_absolute() or ".." in posix.parts:
         raise ManifestError(f"{field} must stay within the package directory")
     return text

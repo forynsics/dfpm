@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 from dataclasses import dataclass
@@ -45,7 +46,7 @@ def resolve(storage: Storage, name: str) -> Resolution:
         available = ", ".join(sorted(planned)) if planned else "none"
         raise CommandNotFound(f"No installed package provides the command '{name}'. Available commands: {available}")
     return Resolution(
-        name, shim.package, shim.version, shim.target, storage.bin / f"{name}.cmd", shim.working_directory
+        name, shim.package, shim.version, shim.target, shims.path(storage, name), shim.working_directory
     )
 
 
@@ -79,6 +80,11 @@ def _preflight(storage: Storage, resolution: Resolution, arguments: list[str]) -
         raise CommandNotRunnable(
             f"{resolution.package} {resolution.version} records the command '{resolution.name}', "
             f"but the file it points to is missing: {resolution.target}. Run 'dfpm doctor'."
+        )
+    if os.name != "nt" and not os.access(resolution.target, os.X_OK):
+        raise CommandNotRunnable(
+            f"{resolution.package} {resolution.version} records the command '{resolution.name}', "
+            f"but {resolution.target} is not executable. Run 'dfpm doctor --repair'."
         )
     if not resolution.working_directory.is_dir():
         raise CommandNotRunnable(
@@ -122,8 +128,10 @@ def _check_deliverable(resolution: Resolution, arguments: list[str]) -> None:
     before the script sees it, and parses it again each time the script expands
     an argument. Nothing dfpm can do at this end makes that round-trip safe, so
     an argument that would not arrive intact is refused rather than mangled.
+    Elsewhere a script is run by the interpreter its first line names, with the
+    arguments handed over as a list, so there is nothing to guard against.
     """
-    if resolution.target.suffix.lower() not in BATCH_SUFFIXES:
+    if os.name != "nt" or resolution.target.suffix.lower() not in BATCH_SUFFIXES:
         return
     for argument in arguments:
         found = sorted({character for character in argument if character in CMD_METACHARACTERS})
@@ -142,7 +150,7 @@ def path_status(storage: Storage, name: str) -> tuple[str, str | None]:
     found = shutil.which(name)
     if found is None:
         return "unreachable", None
-    shim = storage.bin / f"{name}.cmd"
+    shim = shims.path(storage, name)
     try:
         same = Path(found).resolve() == shim.resolve()
     except OSError:

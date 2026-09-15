@@ -14,9 +14,10 @@ from dfpm.inventory import read_package
 from dfpm.manifest import Manifest
 from dfpm.storage import Storage
 from tests import helpers
-from tests.helpers import create_package
+from tests.helpers import create_package, echo_script, script_name
 
-BODY = "@echo hi\r\n"
+BODY = echo_script("hi")
+SCRIPT = f"example-tool/bin/{script_name('example-tool')}"
 ACCEPT = lambda expected, actual: True  # noqa: E731 - a policy, stated once
 REFUSE = lambda expected, actual: False  # noqa: E731
 
@@ -39,7 +40,7 @@ class MismatchFixture(unittest.TestCase):
         manifest = Manifest.load(manifest_path)
         archive = Path(manifest.package_url())
         with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as output:
-            output.writestr("example-tool/bin/example-tool.cmd", BODY)
+            output.writestr(SCRIPT, BODY)
             output.writestr("example-tool/data/readme.txt", helpers.README_TEXT)
             output.writestr("example-tool/data/added-upstream.txt", "a later build shipped this\n")
         self.arrived = hashlib.sha256(archive.read_bytes()).hexdigest()
@@ -111,7 +112,7 @@ class RollingInstallTests(MismatchFixture):
         manifest = Manifest.load(manifest_path)
         archive = Path(manifest.package_url())
         with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as output:
-            output.writestr("example-tool/bin/example-tool.cmd", BODY)
+            output.writestr(SCRIPT, BODY)
             output.writestr("example-tool/data/readme.txt", helpers.README_TEXT)
             output.writestr("example-tool/data/added-upstream.txt", "a later build shipped this\n")
         destination = install(manifest, self.storage, on_mismatch=ACCEPT)

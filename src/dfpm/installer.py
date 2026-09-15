@@ -10,11 +10,11 @@ from pathlib import Path
 from typing import Any
 
 from . import platforms, shims
-from .archive import DEFAULT_LIMITS, ArchiveLimits, check_path_lengths, extract_zip
+from .archive import DEFAULT_LIMITS, ArchiveLimits, check_path_lengths, extract_tar, extract_zip, make_executable
 from .downloads import Acquired, Decision, acquire
 from .errors import InstallError
 from .inventory import forget_package, read_package, write_package
-from .manifest import PORTABLE_ZIP, STANDALONE_FILE, STRATEGIES, Manifest
+from .manifest import PORTABLE_TAR, PORTABLE_ZIP, STANDALONE_FILE, STRATEGIES, Manifest
 from .progress import Reporter
 from .storage import Storage, remove_tree
 
@@ -84,6 +84,10 @@ def _materialize(
         return extract_zip(
             artifact.path, staging, manifest.strip_components, limits, expected_size, on_progress
         )
+    if manifest.strategy == PORTABLE_TAR:
+        return extract_tar(
+            artifact.path, staging, manifest.strip_components, limits, expected_size, on_progress
+        )
     if manifest.strategy == STANDALONE_FILE:
         return _place_file(manifest, artifact, staging)
     raise InstallError(
@@ -128,6 +132,13 @@ def _stage(
         if artifact.verified:
             _check_recorded_extraction(manifest, managed_files)
         _validate_expected_paths(staging, manifest)
+        # A reviewed entrypoint is a program whatever its archive recorded. Many
+        # archives carry no modes at all, and a bare downloaded binary never does.
+        for entrypoint in manifest.entrypoints:
+            try:
+                make_executable(staging / entrypoint.path)
+            except OSError as exc:
+                raise InstallError(f"Could not make {entrypoint.path} executable: {exc}") from exc
         record: dict[str, Any] = {
             "id": manifest.id,
             "name": manifest.name,

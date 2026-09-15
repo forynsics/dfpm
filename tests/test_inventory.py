@@ -59,7 +59,7 @@ class LegacyRecordTests(unittest.TestCase):
 
     def test_its_shims_are_not_treated_as_stale(self) -> None:
         shims.reconcile(self.storage)
-        shim = self.storage.bin / "yara.cmd"
+        shim = shims.path(self.storage, "yara")
         self.assertTrue(shim.is_file())
         self.assertEqual(shims.reconcile(self.storage), [], "a known package's shim must never be swept away")
         self.assertTrue(shim.is_file())
@@ -68,7 +68,7 @@ class LegacyRecordTests(unittest.TestCase):
         findings = inspect(self.storage)
         self.assertTrue(findings, "a legacy record must not be silently skipped")
         self.assertEqual({item.version for item in findings}, {"4.5.5"})
-        self.assertIn("Missing command shortcut: yara.cmd", [item.detail for item in findings])
+        self.assertIn(f"Missing command shortcut: {shims.filename('yara')}", [item.detail for item in findings])
 
     def test_a_current_record_is_left_untouched(self) -> None:
         current = {"id": "other", "name": "Other", "version": "1.0.0", "entrypoints": [], "file_count": 0}
