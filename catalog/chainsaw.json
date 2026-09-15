@@ -4,7 +4,7 @@
   "name": "Chainsaw",
   "kind": "tool",
   "description": "Search and detect across Windows artifacts at speed, applying Sigma rules to event logs and more.",
-  "about": "Chainsaw searches Windows forensic artifacts quickly and applies detection logic to what it finds. It reads event logs, and also the master file table, shimcache, shellbags, SRUM and registry hives, so one pass covers several artifact types rather than one. Detections come from Sigma rules translated through the mapping files shipped beside the executable, which say how a rule's fields correspond to what each log actually contains. Results print as a table or timeline, or export as CSV or JSON. **The Sigma rules themselves are not included in this build** and must be supplied with the appropriate option; the mappings that interpret them are.",
+  "about": "Chainsaw searches Windows forensic artifacts quickly and applies detection logic to what it finds. It reads event logs, and also the master file table, shimcache, shellbags, SRUM and registry hives, so one pass covers several artifact types rather than one. Detections come from Sigma rules translated through the mapping files shipped beside the executable, which say how a rule's fields correspond to what each log actually contains. Results print as a table or timeline, or export as CSV or JSON. **The Sigma rules themselves are not included in this build** and must be supplied with the appropriate option; the mappings that interpret them are. The Linux build needs glibc 2.34 or newer, as shipped by Ubuntu 22.04, Debian 12 and RHEL 9 onwards.",
   "disciplines": [
     "windows-forensics"
   ],
@@ -50,6 +50,36 @@
           {
             "name": "chainsaw",
             "path": "chainsaw.exe"
+          }
+        ]
+      },
+      "verify": [
+        {
+          "type": "file",
+          "path": "mappings/sigma-event-logs-all.yml"
+        }
+      ]
+    },
+    {
+      "version": "2.16.5",
+      "platform": {
+        "os": "linux",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://github.com/WithSecureOpenSource/chainsaw/releases/download/v2.16.5/chainsaw_x86_64-unknown-linux-gnu.tar.gz",
+        "sha256": "7a7289d15f085af9bce39dfa3052adf0b4c78cab0dbfb91c2dbe38322909ce02",
+        "size": 3510703
+      },
+      "install": {
+        "strategy": "portable-tar",
+        "strip_components": 1,
+        "extracted_size": 10151767,
+        "entries": 5,
+        "entrypoints": [
+          {
+            "name": "chainsaw",
+            "path": "chainsaw"
           }
         ]
       },

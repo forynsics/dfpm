@@ -13,7 +13,7 @@
       }
     },
     {
-      "name": "hayabusa-{version}-lin-x64-gnu.zip",
+      "name": "hayabusa-{version}-lin-x64-musl.zip",
       "platform": {
         "os": "linux",
         "arch": "x64"
