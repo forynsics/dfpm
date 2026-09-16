@@ -113,7 +113,7 @@ Routine releases can be maintained by [policy-constrained catalog automation](do
 ## Commands
 
 ```text
-dfpm catalog [<package-id>]    what's available, or everything about one package
+dfpm catalog [<package-id>]    what's available for this machine, or everything about one package
 dfpm search <words>            find tools by purpose, capability, or evidence
 dfpm install <package-id>      install it, after showing you the plan
 dfpm list                      what's installed, and what has a newer version

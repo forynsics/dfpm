@@ -42,7 +42,7 @@ That is usually instant and needs no network, because the artifact is still in t
 
 ## Platform matching
 
-A package that declares a platform is refused on a machine that does not match it. Installing picks the newest version that has a build for your machine, and the plan says which one it picked.
+A package that declares a platform is refused on a machine that does not match it. Installing picks the newest version that has a build for your machine, and the plan says which one it picked. `dfpm catalog` and `dfpm search` list only what installs on your machine; `--all` lists every platform, and `--platform <os/arch>` another machine's.
 
 `dfpm catalog <package-id>` shows every build, including the ones this machine cannot use:
 

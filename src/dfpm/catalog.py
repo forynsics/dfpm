@@ -75,7 +75,7 @@ def select(tools: list[Tool], package_id: str, version: str | None = None, platf
         raise ManifestError(f"Package not found in catalog: {package_id}")
     tool = matches[0]
 
-    wanted = _requested_platform(platform) if platform else platforms.current()
+    wanted = parse_platform(platform) if platform else platforms.current()
     builds = list(tool.builds)
     if version is not None:
         builds = [build for build in builds if build.version == version]
@@ -116,12 +116,34 @@ def _platform_preference(platform: Platform | None, wanted: tuple[str, str]) -> 
     return 2 if (platform.system, platform.architecture) == wanted else 1
 
 
-def _requested_platform(text: str) -> tuple[str, str]:
-    """Read an explicitly requested platform, for staging a machine you are not sitting at."""
+def parse_platform(text: str) -> tuple[str, str]:
+    """Read an explicitly requested platform, for a machine you are not sitting at.
+
+    A name dfpm does not know is refused rather than matched against nothing,
+    which would read as a catalog with no tools for that system.
+    """
     parts = text.replace("\\", "/").split("/")
     if len(parts) != 2 or not all(part.strip() for part in parts):
         raise ManifestError(f"Platform must be written as os/arch, for example windows/x64: {text!r}")
-    return parts[0].strip().lower(), parts[1].strip().lower()
+    system, architecture = (part.strip().lower() for part in parts)
+    if system not in platforms.SUPPORTED_SYSTEMS or architecture not in platforms.SUPPORTED_ARCHITECTURES:
+        raise ManifestError(
+            f"Unknown platform {text!r}. Systems: {', '.join(sorted(platforms.SUPPORTED_SYSTEMS))}; "
+            f"architectures: {', '.join(sorted(platforms.SUPPORTED_ARCHITECTURES))}"
+        )
+    return system, architecture
+
+
+def runs_on(tool: Tool, wanted: tuple[str, str]) -> bool:
+    """Whether a tool has a build this dfpm can install on a platform.
+
+    The same test an install applies, so a listing narrowed to one machine
+    never shows a tool that installing there would then refuse.
+    """
+    return any(
+        build.installable and (build.platform is None or _matches(build.platform, wanted))
+        for build in tool.builds
+    )
 
 
 def build_index(directory: Path) -> dict[str, Any]:

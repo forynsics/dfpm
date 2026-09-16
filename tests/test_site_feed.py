@@ -25,7 +25,7 @@ class SiteFeedTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         produced = subprocess.run(
-            [sys.executable, "-m", "dfpm", "--catalog", str(CATALOG), "catalog", "--json"],
+            [sys.executable, "-m", "dfpm", "--catalog", str(CATALOG), "catalog", "--json", "--all"],
             capture_output=True,
             text=True,
             cwd=REPOSITORY,
@@ -67,6 +67,8 @@ class SiteFeedTests(unittest.TestCase):
         """The workflow and the page have to agree on the filename, or the site loads nothing."""
         workflow = (REPOSITORY / ".github" / "workflows" / "pages.yml").read_text(encoding="utf-8")
         self.assertIn("docs/catalog.json", workflow)
+        # Without --all the feed would list only what runs on the deploy runner.
+        self.assertIn("catalog --json --all", workflow)
         self.assertIn('CATALOG_FEED = "catalog.json"', (SITE / "app.js").read_text(encoding="utf-8"))
 
 

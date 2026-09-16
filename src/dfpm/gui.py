@@ -15,9 +15,9 @@ from typing import Any
 from urllib.parse import urlparse
 
 from . import plan as plans
-from . import removal
+from . import platforms, removal
 from .archive import human_size
-from .catalog import describe, load_catalog, newer_than_installed, resolve
+from .catalog import describe, load_catalog, newer_than_installed, resolve, runs_on
 from .classification import VOCABULARIES, label, vocabulary
 from .doctor import inspect
 from .errors import DfpmError
@@ -199,11 +199,17 @@ class Handler(BaseHTTPRequestHandler):
         updates = newer_than_installed(self.session.catalog, installed)
         catalog: list[dict[str, Any]] = []
         catalog_error: str | None = None
+        here = platforms.current()
         try:
-            catalog = [describe(manifest) for manifest in load_catalog(self.session.catalog)]
+            # Whether an entry installs here is decided by the rule an install
+            # applies, so the page filters by it rather than reimplementing it.
+            catalog = [
+                describe(tool) | {"runsHere": runs_on(tool, here)} for tool in load_catalog(self.session.catalog)
+            ]
         except DfpmError as exc:
             catalog_error = str(exc)
         return {
+            "platform": {"os": here[0], "arch": here[1]},
             "paths": {
                 "root": str(storage.root),
                 "tools": str(storage.tools),

@@ -61,10 +61,12 @@ To keep the root somewhere else — a larger drive, or an encrypted volume — s
 ## Find a tool
 
 ```sh
-dfpm catalog                 # everything available
+dfpm catalog                 # tools with a build for this machine
 dfpm search event logs       # find tools by what they do or read
 dfpm catalog hayabusa        # everything about one tool
 ```
+
+Both listings show only tools that install on your machine. Add `--all` to see every platform, or `--platform linux/x64` to see another machine's.
 
 The detail view ends with the builds a tool ships, and marks the one that fits your machine:
 

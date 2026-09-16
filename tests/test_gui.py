@@ -105,6 +105,14 @@ class GuiTests(unittest.TestCase):
         self.assertIsNone(payload["catalogError"])
         self.assertEqual(payload["paths"]["root"], str(self.storage.root))
 
+    def test_state_says_which_catalog_entries_install_here(self) -> None:
+        from dfpm.platforms import current
+
+        _, payload = self.api("/api/state")
+        system, architecture = current()
+        self.assertEqual(payload["platform"], {"os": system, "arch": architecture})
+        self.assertEqual([item["runsHere"] for item in payload["catalog"]], [True])
+
     def test_state_carries_the_vocabulary_the_interface_filters_by(self) -> None:
         # The interface offers every discipline, including ones nothing is
         # catalogued under, so it has to be told them rather than deducing the

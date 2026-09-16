@@ -9,6 +9,9 @@ let busy = false;
    kept out of `state` because that is replaced wholesale on every refresh, and
    a refresh should not throw away what somebody was looking at. */
 let discipline = null;
+/* Whether the catalog shows what installs on this machine, or every platform.
+   Kept out of `state` for the same reason. */
+let platformScope = "here";
 
 /* ---------- tiny DOM helper: every value is set as text, never as markup ---------- */
 
@@ -245,39 +248,64 @@ function healthChip(problems) {
   return chip("Healthy", "ok");
 }
 
-function renderDisciplines() {
+/* The server decides which entries install here, with the rule an install
+   applies, so the page only chooses whether to show the rest. */
+function scopedCatalog() {
+  return platformScope === "here" ? state.catalog.filter((entry) => entry.runsHere) : state.catalog;
+}
+
+function renderPlatforms() {
+  const here = state.platform ? `${state.platform.os}/${state.platform.arch}` : "this machine";
+  const runnable = state.catalog.filter((entry) => entry.runsHere).length;
+  $("#catalog-platforms").replaceChildren(
+    filterButton(`This machine, ${here}`, runnable, platformScope === "here", () => {
+      platformScope = "here";
+      renderCatalog();
+    }),
+    filterButton("All platforms", state.catalog.length, platformScope === "all", () => {
+      platformScope = "all";
+      renderCatalog();
+    }),
+  );
+}
+
+function renderDisciplines(entries) {
   const bar = $("#catalog-filters");
   bar.replaceChildren();
   const terms = (state.vocabulary && state.vocabulary.disciplines) || [];
   if (!terms.length) return;
 
   const counts = new Map();
-  for (const entry of state.catalog)
+  for (const entry of entries)
     for (const item of entry.disciplines || []) counts.set(item.key, (counts.get(item.key) || 0) + 1);
 
   // Every discipline is offered, including the ones nothing is catalogued
   // under. Somebody new to the field is reading this to find out what the
   // field contains, and an empty one is an answer rather than a gap.
-  bar.append(filterButton(null, "All", state.catalog.length));
-  for (const term of terms) bar.append(filterButton(term.key, term.label, counts.get(term.key) || 0));
+  bar.append(disciplineButton(null, "All", entries.length));
+  for (const term of terms) bar.append(disciplineButton(term.key, term.label, counts.get(term.key) || 0));
 }
 
-function filterButton(key, label, count) {
-  const node = el("button", {
-    className: discipline === key ? "active" : "",
-    text: `${label} (${count})`,
-    onClick: () => { discipline = key; renderCatalog(); },
+function disciplineButton(key, label, count) {
+  const node = filterButton(label, count, discipline === key, () => {
+    discipline = key;
+    renderCatalog();
   });
+  if (count === 0) node.title = "Nothing in the catalog covers this discipline yet";
+  return node;
+}
+
+function filterButton(label, count, active, onSelect) {
+  const node = el("button", { className: active ? "active" : "", text: `${label} (${count})`, onClick: onSelect });
   node.type = "button";
-  if (count === 0) {
-    node.disabled = true;
-    node.title = "Nothing in the catalog covers this discipline yet";
-  }
+  if (count === 0) node.disabled = true;
   return node;
 }
 
 function renderCatalog() {
-  renderDisciplines();
+  const inScope = scopedCatalog();
+  renderPlatforms();
+  renderDisciplines(inScope);
   const container = $("#catalog-list");
   container.replaceChildren();
 
@@ -289,10 +317,14 @@ function renderCatalog() {
     container.append(emptyState("The catalog directory holds no manifests."));
     return;
   }
+  if (!inScope.length) {
+    container.append(emptyState("Nothing in the catalog installs on this machine yet. Choose All platforms to see everything.", false));
+    return;
+  }
 
   const chosen = discipline
-    ? state.catalog.filter((entry) => (entry.disciplines || []).some((item) => item.key === discipline))
-    : state.catalog;
+    ? inScope.filter((entry) => (entry.disciplines || []).some((item) => item.key === discipline))
+    : inScope;
   const showing = matching(chosen, $("#catalog-search").value);
   if (!showing.length) {
     container.append(emptyState("Nothing in the catalog matches that.", false));

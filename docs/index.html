@@ -165,6 +165,7 @@
           <span aria-hidden="true">⌕</span>
           <input id="catalog-search" type="search" autocomplete="off" placeholder="Search the catalog, by name or by what it reads">
         </div>
+        <div class="filter-bar" id="catalog-platforms" role="group" aria-label="Filter the catalog by platform"></div>
         <div class="filter-bar" id="catalog-filters" role="group" aria-label="Filter the catalog by forensic discipline"></div>
 
         <div class="tool-grid list" id="catalog-list"></div>
@@ -181,7 +182,7 @@
           <div>
             <p class="kicker">On your computer</p>
             <h1>Get started</h1>
-            <p>dfpm needs Python 3.11 or newer and currently runs on Windows. It has no dependencies and nothing to configure.</p>
+            <p>dfpm needs Python 3.11 or newer and runs on Windows and Linux, including WSL.</p>
           </div>
           <div class="mascot mascot-page" data-asset="assets/brix-laptop.png" role="img" aria-label="Brix working at a laptop"></div>
         </div>
@@ -195,18 +196,18 @@
           <article>
             <h3>2. See where it will put things</h3>
             <pre data-copy>dfpm paths</pre>
-            <p>Tools use <code>%LOCALAPPDATA%\dfpm</code> by default. Use <code>dfpm config set root D:\dfpm</code> to persistently choose another data root.</p>
+            <p>Tools go under <code>%LOCALAPPDATA%\dfpm</code> on Windows and <code>~/.local/share/dfpm</code> on Linux. Use <code>dfpm config set root &lt;dir&gt;</code> to choose another data root.</p>
           </article>
           <article>
             <h3>3. Install a package</h3>
             <pre data-copy>dfpm catalog
-dfpm install yara</pre>
+dfpm install capa</pre>
             <p>The plan is printed first and waits for confirmation. Add <code>--yes</code> once you have reviewed it. dfpm ships with a catalog, so there is nothing to set up first.</p>
           </article>
           <article>
             <h3>4. Run it</h3>
-            <pre data-copy>dfpm run yara --version
-dfpm which yara</pre>
+            <pre data-copy>dfpm run capa --version
+dfpm which capa</pre>
             <p>dfpm does not modify your PATH. <code>dfpm run</code> removes any ambiguity about which binary executed; <code>dfpm which</code> shows you the exact file and warns if something else on your PATH would win.</p>
           </article>
         </div>
@@ -231,6 +232,7 @@ dfpm which yara</pre>
             <h2>Day to day</h2>
             <p>Plans, versions and platforms; running tools and reaching them from your shell; exit codes and runtimes.</p>
             <ul class="doc-links">
+              <li><a href="https://github.com/forynsics/dfpm/blob/main/docs/getting-started.md">Getting started</a></li>
               <li><a href="https://github.com/forynsics/dfpm/blob/main/docs/installing.md">Installing and removing</a></li>
               <li><a href="https://github.com/forynsics/dfpm/blob/main/docs/running-tools.md">Running tools</a></li>
               <li><a href="https://github.com/forynsics/dfpm/blob/main/docs/gui.md">Local interface</a></li>
@@ -255,11 +257,6 @@ dfpm which yara</pre>
               <li><a href="https://github.com/forynsics/dfpm/blob/main/catalog/README.md">How entries are reviewed</a></li>
             </ul>
           </article>
-        </div>
-
-        <div class="system-note">
-          <b>Honest status.</b>
-          <p>dfpm is in early development and interfaces may still change. A search command, health checks that actually execute a tool, and noticing when a project has published something newer upstream are not built yet. Packages are portable ZIPs only.</p>
         </div>
       </section>
     </main>

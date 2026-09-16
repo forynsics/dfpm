@@ -5,7 +5,8 @@ The catalog is the set of entries dfpm can install from. Each entry names the re
 Each entry describes one tool and every build of it dfpm can install, so a tool shipping for three systems is one entry rather than three.
 
 ```sh
-dfpm catalog                 # everything available
+dfpm catalog                 # tools with a build for this machine
+dfpm catalog --all           # every tool, whatever it runs on
 dfpm catalog <package-id>    # everything known about one, including builds this machine cannot use
 ```
 

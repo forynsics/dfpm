@@ -12,7 +12,17 @@ from pathlib import Path
 from . import __version__, cache, classification, configuration, launcher, plan, progress, removal, runtimes, shims, sync
 from .archive import human_size
 from . import platforms
-from .catalog import SHIPPED, build_index, check_collections, describe, load_catalog, load_collections, resolve
+from .catalog import (
+    SHIPPED,
+    build_index,
+    check_collections,
+    describe,
+    load_catalog,
+    load_collections,
+    parse_platform,
+    resolve,
+    runs_on,
+)
 from .catalog import newer_than_installed as catalog_updates
 from .catalog import newest as catalog_newest
 from .catalog import version_key as catalog_version_key
@@ -57,9 +67,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print the index that describes this catalog, for publishing it.",
     )
+    _add_platform_scope(catalog)
     search = commands.add_parser("search", help="Find packages by name, purpose, capability, or evidence.")
     search.add_argument("query", nargs="+", help="Words describing the tool or forensic task to find.")
     search.add_argument("--json", action="store_true")
+    _add_platform_scope(search)
 
     outdated = commands.add_parser("outdated", help="Show installed packages with a newer catalog version.")
     outdated.add_argument("--json", action="store_true")
@@ -348,6 +360,34 @@ def _collection(args: argparse.Namespace) -> int:
     return 0
 
 
+def _add_platform_scope(command: argparse.ArgumentParser) -> None:
+    scope = command.add_mutually_exclusive_group()
+    scope.add_argument(
+        "--platform",
+        help="List packages with a build for this os/arch instead of this machine, for example linux/x64.",
+    )
+    scope.add_argument("--all", dest="all_platforms", action="store_true", help="List packages for every platform.")
+
+
+def _platform_scope(args: argparse.Namespace) -> tuple[str, str] | None:
+    """The platform a listing is narrowed to: this machine unless told otherwise, or none with --all."""
+    if args.all_platforms:
+        return None
+    return parse_platform(args.platform) if args.platform else platforms.current()
+
+
+def _scope_note(scope: tuple[str, str] | None, shown: int, total: int, noun: str) -> None:
+    """Say what a listing narrowed to one platform left out, and how to see it."""
+    if scope is None or shown == total:
+        return
+    where = f"{scope[0]}/{scope[1]}"
+    if shown:
+        print(f"\nShowing {shown} of {total} {noun}: those with a build for {where}.")
+    else:
+        print(f"No {noun} with a build for {where}; {total} for other platforms.")
+    print("Add --all to list every platform, or --platform <os/arch> for another machine.")
+
+
 def _catalog(args: argparse.Namespace) -> int:
     if args.index:
         # What a published catalog needs beside its entries, so a machine
@@ -356,11 +396,17 @@ def _catalog(args: argparse.Namespace) -> int:
         return 0
     tools = load_catalog(args.catalog)
     check_collections(args.catalog)
+    scope = None
     if args.package:
-        matches = [tool for tool in tools if tool.id == args.package]
-        if not matches:
+        # Asking for one tool by name is asking about that tool, whatever it
+        # runs on; the detail view says which builds fit this machine.
+        tools = [tool for tool in tools if tool.id == args.package]
+        if not tools:
             raise DfpmError(f"Package not found in catalog: {args.package}")
-        tools = matches
+        shown = tools
+    else:
+        scope = _platform_scope(args)
+        shown = tools if scope is None else [tool for tool in tools if runs_on(tool, scope)]
 
     if args.json:
         # The vocabulary travels with the packages so an interface can offer
@@ -368,7 +414,7 @@ def _catalog(args: argparse.Namespace) -> int:
         # catalogued under yet. Hard-coding that list somewhere else is how
         # the two drift apart.
         print(json.dumps({
-            "packages": [describe(tool) for tool in tools],
+            "packages": [describe(tool) for tool in shown],
             "vocabulary": classification.vocabulary(),
         }, indent=2))
         return 0
@@ -377,18 +423,21 @@ def _catalog(args: argparse.Namespace) -> int:
         _show_tool(tools[0])
         return 0
 
-    for tool in tools:
-        platforms = ", ".join(str(item) for item in tool.platforms()) or "any platform"
+    for tool in shown:
+        platforms_text = ", ".join(str(item) for item in tool.platforms()) or "any platform"
         print(f"{tool.id:<24} {catalog_newest(tool).version:<12} {tool.name}")
         print(f"{'':<24} {tool.description}")
-        print(f"{'':<24} {platforms}")
-    print("\nRun 'dfpm catalog <package>' to see everything known about one of them.")
+        print(f"{'':<24} {platforms_text}")
+    _scope_note(scope, len(shown), len(tools), "packages")
+    if shown:
+        print("\nRun 'dfpm catalog <package>' to see everything known about one of them.")
     return 0
 
 
 def _search(args: argparse.Namespace) -> int:
     """Find tools by ordinary words, including vocabulary aliases."""
     query = " ".join(args.query).strip().lower()
+    scope = _platform_scope(args)
     matches = []
     for tool in load_catalog(args.catalog):
         text = " ".join((tool.id, tool.name, tool.description, tool.about or "")).lower()
@@ -401,16 +450,20 @@ def _search(args: argparse.Namespace) -> int:
         if direct or classified or commands:
             matches.append(tool)
 
+    shown = matches if scope is None else [tool for tool in matches if runs_on(tool, scope)]
+
     if args.json:
-        print(json.dumps({"query": query, "packages": [describe(tool) for tool in matches]}, indent=2))
+        print(json.dumps({"query": query, "packages": [describe(tool) for tool in shown]}, indent=2))
         return 0
     if not matches:
         print(f"No catalog packages match: {query}")
         return 0
-    for tool in matches:
+    for tool in shown:
         print(f"{tool.id:<24} {catalog_newest(tool).version:<12} {tool.name}")
         print(f"{'':<24} {tool.description}")
-    print("\nRun 'dfpm catalog <package>' to see everything known about one of them.")
+    _scope_note(scope, len(shown), len(matches), "matches")
+    if shown:
+        print("\nRun 'dfpm catalog <package>' to see everything known about one of them.")
     return 0
 
 

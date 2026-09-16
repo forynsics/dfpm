@@ -89,6 +89,83 @@ class CatalogDiscoveryTests(unittest.TestCase):
         packages = json.loads(printed)["packages"]
         self.assertEqual([entry["id"] for entry in packages], ["example.tool"])
 
+    def only_for(self, package_id: str, system: str) -> None:
+        create_package(
+            self.base,
+            package_id=package_id,
+            commands=(package_id.split(".")[0],),
+            platform={"os": system, "arch": self.architecture},
+        )
+
+    def listed(self, printed: str) -> set[str]:
+        return {line.split()[0] for line in printed.splitlines() if line.startswith(("here.", "elsewhere."))}
+
+    def test_the_listing_shows_only_what_installs_on_this_machine(self) -> None:
+        self.only_for("here.tool", self.system)
+        self.only_for("elsewhere.tool", self.other)
+        _, printed = self.run_cli("catalog")
+        self.assertEqual(self.listed(printed), {"here.tool"})
+        self.assertIn(f"Showing 1 of 2 packages: those with a build for {self.system}/{self.architecture}.", printed)
+        self.assertIn("--all", printed)
+
+    def test_all_lists_every_platform(self) -> None:
+        self.only_for("here.tool", self.system)
+        self.only_for("elsewhere.tool", self.other)
+        _, printed = self.run_cli("catalog", "--all")
+        self.assertEqual(self.listed(printed), {"here.tool", "elsewhere.tool"})
+        self.assertNotIn("Showing", printed)
+
+    def test_a_listing_can_be_for_another_machine(self) -> None:
+        self.only_for("here.tool", self.system)
+        self.only_for("elsewhere.tool", self.other)
+        _, printed = self.run_cli("catalog", "--platform", f"{self.other}/{self.architecture}")
+        self.assertEqual(self.listed(printed), {"elsewhere.tool"})
+
+    def test_an_unknown_platform_is_refused_rather_than_matching_nothing(self) -> None:
+        create_package(self.base)
+        errors = io.StringIO()
+        with contextlib.redirect_stderr(errors):
+            code = main(["--catalog", str(self.catalog), "catalog", "--platform", "plan9/x64"])
+        self.assertEqual(code, 1)
+        self.assertIn("Unknown platform", errors.getvalue())
+
+    def test_a_listing_with_nothing_for_this_machine_says_so(self) -> None:
+        self.only_for("elsewhere.tool", self.other)
+        _, printed = self.run_cli("catalog")
+        self.assertEqual(self.listed(printed), set())
+        self.assertIn(f"No packages with a build for {self.system}/{self.architecture}; 1 for other platforms.", printed)
+
+    def test_the_json_listing_follows_the_same_scope(self) -> None:
+        self.only_for("here.tool", self.system)
+        self.only_for("elsewhere.tool", self.other)
+        _, narrowed = self.run_cli("catalog", "--json")
+        _, everything = self.run_cli("catalog", "--json", "--all")
+        self.assertEqual([entry["id"] for entry in json.loads(narrowed)["packages"]], ["here.tool"])
+        self.assertEqual(
+            sorted(entry["id"] for entry in json.loads(everything)["packages"]), ["elsewhere.tool", "here.tool"]
+        )
+
+    def test_the_detail_view_is_never_narrowed(self) -> None:
+        self.only_for("elsewhere.tool", self.other)
+        code, printed = self.run_cli("catalog", "elsewhere.tool")
+        self.assertEqual(code, 0)
+        self.assertIn(f"None of these run on {self.system}/{self.architecture}.", printed)
+
+    def test_search_is_narrowed_the_same_way(self) -> None:
+        self.only_for("here.tool", self.system)
+        self.only_for("elsewhere.tool", self.other)
+        _, printed = self.run_cli("search", "synthetic")
+        self.assertEqual(self.listed(printed), {"here.tool"})
+        self.assertIn("Showing 1 of 2 matches", printed)
+        _, everything = self.run_cli("search", "synthetic", "--all")
+        self.assertEqual(self.listed(everything), {"here.tool", "elsewhere.tool"})
+
+    def test_search_says_when_every_match_is_for_another_platform(self) -> None:
+        self.only_for("elsewhere.tool", self.other)
+        _, printed = self.run_cli("search", "synthetic")
+        self.assertEqual(self.listed(printed), set())
+        self.assertIn(f"No matches with a build for {self.system}/{self.architecture}; 1 for other platforms.", printed)
+
     def test_search_finds_a_package_by_description(self) -> None:
         create_package(self.base)
         _, printed = self.run_cli("search", "verify", "dfpm")

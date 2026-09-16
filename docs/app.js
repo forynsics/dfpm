@@ -1,7 +1,7 @@
 "use strict";
 
 /* Landing site for dfpm. Everything shown here is real: the catalog is read
-   from catalog.json, which is what `dfpm catalog --json` prints for the
+   from catalog.json, which is what `dfpm catalog --json --all` prints for the
    manifests in this repository, and the commands mirror `dfpm --help`.
 
    The feed is fetched rather than written out here so this page and the local
@@ -10,11 +10,24 @@
 
 const CATALOG_FEED = "catalog.json";
 
-const state = { packages: [], vocabulary: null, discipline: null, error: null };
+const state = { packages: [], vocabulary: null, discipline: null, platform: null, error: null };
+
+/* Visitors could be on any machine, so the page starts with every platform and
+   lets them narrow it. A tool with no platform restriction belongs under all. */
+const PLATFORMS = [["windows", "Windows"], ["linux", "Linux"], ["macos", "macOS"]];
+
+function shipsFor(entry, system) {
+  const platforms = entry.platforms || [];
+  return !platforms.length || platforms.some((item) => item.os === system);
+}
+
+function scopedPackages() {
+  return state.platform ? state.packages.filter((entry) => shipsFor(entry, state.platform)) : state.packages;
+}
 
 const COMMANDS = [
   ["dfpm paths", "Show where dfpm stores files."],
-  ["dfpm config set root D:\\dfpm", "Persistently relocate dfpm's data root."],
+  ["dfpm config set root <dir>", "Persistently relocate dfpm's data root."],
   ["dfpm catalog", "List available packages."],
   ["dfpm sync", "Update the catalog from where it is published."],
   ["dfpm install <package>", "Install a package, replacing any version already installed."],
@@ -138,41 +151,61 @@ async function loadCatalog() {
   renderCatalog();
 }
 
-function renderDisciplines() {
+function renderPlatforms() {
+  $("#catalog-platforms").replaceChildren(
+    filterButton("All platforms", state.packages.length, state.platform === null, () => {
+      state.platform = null;
+      renderCatalog();
+    }),
+    ...PLATFORMS.map(([key, label]) => {
+      const count = state.packages.filter((entry) => shipsFor(entry, key)).length;
+      return filterButton(label, count, state.platform === key, () => {
+        state.platform = key;
+        renderCatalog();
+      });
+    }),
+  );
+}
+
+function renderDisciplines(entries) {
   const bar = $("#catalog-filters");
   bar.replaceChildren();
   const terms = (state.vocabulary && state.vocabulary.disciplines) || [];
   if (!terms.length) return;
 
   const counts = new Map();
-  for (const entry of state.packages)
+  for (const entry of entries)
     for (const item of entry.disciplines || []) counts.set(item.key, (counts.get(item.key) || 0) + 1);
 
   // Every discipline is offered, including the ones nothing is catalogued
   // under. Somebody who cannot yet name a tool is reading this to find out
   // what the field contains, and an empty discipline is an answer rather
   // than a gap.
-  bar.append(filterButton(null, "All", state.packages.length));
-  for (const term of terms) bar.append(filterButton(term.key, term.label, counts.get(term.key) || 0));
+  bar.append(disciplineButton(null, "All", entries.length));
+  for (const term of terms) bar.append(disciplineButton(term.key, term.label, counts.get(term.key) || 0));
 }
 
-function filterButton(key, label, count) {
-  const node = el("button", {
-    className: state.discipline === key ? "active" : "",
-    text: `${label} (${count})`,
-    onClick: () => { state.discipline = key; renderCatalog(); },
+function disciplineButton(key, label, count) {
+  const node = filterButton(label, count, state.discipline === key, () => {
+    state.discipline = key;
+    renderCatalog();
   });
+  if (count === 0) node.title = "Nothing in the catalog covers this discipline yet";
+  return node;
+}
+
+function filterButton(label, count, active, onSelect) {
+  const node = el("button", { className: active ? "active" : "", text: `${label} (${count})`, onClick: onSelect });
   node.type = "button";
-  if (count === 0) {
-    node.disabled = true;
-    node.title = "Nothing in the catalog covers this discipline yet";
-  }
+  if (count === 0) node.disabled = true;
   return node;
 }
 
 function renderCatalog() {
+  const inScope = scopedPackages();
   renderCatalogCount();
-  renderDisciplines();
+  renderPlatforms();
+  renderDisciplines(inScope);
   const container = $("#catalog-list");
   container.replaceChildren();
 
@@ -186,8 +219,8 @@ function renderCatalog() {
   }
 
   const chosen = state.discipline
-    ? state.packages.filter((entry) => (entry.disciplines || []).some((item) => item.key === state.discipline))
-    : state.packages;
+    ? inScope.filter((entry) => (entry.disciplines || []).some((item) => item.key === state.discipline))
+    : inScope;
   const showing = matching(chosen, $("#catalog-search").value);
   if (!showing.length) {
     container.append(el("div", { className: "empty-state", text: "Nothing in the catalog matches that." }));
