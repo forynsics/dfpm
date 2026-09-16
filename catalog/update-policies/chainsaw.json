@@ -2,7 +2,7 @@
   "schema_version": 1,
   "id": "chainsaw",
   "provider": "github-releases",
-  "repository": "WithSecureLabs/chainsaw",
+  "repository": "WithSecureOpenSource/chainsaw",
   "tag_prefix": "v",
   "assets": [
     {

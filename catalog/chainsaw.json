@@ -25,8 +25,8 @@
     "master-file-table"
   ],
   "project": {
-    "homepage": "https://github.com/WithSecureLabs/chainsaw",
-    "repository": "https://github.com/WithSecureLabs/chainsaw",
+    "homepage": "https://github.com/WithSecureOpenSource/chainsaw",
+    "repository": "https://github.com/WithSecureOpenSource/chainsaw",
     "license": "GPL-3.0-only"
   },
   "builds": [
@@ -37,7 +37,7 @@
         "arch": "x64"
       },
       "package": {
-        "url": "https://github.com/WithSecureLabs/chainsaw/releases/download/v2.16.5/chainsaw_x86_64-pc-windows-msvc.zip",
+        "url": "https://github.com/WithSecureOpenSource/chainsaw/releases/download/v2.16.5/chainsaw_x86_64-pc-windows-msvc.zip",
         "sha256": "f47a724ea61547056a0128f201d160c0c4a81c02c481c80bd3c138669c44989a",
         "size": 3366729
       },
