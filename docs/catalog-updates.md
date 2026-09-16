@@ -21,7 +21,7 @@ It does not rewrite descriptions, classification, licensing, terms, commands or 
 
 Routine changes land without a human when every policy succeeds, the established archive layout remains intact, manifest validation succeeds, and the complete test suite passes. The commit is the audit record: it carries only what the policy recomputed, and the run that produced it holds the evidence report. The workflow then explicitly starts the normal test matrix and site deployment because events created by GitHub's workflow token do not recursively start other workflows.
 
-New packages and changes to update policies still require normal review. An ambiguous asset, prerelease outside an explicit policy, changed archive layout, missing entrypoint or download failure leaves that package unchanged and records structured evidence, while unrelated valid updates may continue. The complete resulting catalog must still pass validation before anything is pushed. If validation or publication fails, nothing new lands.
+New packages and changes to update policies still require normal review. A package whose policy fails is left unchanged with its evidence recorded, while unrelated valid updates continue. The resulting catalog must pass validation before anything is pushed.
 
 The workflow maintains one `Catalog update automation failures` issue rather than opening a new issue every day. It updates that issue with the current failed packages and stages, and closes it automatically after a clean run. If every policy-managed package is already current, the run records its evidence and exits without committing anything.
 

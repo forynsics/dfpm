@@ -20,21 +20,33 @@ dfpm does not acquire or interpret evidence, manage cases, or run investigation 
 
 <img align="right" width="110" src="docs/assets/brix-laptop.png" alt="">
 
-You need Python 3.11 or newer. dfpm runs on Windows and on Linux, including WSL.
+dfpm runs on Windows and on Linux, including WSL. You need Python 3.11 or newer, Git, and pipx.
 
-```powershell
+```sh
 pipx install git+https://github.com/forynsics/dfpm.git
 ```
 
-`pipx` keeps dfpm in its own environment and puts the command on your PATH. dfpm has no dependencies — about 400 KB, and it pulls in nothing else.
+`pipx` keeps dfpm in its own environment and puts the command on your PATH. dfpm has no dependencies — about a 300 KB download, and it pulls in nothing else.
+
+On Windows:
 
 ```powershell
 dfpm catalog            # what's available
 dfpm install mftecmd    # shows the plan, asks before doing anything
-dfpm run mftecmd -f C:\evidence\$MFT --csv C:\out
+dfpm run mftecmd -f 'D:\cases\case-01\$MFT' --csv D:\cases\case-01\out
+```
+
+On Linux and WSL:
+
+```sh
+dfpm catalog
+dfpm install capa
+dfpm run capa ~/cases/case-01/suspicious.bin
 ```
 
 That is the whole loop. There is nothing to configure and no repository to clone — dfpm ships with a catalog, so it has something to install the moment it is installed.
+
+Everything dfpm downloads and installs lives in one folder: `%LOCALAPPDATA%\dfpm` on Windows, `~/.local/share/dfpm` on Linux. `dfpm paths` shows exactly where. Tools run from their own folder there, so give them full paths for evidence and output. **New to dfpm? [Getting started](docs/getting-started.md)** covers setup on each system, what lives where, and a first install.
 
 Every install shows you this first, and waits:
 
@@ -61,13 +73,13 @@ Continue? [y/N]
 
 <img align="right" width="96" src="docs/assets/brix-magnifier.png" alt="">
 
-**Every artifact is the one a reviewer pinned.** Packages install straight from the releases their projects publish. Each entry records a SHA-256, and the download is refused unless the bytes match exactly. dfpm never repackages, rebuilds or mirrors anything.
+**Every artifact is the one a reviewer pinned.** Packages install straight from the releases their projects publish. Each entry records a SHA-256, and a download that does not match it is refused. dfpm never repackages, rebuilds or mirrors anything.
 
 **You see the change before it happens.** Package, version, platform, license, source, digest, sizes, destination and free space — every time, before anything is fetched.
 
 **You always know which version ran.** One version of a package is installed at a time, and `dfpm which` tells you the exact file a command resolves to. Going back to an earlier release is one command, usually with no network at all.
 
-**It will not change your system behind your back.** dfpm never edits your PATH, never writes outside the folders it shows you, and deletes only the directories it created.
+**It will not change your system behind your back.** dfpm never edits your PATH, deletes only directories it created, and writes only inside the folders `dfpm paths` shows you — apart from a file you ask `dfpm download` to save, which goes where you say.
 
 ### What it is responsible for
 
@@ -142,6 +154,7 @@ The full set of rules, and what they do and do not defend against, is in the [se
 
 | | |
 | --- | --- |
+| [Getting started](docs/getting-started.md) | installing dfpm, where it keeps things, a first tool |
 | [Installing and removing](docs/installing.md) | plans, versions, platforms, restricted terms, uninstalling |
 | [Running tools](docs/running-tools.md) | `dfpm run`, PATH options, exit codes, runtimes |
 | [The catalog](docs/catalog.md) | where entries come from, `dfpm sync`, upstream changes |

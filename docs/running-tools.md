@@ -6,9 +6,9 @@ dfpm does not modify your PATH, so reaching an installed tool is your choice. Th
 
 The one that needs no setup:
 
-```powershell
+```sh
 dfpm run yara --version
-dfpm run yara rules.yar C:\evidence\collected
+dfpm run yara rules.yar ~/cases/case-01/collected
 ```
 
 It looks up the command among the installed packages, runs that exact file, and passes your arguments through as a real argument list. dfpm never adds arguments of its own — what you type is what runs.
@@ -31,6 +31,8 @@ On Linux the shortcut is a small shell script named exactly like the command, wi
 ## Where a tool runs from
 
 A command launches from the directory holding its executable rather than from wherever you happen to be standing, so a tool that keeps its rules, maps or configuration beside itself finds them from any working directory. A package can name a different directory if it expects one, and `dfpm which` shows it.
+
+**Give tools full paths for evidence and output.** A relative path is resolved from where the tool runs, not from where you typed the command, so `-o timeline.csv` writes into the tool's own folder under dfpm's root — and that folder is deleted when the tool is upgraded or uninstalled. Write `-o D:\cases\case-01\timeline.csv` or `-o ~/cases/case-01/timeline.csv` instead.
 
 ## Putting dfpm's bin directory on PATH
 

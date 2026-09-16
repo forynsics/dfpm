@@ -1,6 +1,6 @@
 # The local management interface
 
-```powershell
+```sh
 dfpm gui
 dfpm gui --port 8765          # default; use --port 0 to take any free port
 dfpm gui --no-browser         # start the server without opening a browser

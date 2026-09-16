@@ -10,7 +10,7 @@ What dfpm guarantees, and what it does not.
 
 **An install is all-or-nothing.** Files land in a staging directory. The expected entrypoints and supporting files must be present, and the size and file count must match what the entry recorded, or the whole thing is discarded. Only then does the staged version move into place, and only then is the version it replaces removed.
 
-**dfpm owns its own directories and nothing else.** It never edits PATH or any other global setting, never writes outside the folders `dfpm paths` shows you, and deletes only directories it created.
+**dfpm owns its own directories and nothing else.** It never edits PATH or any other global setting, deletes only directories it created, and writes only inside the folders `dfpm paths` shows you — apart from a file you ask `dfpm download` to save, which goes where you say.
 
 ## Containment during extraction
 

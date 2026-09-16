@@ -2,7 +2,7 @@
 
 `dfpm doctor` is a read-only inspection. It checks installed entrypoints and declared verification files, command shortcuts, runtime readiness, state records, package directories, catalog transaction leftovers, old staging directories, interrupted downloads and cached artifact digests.
 
-```powershell
+```sh
 dfpm doctor
 dfpm doctor <package-id>
 dfpm doctor --json
@@ -14,7 +14,7 @@ The exit code is `1` when dfpm-owned state is broken, `2` when installed tools a
 
 `dfpm doctor --repair` first prints a plan and asks before changing anything. `--yes` confirms that displayed plan noninteractively.
 
-```powershell
+```sh
 dfpm doctor --repair
 dfpm doctor --repair --yes
 ```
@@ -32,4 +32,4 @@ Repairs are deliberately narrow:
 
 Doctor does not replace unmanaged shortcut files, remove unrecorded package directories, reconstruct missing package files, install runtimes, redownload artifacts or guess how to repair unreadable state. It reports those conditions for manual handling.
 
-Package-specific inspection is read-only. Repairs operate on the complete dfpm root because shortcut and transaction consistency crosses package boundaries.
+Repairs cover the whole dfpm root, because shortcut and transaction consistency crosses package boundaries.

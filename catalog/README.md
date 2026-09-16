@@ -4,9 +4,7 @@ This directory contains the package manifests that make up the dfpm catalog. Eac
 
 Every package admission, and every change outside an established update policy, must be reviewed and approved by a person before it is merged. Tooling may discover releases, download assets, calculate hashes, inspect archives, or generate manifests; approved automation may apply later releases only while those recorded invariants continue to hold.
 
-**A person establishes the policy; automation handles releases that remain inside it.**
-
-That rule governs initial admission and changes outside an established policy. Once a package's publisher, asset selection and installed layout have been reviewed, routine releases may be maintained by the constrained automation described in [automated catalog updates](../docs/catalog-updates.md). Automation stops when those established facts change; it does not silently make a new judgement.
+**A person establishes the policy; automation handles releases that remain inside it.** Once a package's publisher, asset selection and installed layout have been reviewed, routine releases may be maintained by the constrained automation described in [automated catalog updates](../docs/catalog-updates.md). It stops when those established facts change rather than making a new judgement.
 
 ## What reviewing a package means
 

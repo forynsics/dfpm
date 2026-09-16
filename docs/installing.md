@@ -34,7 +34,7 @@ Installing replaces whatever version was there before, so the tools directory ne
 
 Going back to an earlier release is the same command with a version:
 
-```powershell
+```sh
 dfpm install yara --package-version 4.5.4
 ```
 
@@ -62,10 +62,10 @@ dfpm download hayabusa --platform macos/arm64 --to D:\staging
 ```
 
 ```text
-Downloading Hayabusa 4.0.0 for macos/arm64, 43.3 MiB
-  from https://github.com/Yamato-Security/hayabusa/releases/download/v4.0.0/hayabusa-4.0.0-mac-aarch64.zip
-  to   D:\staging\hayabusa-4.0.0-mac-aarch64.zip
-Saved D:\staging\hayabusa-4.0.0-mac-aarch64.zip
+Downloading Hayabusa 4.1.0 for macos/arm64, 43.8 MiB
+  from https://github.com/Yamato-Security/hayabusa/releases/download/v4.1.0/hayabusa-4.1.0-mac-aarch64.zip
+  to   D:\staging\hayabusa-4.1.0-mac-aarch64.zip
+Saved D:\staging\hayabusa-4.1.0-mac-aarch64.zip
 ```
 
 The file keeps the name its project published it under and lands where you asked. It is checked against the digest the catalog pinned and discarded if it does not match. Nothing is cached, unpacked, recorded or installed.
@@ -76,7 +76,7 @@ Some tools restrict who may use them, or for what purpose. Those entries record 
 
 ## Removing
 
-```powershell
+```sh
 dfpm uninstall <package-id>
 ```
 
