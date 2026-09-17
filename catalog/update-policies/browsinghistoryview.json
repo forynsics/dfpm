@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "browsinghistoryview",
+  "provider": "rolling-url",
+  "package_version": {
+    "source": "pe-file-version",
+    "asset": 0,
+    "path": "BrowsingHistoryView.exe"
+  },
+  "assets": [
+    {
+      "name": "browsinghistoryview-x64.zip",
+      "url": "https://www.nirsoft.net/utils/browsinghistoryview-x64.zip",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "last_modified": "Mon, 03 Aug 2026 11:37:02 GMT"
+    }
+  ]
+}

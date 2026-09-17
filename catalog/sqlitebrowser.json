@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "id": "sqlitebrowser",
+  "name": "DB Browser for SQLite",
+  "kind": "tool",
+  "description": "Open, browse, query and export SQLite databases in a graphical editor.",
+  "about": "DB Browser for SQLite opens a SQLite database and shows its tables, indexes, views and triggers, with each table browsable and filterable as a grid. Arbitrary SQL can be run against the file, and tables or query results exported as CSV, JSON or SQL. Much of what browsers, messaging applications and operating systems record is kept in SQLite, so it is a common way to look inside an artifact no dedicated parser covers. It edits as well as reads: open a working copy, or use its read-only mode, rather than the evidence itself. The Windows package also includes a build for encrypted SQLCipher databases, not given a command here. It saves its settings under the user's profile, in the registry on Windows, rather than beside the program. The Linux build is an AppImage: it needs an X11 display, as a desktop session or WSLg provides, and the distribution's FUSE 2 library (the libfuse2 package) unless started with APPIMAGE_EXTRACT_AND_RUN=1 set.",
+  "disciplines": [
+    "windows-forensics",
+    "macos-forensics",
+    "linux-forensics",
+    "smartphone-forensics"
+  ],
+  "capabilities": [
+    "data-export"
+  ],
+  "use_cases": [
+    "evidence-review"
+  ],
+  "evidence": [
+    "sqlite-databases"
+  ],
+  "project": {
+    "homepage": "https://sqlitebrowser.org/",
+    "repository": "https://github.com/sqlitebrowser/sqlitebrowser",
+    "license": "MPL-2.0 OR GPL-3.0-or-later"
+  },
+  "builds": [
+    {
+      "version": "3.13.1",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://github.com/sqlitebrowser/sqlitebrowser/releases/download/v3.13.1/DB.Browser.for.SQLite-v3.13.1-win64.zip",
+        "sha256": "22375e275ec42d96de1d3b8e9ea4ed86d2a3505c4d0ffcbd1af67aa4003e5e4d",
+        "size": 21720951
+      },
+      "install": {
+        "strategy": "portable-zip",
+        "strip_components": 0,
+        "extracted_size": 50918964,
+        "entries": 107,
+        "entrypoints": [
+          {
+            "name": "sqlitebrowser",
+            "path": "DB Browser for SQLite.exe"
+          }
+        ]
+      },
+      "verify": [
+        {
+          "type": "file",
+          "path": "platforms/qwindows.dll"
+        }
+      ]
+    },
+    {
+      "version": "3.13.1",
+      "platform": {
+        "os": "linux",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://github.com/sqlitebrowser/sqlitebrowser/releases/download/v3.13.1/DB.Browser.for.SQLite-v3.13.1-x86.64-v2.AppImage",
+        "sha256": "c2fd0c27c84777747527e1b28deccc824bc88eeb47f36a9575bf1ba0a5a38453",
+        "size": 36705472
+      },
+      "install": {
+        "strategy": "standalone-file",
+        "strip_components": 0,
+        "extracted_size": 36705472,
+        "entries": 1,
+        "entrypoints": [
+          {
+            "name": "sqlitebrowser",
+            "path": "DB.Browser.for.SQLite-v3.13.1-x86.64-v2.AppImage"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -186,7 +186,7 @@ class CataloguedPackageTests(unittest.TestCase):
         # If every package carried the same terms the classification would be
         # decoration. Two packages sharing every axis is the warning sign.
         packages = load_catalog(Path("catalog"))
-        signatures = {(p.capabilities, p.use_cases, p.evidence) for p in packages}
+        signatures = {(p.disciplines, p.capabilities, p.use_cases, p.evidence) for p in packages}
         self.assertEqual(len(signatures), len(packages), "two packages are classified identically")
 
 

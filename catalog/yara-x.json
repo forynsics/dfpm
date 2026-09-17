@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "id": "yara-x",
+  "name": "YARA-X",
+  "kind": "tool",
+  "description": "Scan files for YARA rules with the rewritten YARA engine and its yr command.",
+  "about": "YARA-X is a rewrite of YARA that reads the same rule language, so existing rule sets mostly work unchanged, though a few rarely used constructs behave differently or are refused. Its single command, yr, scans files and directories, compiles rules ahead of time, checks and formats rule files, and can dump what its modules extract from a file, such as the structure of a PE or ELF executable. Matches can be printed as text or as newline-delimited JSON for further processing. Unlike YARA, it does not scan the memory of running processes. The Linux builds are statically linked.",
+  "disciplines": [
+    "malware-analysis"
+  ],
+  "capabilities": [
+    "signature-scanning"
+  ],
+  "use_cases": [
+    "threat-hunting",
+    "incident-response"
+  ],
+  "evidence": [
+    "files"
+  ],
+  "project": {
+    "homepage": "https://virustotal.github.io/yara-x/",
+    "repository": "https://github.com/VirusTotal/yara-x",
+    "license": "BSD-3-Clause"
+  },
+  "builds": [
+    {
+      "version": "1.20.0",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://github.com/VirusTotal/yara-x/releases/download/v1.20.0/yara-x-v1.20.0-x86_64-pc-windows-msvc.zip",
+        "sha256": "b1e2840bac593aea353d2b2b341f5a862c9d61c0c406d9abbbad9e1fa35163a1",
+        "size": 8640562
+      },
+      "install": {
+        "strategy": "portable-zip",
+        "strip_components": 0,
+        "extracted_size": 25210368,
+        "entries": 1,
+        "entrypoints": [
+          {
+            "name": "yr",
+            "path": "yr.exe"
+          }
+        ]
+      }
+    },
+    {
+      "version": "1.20.0",
+      "platform": {
+        "os": "linux",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://github.com/VirusTotal/yara-x/releases/download/v1.20.0/yara-x-v1.20.0-x86_64-unknown-linux-gnu.tar.gz",
+        "sha256": "cabb8df46492fff59c51261302c71ed9cb2cef393d3f0ca560801a34a8e24cbe",
+        "size": 9930108
+      },
+      "install": {
+        "strategy": "portable-tar",
+        "strip_components": 0,
+        "extracted_size": 30831832,
+        "entries": 1,
+        "entrypoints": [
+          {
+            "name": "yr",
+            "path": "yr"
+          }
+        ]
+      }
+    },
+    {
+      "version": "1.20.0",
+      "platform": {
+        "os": "linux",
+        "arch": "arm64"
+      },
+      "package": {
+        "url": "https://github.com/VirusTotal/yara-x/releases/download/v1.20.0/yara-x-v1.20.0-aarch64-unknown-linux-gnu.tar.gz",
+        "sha256": "c1d6f63a6fe55c17b5ddbfcb89d34599b737226a683ee492b12d92d1d541f304",
+        "size": 8787612
+      },
+      "install": {
+        "strategy": "portable-tar",
+        "strip_components": 0,
+        "extracted_size": 26119768,
+        "entries": 1,
+        "entrypoints": [
+          {
+            "name": "yr",
+            "path": "yr"
+          }
+        ]
+      }
+    }
+  ]
+}

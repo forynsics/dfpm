@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "id": "browsinghistoryview",
+  "name": "BrowsingHistoryView",
+  "kind": "tool",
+  "description": "Combine the browsing history of several web browsers into one table.",
+  "about": "BrowsingHistoryView reads the history kept by Chrome, Edge, Firefox, Internet Explorer, Safari, Opera and other Chromium-based browsers and lists every visit in one table, with the URL, title, visit time, visit count, browser and user profile. It can read the machine it runs on or history copied from another: a profiles folder, a single profile, or individual history files, chosen with /HistorySource. Results can be saved from the command line as CSV, tab-delimited text, HTML or XML without opening the window, for example /HistorySource 4 /HistorySourceFolder <profile> /scomma <file>. Run with no options it opens a window and reads the history of the machine it is running on. The publisher replaces the download in place for each release.",
+  "disciplines": [
+    "windows-forensics"
+  ],
+  "capabilities": [
+    "data-export"
+  ],
+  "use_cases": [
+    "forensic-triage",
+    "evidence-review"
+  ],
+  "evidence": [
+    "browser-history"
+  ],
+  "project": {
+    "homepage": "https://www.nirsoft.net/utils/browsing_history_view.html",
+    "license": "LicenseRef-NirSoft-Freeware"
+  },
+  "builds": [
+    {
+      "version": "2.6.2.36",
+      "platform": {
+        "os": "windows",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://www.nirsoft.net/utils/browsinghistoryview-x64.zip",
+        "sha256": "129c513504cb89606949e90a13d0c24cbcefd0d1b6b0c675a541753661517fa3",
+        "size": 482479,
+        "stability": "rolling"
+      },
+      "install": {
+        "strategy": "portable-zip",
+        "strip_components": 0,
+        "extracted_size": 525022,
+        "entries": 3,
+        "entrypoints": [
+          {
+            "name": "browsinghistoryview",
+            "path": "BrowsingHistoryView.exe"
+          }
+        ]
+      }
+    }
+  ]
+}

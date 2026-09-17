@@ -1,19 +1,19 @@
 {
   "schema_version": 1,
-  "id": "hindsight",
+  "id": "sqlitebrowser",
   "provider": "github-releases",
-  "repository": "RyanDFIR/hindsight",
+  "repository": "sqlitebrowser/sqlitebrowser",
   "tag_prefix": "v",
   "assets": [
     {
-      "name": "hindsight.exe",
+      "name": "DB.Browser.for.SQLite-v{version}-win64.zip",
       "platform": {
         "os": "windows",
         "arch": "x64"
       }
     },
     {
-      "name": "hindsight-linux-x86_64",
+      "name": "DB.Browser.for.SQLite-v{version}-x86.64-v2.AppImage",
       "platform": {
         "os": "linux",
         "arch": "x64"

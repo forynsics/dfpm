@@ -14,6 +14,18 @@
       "sha256": "56a8c62a1b125d1338e304a8afcd618a0fa79a9c5ec09ddf2ce917da25faf13a"
     },
     {
+      "file": "avml.json",
+      "id": "avml",
+      "version": "0.20.0",
+      "sha256": "8c6c0a92656f463cceadb6dc2166f63e190e9cd9bc779374b04244b93ada87be"
+    },
+    {
+      "file": "browsinghistoryview.json",
+      "id": "browsinghistoryview",
+      "version": "2.6.2.36",
+      "sha256": "10f910c0fd47d88e49f4d1f32a68a5faf6507d4c7cd6b83d09209ae80288e673"
+    },
+    {
       "file": "bstrings.json",
       "id": "bstrings",
       "version": "2026.5.0.0",
@@ -47,7 +59,7 @@
       "file": "floss.json",
       "id": "floss",
       "version": "3.1.1",
-      "sha256": "073e34d097d702550b1e3700c00aa0fdcc5b807bfb8ee8baeb40ca8e0ce1c062"
+      "sha256": "103ab2b4a073161d114f363ed2a739032048240777a374530a93566d3b581ae1"
     },
     {
       "file": "hayabusa.json",
@@ -59,7 +71,7 @@
       "file": "hindsight.json",
       "id": "hindsight",
       "version": "2026.06",
-      "sha256": "00636ea5b377e54991ea60b2c1ca116b677ff2c3b454e6111cf49fea23e4dc5a"
+      "sha256": "787e58796c4b770e977f1ce7b841aef7d1d9dea1d243dc721fa8148d76a02c86"
     },
     {
       "file": "iisgeolocate.json",
@@ -89,7 +101,7 @@
       "file": "memprocfs.json",
       "id": "memprocfs",
       "version": "5.18.11",
-      "sha256": "4f91d52563daeed57673bb4ced7a64346af91a17c5722e0c80a1191c32dcafc9"
+      "sha256": "6330226c181ca4a1db169f9efcfedbeca1259bafdc8f24806a8677a21abff335"
     },
     {
       "file": "mftecmd.json",
@@ -170,6 +182,12 @@
       "sha256": "c581c200fbd2ccbbd5238a4e05108d6d81f6c8e041a92a13ebe4907ba5a784fb"
     },
     {
+      "file": "sqlitebrowser.json",
+      "id": "sqlitebrowser",
+      "version": "3.13.1",
+      "sha256": "147c1b525ee6282cf39057ed9cffdf25cceb0ad4d00a5f5f709f1ecf9711013c"
+    },
+    {
       "file": "srumecmd.json",
       "id": "srumecmd",
       "version": "2026.5.0.0",
@@ -185,7 +203,7 @@
       "file": "suzaku.json",
       "id": "suzaku",
       "version": "2.0.1",
-      "sha256": "827b6b36cfa5224de8b7a55a7feabe1bb904caac4dec6adbad2cb3873606f787"
+      "sha256": "ebc36a9d7ec61e3d6885d85bf27feceb503a496545b2553cf2e6aa742358b1a0"
     },
     {
       "file": "takajo.json",
@@ -228,6 +246,12 @@
       "id": "wxtcmd",
       "version": "2026.5.0.0",
       "sha256": "b1a4737001c7ec620b843799fd1d352e376fc52b16b2a8bf6c7f093b4c1ae1c6"
+    },
+    {
+      "file": "yara-x.json",
+      "id": "yara-x",
+      "version": "1.20.0",
+      "sha256": "2b244d57077ee3ca55ea6ac02177796f6da3162aab3efe98c069dc0ae6ac73b9"
     },
     {
       "file": "yara.json",

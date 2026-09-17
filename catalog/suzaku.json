@@ -4,7 +4,7 @@
   "name": "Suzaku",
   "kind": "tool",
   "description": "Search cloud audit logs, generate forensic timelines, and apply Sigma-based detections.",
-  "about": "Suzaku brings Hayabusa's timeline-and-detection workflow to exported cloud logs. The current release searches and summarizes AWS CloudTrail data, produces CloudTrail metrics and DFIR timelines, and builds Azure timelines, applying its bundled Sigma rules to surface matching activity. It works on log files supplied locally; it does not connect to or modify a cloud account.",
+  "about": "Suzaku brings Hayabusa's timeline-and-detection workflow to exported cloud logs. The current release searches and summarizes AWS CloudTrail data, produces CloudTrail metrics and DFIR timelines, and builds Azure timelines, applying its bundled Sigma rules to surface matching activity. It works on log files supplied locally; it does not connect to or modify a cloud account. The Linux x64 build is statically linked; the arm64 build needs glibc 2.39 or newer, as shipped by Ubuntu 24.04 and Debian 13 onwards.",
   "disciplines": [
     "cloud-forensics"
   ],
@@ -47,6 +47,74 @@
           {
             "name": "suzaku",
             "path": "suzaku-2.0.1-win-x64.exe"
+          }
+        ]
+      },
+      "verify": [
+        {
+          "type": "file",
+          "path": "config/aws_profile.yaml"
+        },
+        {
+          "type": "file",
+          "path": "rules/config/aws_ignore_rule_list.txt"
+        }
+      ]
+    },
+    {
+      "version": "2.0.1",
+      "platform": {
+        "os": "linux",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://github.com/Yamato-Security/suzaku/releases/download/v2.0.1/suzaku-2.0.1-lin-x64-musl.zip",
+        "sha256": "44086a9d630298d99f2eaa834629470a202a102d86efc1cc77db7d02fe57a44a",
+        "size": 25802465
+      },
+      "install": {
+        "strategy": "portable-zip",
+        "strip_components": 0,
+        "extracted_size": 72544562,
+        "entries": 1044,
+        "entrypoints": [
+          {
+            "name": "suzaku",
+            "path": "suzaku-2.0.1-lin-x64-musl"
+          }
+        ]
+      },
+      "verify": [
+        {
+          "type": "file",
+          "path": "config/aws_profile.yaml"
+        },
+        {
+          "type": "file",
+          "path": "rules/config/aws_ignore_rule_list.txt"
+        }
+      ]
+    },
+    {
+      "version": "2.0.1",
+      "platform": {
+        "os": "linux",
+        "arch": "arm64"
+      },
+      "package": {
+        "url": "https://github.com/Yamato-Security/suzaku/releases/download/v2.0.1/suzaku-2.0.1-lin-aarch64-gnu.zip",
+        "sha256": "7360bc54e4ac835752feba9f7f20590a9585774f5a032c2ef5e596f19189d6da",
+        "size": 25227703
+      },
+      "install": {
+        "strategy": "portable-zip",
+        "strip_components": 0,
+        "extracted_size": 70395691,
+        "entries": 1044,
+        "entrypoints": [
+          {
+            "name": "suzaku",
+            "path": "suzaku-2.0.1-lin-aarch64-gnu"
           }
         ]
       },

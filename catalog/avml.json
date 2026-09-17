@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "id": "avml",
+  "name": "AVML",
+  "kind": "tool",
+  "description": "Capture the physical memory of a running Linux machine to a file.",
+  "about": "AVML acquires the memory of the Linux machine it runs on and writes it as a LiME-format image, which memory analysis frameworks read directly. It finds a usable source by itself, trying /dev/crash, /proc/kcore and /dev/mem in turn, and needs no kernel module built for the target, which is what makes it practical on a machine nobody prepared in advance. It can compress the image as it writes it, in its own format that its convert command turns back into LiME or raw, and can upload an image to remote storage or stream it there without writing it locally. Reading physical memory needs root, so a useful run has to be elevated. The builds are statically linked, so the same file runs across distributions.",
+  "disciplines": [
+    "memory-forensics",
+    "linux-forensics"
+  ],
+  "capabilities": [
+    "evidence-collection"
+  ],
+  "use_cases": [
+    "incident-response",
+    "forensic-triage"
+  ],
+  "evidence": [
+    "memory-images"
+  ],
+  "project": {
+    "homepage": "https://github.com/microsoft/avml",
+    "repository": "https://github.com/microsoft/avml",
+    "license": "MIT"
+  },
+  "builds": [
+    {
+      "version": "0.20.0",
+      "platform": {
+        "os": "linux",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://github.com/microsoft/avml/releases/download/v0.20.0/avml",
+        "sha256": "a67010b08af2edf5a04d2f051a133e0d8e30853c308f055b8335e759609d6dc9",
+        "size": 7593712
+      },
+      "install": {
+        "strategy": "standalone-file",
+        "strip_components": 0,
+        "extracted_size": 7593712,
+        "entries": 1,
+        "entrypoints": [
+          {
+            "name": "avml",
+            "path": "avml"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.20.0",
+      "platform": {
+        "os": "linux",
+        "arch": "arm64"
+      },
+      "package": {
+        "url": "https://github.com/microsoft/avml/releases/download/v0.20.0/avml-aarch64",
+        "sha256": "d3fa9285e94ad4268cb7ed20a62d8bd7b1ac4561e191b8a82654864b4541b3ad",
+        "size": 6342704
+      },
+      "install": {
+        "strategy": "standalone-file",
+        "strip_components": 0,
+        "extracted_size": 6342704,
+        "entries": 1,
+        "entrypoints": [
+          {
+            "name": "avml",
+            "path": "avml-aarch64"
+          }
+        ]
+      }
+    }
+  ]
+}

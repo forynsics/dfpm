@@ -1,22 +1,22 @@
 {
   "schema_version": 1,
-  "id": "hindsight",
+  "id": "avml",
   "provider": "github-releases",
-  "repository": "RyanDFIR/hindsight",
+  "repository": "microsoft/avml",
   "tag_prefix": "v",
   "assets": [
     {
-      "name": "hindsight.exe",
+      "name": "avml",
       "platform": {
-        "os": "windows",
+        "os": "linux",
         "arch": "x64"
       }
     },
     {
-      "name": "hindsight-linux-x86_64",
+      "name": "avml-aarch64",
       "platform": {
         "os": "linux",
-        "arch": "x64"
+        "arch": "arm64"
       }
     }
   ]

@@ -4,7 +4,7 @@
   "name": "FLOSS",
   "kind": "tool",
   "description": "Recover strings a program hides from ordinary string extraction, including ones it builds at runtime.",
-  "about": "Malware routinely keeps its strings out of plain sight, so the addresses, filenames and commands that would explain what it does are missing from ordinary string output. FLOSS finds them anyway. Alongside the static strings any tool would report, it identifies the routine a program uses to decode its own text and emulates it to recover the result, reconstructs strings assembled on the stack one character at a time, and pulls out those built directly in memory. Output separates each category, so it is clear whether something was sitting in the file or had to be reconstructed, and results can be written as JSON for further processing.",
+  "about": "Malware routinely keeps its strings out of plain sight, so the addresses, filenames and commands that would explain what it does are missing from ordinary string output. FLOSS finds them anyway. Alongside the static strings any tool would report, it identifies the routine a program uses to decode its own text and emulates it to recover the result, reconstructs strings assembled on the stack one character at a time, and pulls out those built directly in memory. Output separates each category, so it is clear whether something was sitting in the file or had to be reconstructed, and results can be written as JSON for further processing. The Linux build unpacks itself into the temporary directory each time it starts, so it will not run where that directory is mounted without permission to execute.",
   "disciplines": [
     "malware-analysis"
   ],
@@ -45,6 +45,30 @@
           {
             "name": "floss",
             "path": "floss.exe"
+          }
+        ]
+      }
+    },
+    {
+      "version": "3.1.1",
+      "platform": {
+        "os": "linux",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://github.com/mandiant/flare-floss/releases/download/v3.1.1/floss-v3.1.1-linux.zip",
+        "sha256": "40c05a869f34f7e2417b17ca290cc54bd3671ee1f0a2d9bd5103284c01a54666",
+        "size": 40571555
+      },
+      "install": {
+        "strategy": "portable-zip",
+        "strip_components": 0,
+        "extracted_size": 40885080,
+        "entries": 1,
+        "entrypoints": [
+          {
+            "name": "floss",
+            "path": "floss"
           }
         ]
       }

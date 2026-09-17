@@ -4,7 +4,7 @@
   "name": "Hindsight",
   "kind": "tool",
   "description": "Parse browser profiles into a timeline of history, downloads, cookies, storage, and related activity.",
-  "about": "Hindsight examines a browser profile directory, copies live databases by default so locked files can still be read, runs artifact-specific parsers and plugins, and writes the combined results as SQLite, JSONL or XLSX. The current build recognizes Chrome, Edge, Brave, Vivaldi, Firefox and Tor profiles, while retaining its deepest coverage for Chrome and Chromium data. Give it a profile or user-data directory with --input and an output name with --output.",
+  "about": "Hindsight examines a browser profile directory, copies live databases by default so locked files can still be read, runs artifact-specific parsers and plugins, and writes the combined results as SQLite, JSONL or XLSX. The current build recognizes Chrome, Edge, Brave, Vivaldi, Firefox and Tor profiles, while retaining its deepest coverage for Chrome and Chromium data. Give it a profile or user-data directory with --input and an output name with --output. The Linux build unpacks itself into the temporary directory each time it starts, so it will not run where that directory is mounted without permission to execute.",
   "disciplines": [],
   "capabilities": [
     "timeline-generation",
@@ -45,6 +45,30 @@
           {
             "name": "hindsight",
             "path": "hindsight.exe"
+          }
+        ]
+      }
+    },
+    {
+      "version": "2026.06",
+      "platform": {
+        "os": "linux",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://github.com/RyanDFIR/hindsight/releases/download/v2026.06/hindsight-linux-x86_64",
+        "sha256": "b3f89f34dd5c6bd66873f218ed26c3c6ce8408ae4b31b6577293703d28504386",
+        "size": 40842536
+      },
+      "install": {
+        "strategy": "standalone-file",
+        "strip_components": 0,
+        "extracted_size": 40842536,
+        "entries": 1,
+        "entrypoints": [
+          {
+            "name": "hindsight",
+            "path": "hindsight-linux-x86_64"
           }
         ]
       }

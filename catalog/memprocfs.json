@@ -4,7 +4,7 @@
   "name": "MemProcFS",
   "kind": "tool",
   "description": "Mount a memory image as a file system and browse processes, handles and network activity as files.",
-  "about": "MemProcFS presents a memory image the way an operating system presents a disk: as a tree of directories and files. Each process becomes a folder holding its modules, handles, threads, virtual memory map and recovered files, so examining memory becomes reading and copying rather than running a query and interpreting a table. It reads raw dumps, crash dumps and hibernation files, and can also attach to live memory through a driver. A plugin directory extends what appears in the tree, and a bundled rule engine allows scanning the mounted image for known patterns. Mounting it as a drive letter needs a file system driver installed separately; without one the same data is reachable through its other interfaces.",
+  "about": "MemProcFS presents a memory image the way an operating system presents a disk: as a tree of directories and files. Each process becomes a folder holding its modules, handles, threads, virtual memory map and recovered files, so examining memory becomes reading and copying rather than running a query and interpreting a table. It reads raw dumps, crash dumps and hibernation files, and can also attach to live memory through a driver. A plugin directory extends what appears in the tree, and a bundled rule engine allows scanning the mounted image for known patterns. Mounting it as a drive letter needs a file system driver installed separately; without one the same data is reachable through its other interfaces. On Linux it will not start without the distribution's FUSE 2 and libusb 1.0 libraries (libfuse2 and libusb-1.0-0 on Debian and Ubuntu), and mounting needs permission to use FUSE.",
   "disciplines": [
     "memory-forensics"
   ],
@@ -54,6 +54,74 @@
         {
           "type": "file",
           "path": "vmm.dll"
+        },
+        {
+          "type": "file",
+          "path": "info.db"
+        }
+      ]
+    },
+    {
+      "version": "5.18.11",
+      "platform": {
+        "os": "linux",
+        "arch": "x64"
+      },
+      "package": {
+        "url": "https://github.com/ufrisk/MemProcFS/releases/download/v5.18/MemProcFS_files_and_binaries_v5.18.11-linux_x64-20260914.tar.gz",
+        "sha256": "55648725838cae111c428131b619845b88fee45be61ea2d962e869ec0e8012aa",
+        "size": 5926240
+      },
+      "install": {
+        "strategy": "portable-tar",
+        "strip_components": 0,
+        "extracted_size": 13658561,
+        "entries": 38,
+        "entrypoints": [
+          {
+            "name": "memprocfs",
+            "path": "memprocfs"
+          }
+        ]
+      },
+      "verify": [
+        {
+          "type": "file",
+          "path": "vmm.so"
+        },
+        {
+          "type": "file",
+          "path": "info.db"
+        }
+      ]
+    },
+    {
+      "version": "5.18.11",
+      "platform": {
+        "os": "linux",
+        "arch": "arm64"
+      },
+      "package": {
+        "url": "https://github.com/ufrisk/MemProcFS/releases/download/v5.18/MemProcFS_files_and_binaries_v5.18.11-linux_aarch64-20260914.tar.gz",
+        "sha256": "3bee10290ce7b46ec15bc1d48452d4e652ae91e478e8c7f2ba187fdc287a7f85",
+        "size": 5832313
+      },
+      "install": {
+        "strategy": "portable-tar",
+        "strip_components": 0,
+        "extracted_size": 13322465,
+        "entries": 35,
+        "entrypoints": [
+          {
+            "name": "memprocfs",
+            "path": "memprocfs"
+          }
+        ]
+      },
+      "verify": [
+        {
+          "type": "file",
+          "path": "vmm.so"
         },
         {
           "type": "file",

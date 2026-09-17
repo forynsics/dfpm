@@ -1,26 +1,26 @@
 {
   "schema_version": 1,
-  "id": "suzaku",
+  "id": "yara-x",
   "provider": "github-releases",
-  "repository": "Yamato-Security/suzaku",
+  "repository": "VirusTotal/yara-x",
   "tag_prefix": "v",
   "assets": [
     {
-      "name": "suzaku-{version}-win-x64.zip",
+      "name": "yara-x-v{version}-x86_64-pc-windows-msvc.zip",
       "platform": {
         "os": "windows",
         "arch": "x64"
       }
     },
     {
-      "name": "suzaku-{version}-lin-x64-musl.zip",
+      "name": "yara-x-v{version}-x86_64-unknown-linux-gnu.tar.gz",
       "platform": {
         "os": "linux",
         "arch": "x64"
       }
     },
     {
-      "name": "suzaku-{version}-lin-aarch64-gnu.zip",
+      "name": "yara-x-v{version}-aarch64-unknown-linux-gnu.tar.gz",
       "platform": {
         "os": "linux",
         "arch": "arm64"

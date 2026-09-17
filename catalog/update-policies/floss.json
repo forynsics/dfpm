@@ -8,6 +8,10 @@
     {
       "name": "floss-v{version}-windows.zip",
       "platform": {"os": "windows", "arch": "x64"}
+    },
+    {
+      "name": "floss-v{version}-linux.zip",
+      "platform": {"os": "linux", "arch": "x64"}
     }
   ]
 }
