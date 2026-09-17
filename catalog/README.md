@@ -30,7 +30,7 @@ There is also a script that fills in the mechanical fields for you:
 .venv\Scripts\python.exe scripts\draft-manifest.py <url> --id <package-id> --name <DisplayName>
 ```
 
-It downloads the archive and derives the digest, size, version, architecture, archive depth, entrypoints, installed size, entry count, and any runtime the package declares. It prints a manifest to standard output.
+It downloads the artifact (a ZIP, a tar archive, or a bare executable) and derives the strategy, digest, size, platform, archive depth, entrypoints, installed size, entry count, and any .NET runtime the package declares. It reads the version from Windows executables only; for other builds, take it from the release. It prints a manifest to standard output, and lists on standard error what it could not settle.
 
 It deliberately leaves blank everything that requires judgement: `description`, `about`, the four classification axes, and `package.stability`. Those are yours to write. A draft is a starting point, not a finished entry.
 

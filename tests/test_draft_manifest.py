@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import io
 import struct
+import tarfile
 import tempfile
 import unittest
 import zipfile
@@ -36,6 +38,17 @@ def fake_executable(machine: int = 0x8664, version: tuple[int, int, int, int] | 
     return bytes(header + body)
 
 
+def fake_elf(machine: int = 0x3E, big_endian: bool = False) -> bytes:
+    """The identifying part of an ELF header, which is all the draft reads."""
+    order = ">" if big_endian else "<"
+    ident = b"\x7fELF" + bytes([2, 2 if big_endian else 1, 1]) + b"\0" * 9
+    return ident + struct.pack(order + "HH", 2, machine) + b"\0" * 44
+
+
+def fake_macho(cpu: int = 0x0100000C, filetype: int = 2) -> bytes:
+    return b"\xcf\xfa\xed\xfe" + struct.pack("<IIII", cpu, 0, filetype, 0) + b"\0" * 12
+
+
 class ArchiveShapeTests(unittest.TestCase):
     """Working out how deep an archive unpacks, which decides where everything lands."""
 
@@ -62,12 +75,47 @@ class CommandNameTests(unittest.TestCase):
     def test_a_nested_executable_keeps_only_its_own_name(self) -> None:
         self.assertEqual(draft.command_name("bin/Some Tool.exe"), "some-tool")
 
+    def test_a_release_file_name_loses_its_version_and_platform(self) -> None:
+        for released, expected in (
+            ("velociraptor-v0.77.2-linux-amd64-musl", "velociraptor"),
+            ("velociraptor-v0.77.2-windows-amd64.exe", "velociraptor"),
+            ("hayabusa-4.1.0-lin-x64-musl", "hayabusa"),
+            ("tool_linux_arm64", "tool"),
+            ("Tool.x64.exe", "tool"),
+        ):
+            with self.subTest(released=released):
+                self.assertEqual(draft.command_name(released), expected)
+
+    def test_a_name_that_merely_contains_a_platform_word_keeps_it(self) -> None:
+        self.assertEqual(draft.command_name("winpmem.exe"), "winpmem")
+        self.assertEqual(draft.command_name("x64dbg.exe"), "x64dbg")
+
     def test_a_name_that_would_be_nothing_still_produces_something(self) -> None:
         self.assertEqual(draft.command_name("---.exe"), "tool")
 
 
 class BinaryReadingTests(unittest.TestCase):
     """What a Windows executable says about itself, which is often the only place it is said."""
+
+    def test_the_system_and_architecture_are_read_from_any_supported_header(self) -> None:
+        cases = (
+            (fake_executable(0xAA64), ("windows", "arm64")),
+            (fake_elf(0x3E), ("linux", "x64")),
+            (fake_elf(0xB7), ("linux", "arm64")),
+            (fake_elf(0xB7, big_endian=True), ("linux", "arm64")),
+            (fake_macho(), ("macos", "arm64")),
+        )
+        for binary, expected in cases:
+            with self.subTest(expected=expected):
+                self.assertEqual(draft.binary_platform(binary), expected)
+
+    def test_an_unknown_machine_is_still_recognised_as_a_program(self) -> None:
+        self.assertEqual(draft.binary_platform(fake_elf(0xF3)), ("linux", None))
+
+    def test_a_file_that_is_no_program_reports_nothing(self) -> None:
+        for body in (b"#!/bin/sh\n", b"PK\x03\x04", b""):
+            with self.subTest(body=body):
+                self.assertIsNone(draft.binary_platform(body))
 
     def test_the_version_resource_is_read(self) -> None:
         self.assertEqual(draft.file_version(fake_executable()), "2026.5.0.0")
@@ -166,6 +214,153 @@ class DraftTests(unittest.TestCase):
         loaded = Tool.load(path)
         self.assertEqual(loaded.builds[0].entrypoints[0].name, "toolkit")
         self.assertFalse(loaded.builds[0].package.rolling)
+
+
+class OtherArtifactTests(unittest.TestCase):
+    """Tar archives, bare executables and ZIPs made on Unix, which is how most Linux builds are published."""
+
+    def setUp(self) -> None:
+        self.base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
+
+    def tarball(self, members: dict[str, tuple[bytes, int]]) -> Path:
+        path = self.base / "tool.tar.gz"
+        with tarfile.open(path, "w:gz") as bundle:
+            for name, (body, mode) in members.items():
+                info = tarfile.TarInfo(name)
+                info.size = len(body)
+                info.mode = mode
+                bundle.addfile(info, io.BytesIO(body))
+        return path
+
+    def zipped(self, members: dict[str, tuple[bytes, int | None]]) -> Path:
+        path = self.base / "tool.zip"
+        with zipfile.ZipFile(path, "w") as bundle:
+            for name, (body, mode) in members.items():
+                info = zipfile.ZipInfo(name)
+                info.create_system = 0 if mode is None else 3
+                if mode is not None:
+                    info.external_attr = (0o100000 | mode) << 16
+                bundle.writestr(info, body)
+        return path
+
+    def bare(self, body: bytes) -> Path:
+        path = self.base / "download"
+        path.write_bytes(body)
+        return path
+
+    def describe(self, path: Path, url: str) -> tuple[dict, list[str]]:
+        return draft.describe(path, "a" * 64, path.stat().st_size, url, "tool", "Tool")
+
+    def entrypoints(self, entry: dict) -> list[str]:
+        return [item["path"] for item in entry["builds"][0]["install"]["entrypoints"]]
+
+    def test_a_tar_archive_is_drafted_as_one(self) -> None:
+        path = self.tarball(
+            {
+                "tool-1.0/tool": (fake_elf(), 0o755),
+                "tool-1.0/libhelper.so.1": (fake_elf(), 0o755),
+                "tool-1.0/README": (b"read me\n", 0o644),
+            }
+        )
+        entry, unknowns = self.describe(path, "https://example.org/tool.tar.gz")
+        build = entry["builds"][0]
+        self.assertEqual(build["install"]["strategy"], "portable-tar")
+        self.assertEqual(build["install"]["strip_components"], 1)
+        self.assertEqual(build["install"]["entries"], 3)
+        self.assertEqual(build["install"]["entrypoints"], [{"name": "tool", "path": "tool"}])
+        self.assertEqual(build["platform"], {"os": "linux", "arch": "x64"})
+        self.assertEqual(build["version"], "")
+        self.assertTrue(any(item.startswith("version -") for item in unknowns))
+
+    def test_a_program_the_archive_does_not_mark_executable_is_not_a_command(self) -> None:
+        path = self.tarball({"tool": (fake_elf(), 0o755), "debug-symbols": (fake_elf(), 0o644)})
+        entry, _ = self.describe(path, "https://example.org/tool.tar.gz")
+        self.assertEqual(self.entrypoints(entry), ["tool"])
+
+    def test_a_leading_dot_directory_is_not_mistaken_for_a_wrapper(self) -> None:
+        path = self.tarball({"./tool": (fake_elf(), 0o755), "./rules/a.yml": (b"a\n", 0o644)})
+        entry, _ = self.describe(path, "https://example.org/tool.tar.gz")
+        self.assertEqual(entry["builds"][0]["install"]["strip_components"], 0)
+        self.assertEqual(self.entrypoints(entry), ["tool"])
+
+    def test_a_tar_archive_holding_a_link_is_refused(self) -> None:
+        # dfpm refuses to install it, so a draft would only be a dead end.
+        path = self.base / "linked.tar"
+        with tarfile.open(path, "w") as bundle:
+            info = tarfile.TarInfo("tool")
+            info.type = tarfile.SYMTYPE
+            info.linkname = "elsewhere"
+            bundle.addfile(info)
+        with self.assertRaises(SystemExit):
+            self.describe(path, "https://example.org/linked.tar")
+
+    def test_a_zip_without_permissions_is_read_by_header_and_says_so(self) -> None:
+        path = self.zipped({"capa": (fake_elf(), None), "notes.txt": (b"notes", None), "libx.so": (fake_elf(), None)})
+        entry, unknowns = self.describe(path, "https://example.org/capa-linux.zip")
+        build = entry["builds"][0]
+        self.assertEqual(build["install"]["strategy"], "portable-zip")
+        self.assertEqual(self.entrypoints(entry), ["capa"])
+        self.assertEqual(build["platform"], {"os": "linux", "arch": "x64"})
+        self.assertTrue(any("marks no program executable" in item for item in unknowns))
+
+    def test_a_zip_with_permissions_honours_them(self) -> None:
+        path = self.zipped({"tool": (fake_elf(), 0o755), "tool-debug": (fake_elf(), 0o644)})
+        entry, unknowns = self.describe(path, "https://example.org/tool.zip")
+        self.assertEqual(self.entrypoints(entry), ["tool"])
+        self.assertFalse(any("marks no program executable" in item for item in unknowns))
+
+    def test_an_archive_marking_nothing_executable_still_yields_its_program(self) -> None:
+        # Some publishers record 0644 for every file, the binary included.
+        path = self.zipped({"tool-1.0-lin-x64": (fake_elf(), 0o644), "rules/a.yml": (b"a", 0o644)})
+        entry, unknowns = self.describe(path, "https://example.org/tool.zip")
+        self.assertEqual(entry["builds"][0]["install"]["entrypoints"], [{"name": "tool", "path": "tool-1.0-lin-x64"}])
+        self.assertTrue(any("marks no program executable" in item for item in unknowns))
+
+    def test_a_macos_archive_takes_only_programs(self) -> None:
+        path = self.tarball({"tool": (fake_macho(), 0o755), "libtool.dylib": (fake_macho(filetype=6), 0o755)})
+        entry, _ = self.describe(path, "https://example.org/tool-mac.tar.gz")
+        self.assertEqual(self.entrypoints(entry), ["tool"])
+        self.assertEqual(entry["builds"][0]["platform"], {"os": "macos", "arch": "arm64"})
+
+    def test_a_bare_executable_is_drafted_as_a_standalone_file(self) -> None:
+        path = self.bare(fake_elf(0xB7))
+        entry, unknowns = self.describe(path, "https://example.org/releases/tool-v1.2.3-linux-arm64?raw=1")
+        build = entry["builds"][0]
+        self.assertEqual(
+            build["install"],
+            {
+                "strategy": "standalone-file",
+                "strip_components": 0,
+                "extracted_size": path.stat().st_size,
+                "entries": 1,
+                "entrypoints": [{"name": "tool", "path": "tool-v1.2.3-linux-arm64"}],
+            },
+        )
+        self.assertEqual(build["platform"], {"os": "linux", "arch": "arm64"})
+        self.assertFalse(any(item.startswith("verify -") for item in unknowns))
+
+    def test_a_bare_windows_executable_still_reports_its_version(self) -> None:
+        entry, _ = self.describe(self.bare(fake_executable()), "https://example.org/tool.exe")
+        build = entry["builds"][0]
+        self.assertEqual(build["install"]["strategy"], "standalone-file")
+        self.assertEqual(build["version"], "2026.5.0.0")
+        self.assertEqual(build["platform"], {"os": "windows", "arch": "x64"})
+
+    def test_something_that_is_neither_archive_nor_program_is_refused(self) -> None:
+        with self.assertRaises(SystemExit):
+            self.describe(self.bare(b"<html>not found</html>"), "https://example.org/tool")
+
+    def test_these_drafts_load_as_manifests(self) -> None:
+        tarball = self.tarball({"tool-1.0/tool": (fake_elf(), 0o755), "tool-1.0/rules/a.yml": (b"a", 0o644)})
+        bare = self.bare(fake_elf())
+        for path, url in ((tarball, "https://example.org/tool.tar.gz"), (bare, "https://example.org/tool-linux")):
+            with self.subTest(url=url):
+                entry, _ = self.describe(path, url)
+                entry["builds"][0]["version"] = "1.0.0"
+                entry["description"] = "A tool used to check the draft is usable."
+                manifest = self.base / "tool.json"
+                manifest.write_text(json.dumps(entry), encoding="utf-8")
+                self.assertEqual(Tool.load(manifest).builds[0].entrypoints[0].name, "tool")
 
 
 if __name__ == "__main__":
