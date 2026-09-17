@@ -63,10 +63,9 @@ function badge(name, tone) {
   return el("div", { className: `tool-badge ${tone}`, text: (name[0] || "?").toUpperCase() });
 }
 
-/* Tones are decoration and belong to the page, not to the catalog. Picking one
-   from the name keeps a tool the same colour between visits without a manifest
-   having to carry a field about how a website looks. */
-const TONES = ["navy", "gold", "silver"];
+/* One neutral colour for every badge. The accent colour marks disciplines, and
+   a badge varying between tools would read as saying something about them. */
+const BADGE_TONE = "navy";
 
 /* Somebody reading the catalog has not chosen anything yet, so the entry should
    answer as much as it can. The three axes that are not the browsing one read
@@ -118,12 +117,6 @@ function metaRows(entry) {
     rows.push(el("dt", { text: label }), el("dd", { text: terms.map((item) => item.label).join(" · ") }));
   }
   return rows.length ? el("dl", { className: "meta-rows" }, rows) : null;
-}
-
-function tone(entry) {
-  let total = 0;
-  for (const character of entry.id) total = (total + character.codePointAt(0)) % 1024;
-  return TONES[total % TONES.length];
 }
 
 function renderCatalogCount() {
@@ -234,7 +227,7 @@ function renderCatalog() {
     container.append(
       el("article", { className: "tool-card" }, [
         el("header", {}, [
-          badge(entry.name, tone(entry)),
+          badge(entry.name, BADGE_TONE),
           el("div", {}, [
             el("h3", { text: `${entry.name} ${entry.version}` }),
             el("small", { text: `${entry.id} · ${entry.kind}` }),
