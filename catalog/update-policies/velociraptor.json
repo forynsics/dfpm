@@ -12,6 +12,10 @@
     {
       "name": "velociraptor-v{version}-linux-amd64-musl",
       "platform": {"os": "linux", "arch": "x64"}
+    },
+    {
+      "name": "velociraptor-v{version}-linux-arm64",
+      "platform": {"os": "linux", "arch": "arm64"}
     }
   ]
 }

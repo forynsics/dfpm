@@ -20,6 +20,13 @@
       }
     },
     {
+      "name": "hayabusa-{version}-lin-aarch64-musl.zip",
+      "platform": {
+        "os": "linux",
+        "arch": "arm64"
+      }
+    },
+    {
       "name": "hayabusa-{version}-mac-aarch64.zip",
       "platform": {
         "os": "macos",

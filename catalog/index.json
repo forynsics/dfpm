@@ -23,13 +23,13 @@
       "file": "capa.json",
       "id": "capa",
       "version": "9.4.0",
-      "sha256": "7dcd063e94c8f7ba32c125f215ab12325dd7c0062bf21ec8d7b9174bca128fdb"
+      "sha256": "dfd45d7fa440a21e58786caf49bad4056ebcfff68e926f93700d0bcf7f4dcd46"
     },
     {
       "file": "chainsaw.json",
       "id": "chainsaw",
       "version": "2.16.5",
-      "sha256": "4c11781e24463a5f8a153c566eb6aaf9f93f43fb96314789723d424f27c62b43"
+      "sha256": "0025692bf736eefc26db5a3918d8a6e949a3ef7080e4307bc3e3ba9bfd409feb"
     },
     {
       "file": "evtxecmd.json",
@@ -53,7 +53,7 @@
       "file": "hayabusa.json",
       "id": "hayabusa",
       "version": "4.1.0",
-      "sha256": "2806d70e512475dd3c55fd24e100106cc9b09c3c1f7b8a0dfacc06b36a823787"
+      "sha256": "a1ea5423bf2a089e7f26f5cde65d9f2ba59d866b71ba7e2abe96fcb47f073899"
     },
     {
       "file": "hindsight.json",
@@ -203,7 +203,7 @@
       "file": "velociraptor.json",
       "id": "velociraptor",
       "version": "0.77.2",
-      "sha256": "0b1d08be37575e227914619365573d559a9f4f142c04cead4d05ac0150f0a8da"
+      "sha256": "a797204a3fc7ccccf5b83d2e3cd51dcba66b27f6ecaa73fea6afbaaa583ee66c"
     },
     {
       "file": "volatility3.json",

@@ -4,7 +4,7 @@
   "name": "Velociraptor",
   "kind": "tool",
   "description": "Collect forensic artifacts from a machine, or from many at once, using a query language built for the job.",
-  "about": "Velociraptor collects evidence by asking questions rather than copying everything. Artifacts are written in its own query language, so a collection describes what is wanted -- these registry keys, these event log entries, files matching this pattern, processes with this characteristic -- and returns only that. The same executable runs three ways: as a single collector against the machine it is on, as a server with agents reporting to it, or packaged into a standalone collector that can be handed to somebody with no other tooling. Hundreds of artifact definitions ship inside the binary, covering common Windows, Linux and macOS evidence, and results come back as CSV or JSON. Server and agent modes reach across a network, so what a given invocation does is worth reading before running it. The Linux build is statically linked, so it does not depend on the distribution's C library.",
+  "about": "Velociraptor collects evidence by asking questions rather than copying everything. Artifacts are written in its own query language, so a collection describes what is wanted -- these registry keys, these event log entries, files matching this pattern, processes with this characteristic -- and returns only that. The same executable runs three ways: as a single collector against the machine it is on, as a server with agents reporting to it, or packaged into a standalone collector that can be handed to somebody with no other tooling. Hundreds of artifact definitions ship inside the binary, covering common Windows, Linux and macOS evidence, and results come back as CSV or JSON. Server and agent modes reach across a network, so what a given invocation does is worth reading before running it. The x64 Linux build is statically linked, so it does not depend on the distribution's C library; the arm64 build needs glibc 2.28 or newer.",
   "disciplines": [
     "windows-forensics"
   ],
@@ -72,6 +72,30 @@
           {
             "name": "velociraptor",
             "path": "velociraptor-v0.77.2-linux-amd64-musl"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.77.2",
+      "platform": {
+        "os": "linux",
+        "arch": "arm64"
+      },
+      "package": {
+        "url": "https://github.com/Velocidex/velociraptor/releases/download/v0.77.2/velociraptor-v0.77.2-linux-arm64",
+        "sha256": "54d36c23f374a572a4a60106d896e0e39bc6fcafd0d6150cf56aec6c49454ea0",
+        "size": 80835000
+      },
+      "install": {
+        "strategy": "standalone-file",
+        "strip_components": 0,
+        "extracted_size": 80835000,
+        "entries": 1,
+        "entrypoints": [
+          {
+            "name": "velociraptor",
+            "path": "velociraptor-v0.77.2-linux-arm64"
           }
         ]
       }

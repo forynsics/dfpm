@@ -12,6 +12,10 @@
     {
       "name": "chainsaw_x86_64-unknown-linux-gnu.tar.gz",
       "platform": {"os": "linux", "arch": "x64"}
+    },
+    {
+      "name": "chainsaw_aarch64-unknown-linux-gnu.tar.gz",
+      "platform": {"os": "linux", "arch": "arm64"}
     }
   ]
 }

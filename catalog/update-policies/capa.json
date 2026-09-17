@@ -12,6 +12,10 @@
     {
       "name": "capa-v{version}-linux.zip",
       "platform": {"os": "linux", "arch": "x64"}
+    },
+    {
+      "name": "capa-v{version}-linux-arm64.zip",
+      "platform": {"os": "linux", "arch": "arm64"}
     }
   ]
 }

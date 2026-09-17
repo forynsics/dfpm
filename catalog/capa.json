@@ -4,7 +4,7 @@
   "name": "capa",
   "kind": "tool",
   "description": "Identify what an executable is capable of, expressed as named behaviours rather than signatures.",
-  "about": "capa examines a program and reports what it can do: encrypt data, log keystrokes, persist through a registry run key, communicate over HTTP, inject into another process. It reaches those conclusions from rules describing combinations of imported functions, strings, constants and control flow, so a match names a behaviour rather than a particular family or sample. That makes it useful on something never seen before, where a signature has nothing to match. It reads executables, shellcode and sandbox reports, prints its findings as a table or as JSON, and can show the evidence behind each match so a conclusion can be checked rather than trusted. The Linux build unpacks itself into the temporary directory each time it starts, so it will not run where that directory is mounted without permission to execute.",
+  "about": "capa examines a program and reports what it can do: encrypt data, log keystrokes, persist through a registry run key, communicate over HTTP, inject into another process. It reaches those conclusions from rules describing combinations of imported functions, strings, constants and control flow, so a match names a behaviour rather than a particular family or sample. That makes it useful on something never seen before, where a signature has nothing to match. It reads executables, shellcode and sandbox reports, prints its findings as a table or as JSON, and can show the evidence behind each match so a conclusion can be checked rather than trusted. The Linux builds unpack themselves into the temporary directory each time it starts, so it will not run where that directory is mounted without permission to execute.",
   "disciplines": [
     "malware-analysis"
   ],
@@ -65,6 +65,30 @@
         "strategy": "portable-zip",
         "strip_components": 0,
         "extracted_size": 47976360,
+        "entries": 1,
+        "entrypoints": [
+          {
+            "name": "capa",
+            "path": "capa"
+          }
+        ]
+      }
+    },
+    {
+      "version": "9.4.0",
+      "platform": {
+        "os": "linux",
+        "arch": "arm64"
+      },
+      "package": {
+        "url": "https://github.com/mandiant/capa/releases/download/v9.4.0/capa-v9.4.0-linux-arm64.zip",
+        "sha256": "165df126f05e86736afee0f4c28b19c6037315a99afc3a92a426432cdd30d2c5",
+        "size": 45751028
+      },
+      "install": {
+        "strategy": "portable-zip",
+        "strip_components": 0,
+        "extracted_size": 46243704,
         "entries": 1,
         "entrypoints": [
           {
