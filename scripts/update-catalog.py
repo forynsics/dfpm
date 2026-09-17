@@ -30,6 +30,8 @@ ROOT = Path(__file__).resolve().parents[1]
 CATALOG = ROOT / "catalog"
 POLICIES = CATALOG / "update-policies"
 USER_AGENT = "dfpm-catalog-updater/1"
+# Response headers a rolling asset's policy records to skip unchanged downloads.
+ROLLING_CURSORS = ("etag", "last_modified")
 VERSION_SIGNATURE = b"\xbd\x04\xef\xfe"
 
 
@@ -184,8 +186,9 @@ def load_policy(path: Path) -> dict:
         for asset in data["assets"]:
             if not isinstance(asset, dict) or not asset.get("name") or not asset.get("url", "").startswith("https://"):
                 raise SystemExit(f"{path}: rolling assets need a name and HTTPS URL")
-            if "etag" in asset and not isinstance(asset["etag"], str):
-                raise SystemExit(f"{path}: rolling asset ETags must be strings")
+            for cursor in ROLLING_CURSORS:
+                if cursor in asset and not isinstance(asset[cursor], str):
+                    raise SystemExit(f"{path}: rolling asset {cursor} values must be strings")
     return data
 
 
@@ -278,7 +281,8 @@ def update_rolling_one(catalog: Path, policy: dict, *, apply: bool, policy_path:
             metadata = rolling_metadata(policy["id"], asset_policy["url"])
             asset_report = {"name": asset_policy["name"], **metadata}
             report["assets"].append(asset_report)
-            if asset_policy.get("etag") == metadata["etag"]:
+            cursor = rolling_cursor(metadata)
+            if cursor is not None and asset_policy.get(cursor) == metadata[cursor]:
                 continue
 
             target = workspace / asset_policy["name"]
@@ -294,8 +298,9 @@ def update_rolling_one(catalog: Path, policy: dict, *, apply: bool, policy_path:
                 ) from error
             previous = matching_build(current["builds"], asset_policy, position)
             asset_report.update({"sha256": digest, "size": size})
-            asset_policy["etag"] = metadata["etag"]
-            policy_changed = True
+            if cursor is not None:
+                asset_policy[cursor] = metadata[cursor]
+                policy_changed = True
             if digest == previous["package"]["sha256"]:
                 continue
 
@@ -356,18 +361,26 @@ def update_rolling_one(catalog: Path, policy: dict, *, apply: bool, policy_path:
     return report
 
 
+def rolling_cursor(metadata: dict) -> str | None:
+    """Which header marks a rolling artifact as unchanged, strongest first.
+
+    The cursor only decides whether to download; the digest decides whether
+    anything changed. A server sending neither header is downloaded every time.
+    """
+    return next((name for name in ROLLING_CURSORS if name in metadata), None)
+
+
 def rolling_metadata(package_id: str, url: str) -> dict:
     try:
         request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT}, method="HEAD")
         with urllib.request.urlopen(request, timeout=60) as response:
-            etag = response.headers.get("ETag")
-            if not etag:
-                raise ValueError("response did not contain an ETag")
-            result = {"etag": etag}
+            result = {}
+            if value := response.headers.get("ETag"):
+                result["etag"] = value
             if value := response.headers.get("Last-Modified"):
                 result["last_modified"] = value
             return result
-    except (OSError, ValueError, urllib.error.URLError) as error:
+    except (OSError, urllib.error.URLError) as error:
         raise UpdatePolicyError(
             package_id,
             "release-discovery",

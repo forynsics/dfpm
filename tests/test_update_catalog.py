@@ -118,7 +118,11 @@ class CatalogUpdateTests(unittest.TestCase):
         policy = updater.load_policy(REPOSITORY / "catalog" / "update-policies" / "memprocfs.json")
         release = {
             "tag_name": "v5.18",
-            "assets": [{"name": "MemProcFS_files_and_binaries_v5.18.3-win_x64-20260808.zip"}],
+            "assets": [
+                {"name": "MemProcFS_files_and_binaries_v5.18.3-win_x64-20260808.zip"},
+                {"name": "MemProcFS_files_and_binaries_v5.18.3-linux_x64-20260808.tar.gz"},
+                {"name": "MemProcFS_files_and_binaries_v5.18.3-linux_aarch64-20260808.tar.gz"},
+            ],
         }
         assets = updater.select_assets(policy, release, "5.18")
         self.assertEqual(updater.package_version(policy, release, assets), "5.18.3")
@@ -380,6 +384,69 @@ class CatalogUpdateTests(unittest.TestCase):
             report = updater.update_one(self.catalog, policy, apply=False)
         self.assertEqual(report["status"], "current")
         download.assert_not_called()
+
+    def test_last_modified_stands_in_for_a_missing_etag(self) -> None:
+        policy = self.rolling_policy()
+        del policy["assets"][0]["etag"]
+        policy["assets"][0]["last_modified"] = "Mon, 03 Aug 2026 11:37:02 GMT"
+        shutil.copyfile(REPOSITORY / "catalog" / "mftecmd.json", self.catalog / "mftecmd.json")
+        unchanged = {"last_modified": "Mon, 03 Aug 2026 11:37:02 GMT"}
+        with mock.patch.object(updater, "rolling_metadata", return_value=unchanged), mock.patch.object(
+            updater, "download"
+        ) as download:
+            report = updater.update_one(self.catalog, policy, apply=False)
+        self.assertEqual(report["status"], "current")
+        download.assert_not_called()
+
+    def test_a_changed_last_modified_is_recorded_once_downloaded(self) -> None:
+        policy = self.rolling_policy()
+        del policy["assets"][0]["etag"]
+        policy_path = self.base / "rolling.json"
+        manifest = json.loads((REPOSITORY / "catalog" / "mftecmd.json").read_text(encoding="utf-8"))
+        (self.catalog / "mftecmd.json").write_text(json.dumps(manifest), encoding="utf-8")
+        digest = manifest["builds"][0]["package"]["sha256"]
+        changed = {"last_modified": "Tue, 04 Aug 2026 00:00:00 GMT"}
+        with mock.patch.object(updater, "rolling_metadata", return_value=changed), mock.patch.object(
+            updater, "download", return_value=(digest, 1)
+        ):
+            updater.update_one(self.catalog, policy, apply=True, policy_path=policy_path)
+        asset = json.loads(policy_path.read_text(encoding="utf-8"))["assets"][0]
+        self.assertEqual(asset["last_modified"], changed["last_modified"])
+        self.assertNotIn("etag", asset)
+
+    def test_a_server_sending_no_validator_is_always_downloaded(self) -> None:
+        # The digest still decides whether anything changed.
+        policy = self.rolling_policy()
+        manifest = json.loads((REPOSITORY / "catalog" / "mftecmd.json").read_text(encoding="utf-8"))
+        (self.catalog / "mftecmd.json").write_text(json.dumps(manifest), encoding="utf-8")
+        digest = manifest["builds"][0]["package"]["sha256"]
+        with mock.patch.object(updater, "rolling_metadata", return_value={}), mock.patch.object(
+            updater, "download", return_value=(digest, 1)
+        ) as download:
+            report = updater.update_one(self.catalog, policy, apply=False)
+        download.assert_called_once()
+        self.assertEqual(report["status"], "current")
+
+    def test_rolling_metadata_reads_whichever_validators_are_sent(self) -> None:
+        class Response:
+            def __init__(self, headers: dict) -> None:
+                self.headers = headers
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_):
+                return False
+
+        for headers, expected in (
+            ({"ETag": '"a"', "Last-Modified": "then"}, {"etag": '"a"', "last_modified": "then"}),
+            ({"Last-Modified": "then"}, {"last_modified": "then"}),
+            ({}, {}),
+        ):
+            with self.subTest(headers=headers), mock.patch.object(
+                updater.urllib.request, "urlopen", return_value=Response(headers)
+            ):
+                self.assertEqual(updater.rolling_metadata("tool", "https://publisher.example/tool.zip"), expected)
 
     def test_changed_etag_with_same_digest_only_advances_cursor(self) -> None:
         shutil.copyfile(REPOSITORY / "catalog" / "mftecmd.json", self.catalog / "mftecmd.json")

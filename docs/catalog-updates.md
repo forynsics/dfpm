@@ -113,6 +113,8 @@ Some publishers overwrite a stable download URL instead of publishing immutable,
 
 The scheduled job first makes a HEAD request. An unchanged ETag avoids downloading the ZIP. A new ETag causes the artifact to be downloaded and SHA-256 hashed. If its digest is unchanged, only the ETag cursor advances. If the bytes changed, the updater extracts the ZIP under dfpm's normal limits, reads the declared executable version, rejects version rollback, verifies every established path and recalculates the package facts before merging. The ETag is only a change detector; it is never treated as an integrity digest.
 
+A server that sends no ETag is tracked by its `Last-Modified` header instead, recorded as `last_modified`. One that sends neither is downloaded on every run, and the digest alone decides whether anything changed.
+
 Local `--apply` remains all-or-nothing by default. `--continue-on-policy-error` is an explicit unattended-maintenance mode: it retains independently valid package updates and returns structured failures for the rest. The scheduled workflow uses this mode, validates the combined result, and reports failures before publication.
 
 ## Execution policy
