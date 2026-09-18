@@ -226,8 +226,8 @@
     {
       "file": "volatility3.json",
       "id": "volatility3",
-      "version": "2.28.0",
-      "sha256": "7c922fb48c3c8d13bae4305ded7854898db949305a6a39c2c898ed39119429cb"
+      "version": "2.28.2",
+      "sha256": "bd2e40d4d98c35505865a8bb800cb59f915b0038f63809f27c091ce654a918f4"
     },
     {
       "file": "vscmount.json",
