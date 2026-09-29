@@ -250,8 +250,8 @@
     {
       "file": "yara-x.json",
       "id": "yara-x",
-      "version": "1.20.0",
-      "sha256": "2b244d57077ee3ca55ea6ac02177796f6da3162aab3efe98c069dc0ae6ac73b9"
+      "version": "1.21.0",
+      "sha256": "3728879016827e2689ce82c41360d9cf3a1bbb773b0ab5347d97b5c50f4ffdff"
     },
     {
       "file": "yara.json",

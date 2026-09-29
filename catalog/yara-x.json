@@ -25,20 +25,20 @@
   },
   "builds": [
     {
-      "version": "1.20.0",
+      "version": "1.21.0",
       "platform": {
         "os": "windows",
         "arch": "x64"
       },
       "package": {
-        "url": "https://github.com/VirusTotal/yara-x/releases/download/v1.20.0/yara-x-v1.20.0-x86_64-pc-windows-msvc.zip",
-        "sha256": "b1e2840bac593aea353d2b2b341f5a862c9d61c0c406d9abbbad9e1fa35163a1",
-        "size": 8640562
+        "url": "https://github.com/VirusTotal/yara-x/releases/download/v1.21.0/yara-x-v1.21.0-x86_64-pc-windows-msvc.zip",
+        "sha256": "0e2fc4d2f64df3eaa22129ad5bd074c968a5d80766ddec6183b73175e5c9da25",
+        "size": 8712498
       },
       "install": {
         "strategy": "portable-zip",
         "strip_components": 0,
-        "extracted_size": 25210368,
+        "extracted_size": 25463296,
         "entries": 1,
         "entrypoints": [
           {
@@ -49,20 +49,20 @@
       }
     },
     {
-      "version": "1.20.0",
+      "version": "1.21.0",
       "platform": {
         "os": "linux",
         "arch": "x64"
       },
       "package": {
-        "url": "https://github.com/VirusTotal/yara-x/releases/download/v1.20.0/yara-x-v1.20.0-x86_64-unknown-linux-gnu.tar.gz",
-        "sha256": "cabb8df46492fff59c51261302c71ed9cb2cef393d3f0ca560801a34a8e24cbe",
-        "size": 9930108
+        "url": "https://github.com/VirusTotal/yara-x/releases/download/v1.21.0/yara-x-v1.21.0-x86_64-unknown-linux-gnu.tar.gz",
+        "sha256": "01585181e8979e36ac10ab123fcf8921cf8ba879bf942916413e091e18d64852",
+        "size": 10009639
       },
       "install": {
         "strategy": "portable-tar",
         "strip_components": 0,
-        "extracted_size": 30831832,
+        "extracted_size": 31183816,
         "entries": 1,
         "entrypoints": [
           {
@@ -73,20 +73,20 @@
       }
     },
     {
-      "version": "1.20.0",
+      "version": "1.21.0",
       "platform": {
         "os": "linux",
         "arch": "arm64"
       },
       "package": {
-        "url": "https://github.com/VirusTotal/yara-x/releases/download/v1.20.0/yara-x-v1.20.0-aarch64-unknown-linux-gnu.tar.gz",
-        "sha256": "c1d6f63a6fe55c17b5ddbfcb89d34599b737226a683ee492b12d92d1d541f304",
-        "size": 8787612
+        "url": "https://github.com/VirusTotal/yara-x/releases/download/v1.21.0/yara-x-v1.21.0-aarch64-unknown-linux-gnu.tar.gz",
+        "sha256": "8d56947d82c7959a65fd4a7327d339d326649f6208c01c9f7fe7fd249e61c66a",
+        "size": 8865059
       },
       "install": {
         "strategy": "portable-tar",
         "strip_components": 0,
-        "extracted_size": 26119768,
+        "extracted_size": 26537032,
         "entries": 1,
         "entrypoints": [
           {
