@@ -28,20 +28,20 @@
   },
   "builds": [
     {
-      "version": "5.18.11",
+      "version": "5.19.0",
       "platform": {
         "os": "windows",
         "arch": "x64"
       },
       "package": {
-        "url": "https://github.com/ufrisk/MemProcFS/releases/download/v5.18/MemProcFS_files_and_binaries_v5.18.11-win_x64-20260914.zip",
-        "sha256": "eed14105b6a0a39277c083ebcd78e16640c51bb5e2db47e23d1c9f03aed0e3e8",
-        "size": 6707380
+        "url": "https://github.com/ufrisk/MemProcFS/releases/download/v5.19/MemProcFS_files_and_binaries_v5.19.0-win_x64-20261005.zip",
+        "sha256": "718389c254a66587a0555f3758b37709bb2916bd0b7d1c99d162df25796f063e",
+        "size": 6730176
       },
       "install": {
         "strategy": "portable-zip",
         "strip_components": 0,
-        "extracted_size": 14708799,
+        "extracted_size": 14747199,
         "entries": 45,
         "entrypoints": [
           {
@@ -62,20 +62,20 @@
       ]
     },
     {
-      "version": "5.18.11",
+      "version": "5.19.0",
       "platform": {
         "os": "linux",
         "arch": "x64"
       },
       "package": {
-        "url": "https://github.com/ufrisk/MemProcFS/releases/download/v5.18/MemProcFS_files_and_binaries_v5.18.11-linux_x64-20260914.tar.gz",
-        "sha256": "55648725838cae111c428131b619845b88fee45be61ea2d962e869ec0e8012aa",
-        "size": 5926240
+        "url": "https://github.com/ufrisk/MemProcFS/releases/download/v5.19/MemProcFS_files_and_binaries_v5.19.0-linux_x64-20261005.tar.gz",
+        "sha256": "2ec75bba2a243525a16be22d1ea6863c9fcd4de694c07e4896d4029017c43ea5",
+        "size": 5957586
       },
       "install": {
         "strategy": "portable-tar",
         "strip_components": 0,
-        "extracted_size": 13658561,
+        "extracted_size": 13708769,
         "entries": 38,
         "entrypoints": [
           {
@@ -96,20 +96,20 @@
       ]
     },
     {
-      "version": "5.18.11",
+      "version": "5.19.0",
       "platform": {
         "os": "linux",
         "arch": "arm64"
       },
       "package": {
-        "url": "https://github.com/ufrisk/MemProcFS/releases/download/v5.18/MemProcFS_files_and_binaries_v5.18.11-linux_aarch64-20260914.tar.gz",
-        "sha256": "3bee10290ce7b46ec15bc1d48452d4e652ae91e478e8c7f2ba187fdc287a7f85",
-        "size": 5832313
+        "url": "https://github.com/ufrisk/MemProcFS/releases/download/v5.19/MemProcFS_files_and_binaries_v5.19.0-linux_aarch64-20261005.tar.gz",
+        "sha256": "03554471c1702d73f2b83c22e2483b0e110b04399fc399c07fc4f7a47827c3a5",
+        "size": 5858593
       },
       "install": {
         "strategy": "portable-tar",
         "strip_components": 0,
-        "extracted_size": 13322465,
+        "extracted_size": 13363873,
         "entries": 35,
         "entrypoints": [
           {

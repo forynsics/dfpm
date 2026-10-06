@@ -100,8 +100,8 @@
     {
       "file": "memprocfs.json",
       "id": "memprocfs",
-      "version": "5.18.11",
-      "sha256": "6330226c181ca4a1db169f9efcfedbeca1259bafdc8f24806a8677a21abff335"
+      "version": "5.19.0",
+      "sha256": "f51a88f20c2d91037c9c9ac8cc593108be604b69bac9b48fb12426d0fbf0a81f"
     },
     {
       "file": "mftecmd.json",
