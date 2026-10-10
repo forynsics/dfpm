@@ -16,8 +16,8 @@
     {
       "file": "avml.json",
       "id": "avml",
-      "version": "0.20.0",
-      "sha256": "8c6c0a92656f463cceadb6dc2166f63e190e9cd9bc779374b04244b93ada87be"
+      "version": "0.21.0",
+      "sha256": "4e7a8ef062e2dddaf623775de7a21dca381984f54ed3b9d2d53a9d06d572637e"
     },
     {
       "file": "browsinghistoryview.json",

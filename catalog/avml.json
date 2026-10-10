@@ -26,20 +26,20 @@
   },
   "builds": [
     {
-      "version": "0.20.0",
+      "version": "0.21.0",
       "platform": {
         "os": "linux",
         "arch": "x64"
       },
       "package": {
-        "url": "https://github.com/microsoft/avml/releases/download/v0.20.0/avml",
-        "sha256": "a67010b08af2edf5a04d2f051a133e0d8e30853c308f055b8335e759609d6dc9",
-        "size": 7593712
+        "url": "https://github.com/microsoft/avml/releases/download/v0.21.0/avml",
+        "sha256": "e75597dcdcaaa8475fdc61643effb050f72aaa9cff677c7271386a9781bf4460",
+        "size": 7581584
       },
       "install": {
         "strategy": "standalone-file",
         "strip_components": 0,
-        "extracted_size": 7593712,
+        "extracted_size": 7581584,
         "entries": 1,
         "entrypoints": [
           {
@@ -50,20 +50,20 @@
       }
     },
     {
-      "version": "0.20.0",
+      "version": "0.21.0",
       "platform": {
         "os": "linux",
         "arch": "arm64"
       },
       "package": {
-        "url": "https://github.com/microsoft/avml/releases/download/v0.20.0/avml-aarch64",
-        "sha256": "d3fa9285e94ad4268cb7ed20a62d8bd7b1ac4561e191b8a82654864b4541b3ad",
-        "size": 6342704
+        "url": "https://github.com/microsoft/avml/releases/download/v0.21.0/avml-aarch64",
+        "sha256": "d97fd8bf043c8a14ad2bfe18ef6352ac9d3277a962f252d11fa34f4d40bacbfe",
+        "size": 6330552
       },
       "install": {
         "strategy": "standalone-file",
         "strip_components": 0,
-        "extracted_size": 6342704,
+        "extracted_size": 6330552,
         "entries": 1,
         "entrypoints": [
           {
