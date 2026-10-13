@@ -64,8 +64,8 @@
     {
       "file": "hayabusa.json",
       "id": "hayabusa",
-      "version": "4.1.0",
-      "sha256": "a1ea5423bf2a089e7f26f5cde65d9f2ba59d866b71ba7e2abe96fcb47f073899"
+      "version": "4.2.0",
+      "sha256": "16e32c72dff5a6b0b7024892480789427b9f9d40acb848aad34b073d4e7ad6fd"
     },
     {
       "file": "hindsight.json",
