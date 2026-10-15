@@ -31,20 +31,20 @@
   },
   "builds": [
     {
-      "version": "2.16.5",
+      "version": "2.17.1",
       "platform": {
         "os": "windows",
         "arch": "x64"
       },
       "package": {
-        "url": "https://github.com/WithSecureOpenSource/chainsaw/releases/download/v2.16.5/chainsaw_x86_64-pc-windows-msvc.zip",
-        "sha256": "f47a724ea61547056a0128f201d160c0c4a81c02c481c80bd3c138669c44989a",
-        "size": 3366729
+        "url": "https://github.com/WithSecureOpenSource/chainsaw/releases/download/v2.17.1/chainsaw_x86_64-pc-windows-msvc.zip",
+        "sha256": "1eafd1f4461b61692d62b50e8970c9986798e730396f4069678d25dee14a90d4",
+        "size": 3377142
       },
       "install": {
         "strategy": "portable-zip",
         "strip_components": 1,
-        "extracted_size": 9459527,
+        "extracted_size": 9481031,
         "entries": 5,
         "entrypoints": [
           {
@@ -61,20 +61,20 @@
       ]
     },
     {
-      "version": "2.16.5",
+      "version": "2.17.1",
       "platform": {
         "os": "linux",
         "arch": "x64"
       },
       "package": {
-        "url": "https://github.com/WithSecureOpenSource/chainsaw/releases/download/v2.16.5/chainsaw_x86_64-unknown-linux-gnu.tar.gz",
-        "sha256": "7a7289d15f085af9bce39dfa3052adf0b4c78cab0dbfb91c2dbe38322909ce02",
-        "size": 3510703
+        "url": "https://github.com/WithSecureOpenSource/chainsaw/releases/download/v2.17.1/chainsaw_x86_64-unknown-linux-gnu.tar.gz",
+        "sha256": "fc25f1eafbbff3e858d8dfba508d5e227bb56ef4dccc4d5cd0bbd6e49798cb4f",
+        "size": 3522186
       },
       "install": {
         "strategy": "portable-tar",
         "strip_components": 1,
-        "extracted_size": 10151767,
+        "extracted_size": 10176151,
         "entries": 5,
         "entrypoints": [
           {
@@ -91,20 +91,20 @@
       ]
     },
     {
-      "version": "2.16.5",
+      "version": "2.17.1",
       "platform": {
         "os": "linux",
         "arch": "arm64"
       },
       "package": {
-        "url": "https://github.com/WithSecureOpenSource/chainsaw/releases/download/v2.16.5/chainsaw_aarch64-unknown-linux-gnu.tar.gz",
-        "sha256": "949f4e471343880e086d9efd7ec91f95fe253065fde8657d6fc9a3773321ab3c",
-        "size": 3303752
+        "url": "https://github.com/WithSecureOpenSource/chainsaw/releases/download/v2.17.1/chainsaw_aarch64-unknown-linux-gnu.tar.gz",
+        "sha256": "a8bbcc971a16b7019b646b6d45d3bbd59a0dddb28950462d41c1465342c1263b",
+        "size": 3308604
       },
       "install": {
         "strategy": "portable-tar",
         "strip_components": 1,
-        "extracted_size": 9368815,
+        "extracted_size": 9303463,
         "entries": 5,
         "entrypoints": [
           {
