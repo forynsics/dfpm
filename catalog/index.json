@@ -58,8 +58,8 @@
     {
       "file": "floss.json",
       "id": "floss",
-      "version": "3.1.1",
-      "sha256": "103ab2b4a073161d114f363ed2a739032048240777a374530a93566d3b581ae1"
+      "version": "3.2.0",
+      "sha256": "4125c5a7209d67548ce502c418289939d52443552f65e55e7feeece6e0c2b9c7"
     },
     {
       "file": "hayabusa.json",
