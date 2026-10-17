@@ -34,8 +34,8 @@
     {
       "file": "capa.json",
       "id": "capa",
-      "version": "9.4.0",
-      "sha256": "dfd45d7fa440a21e58786caf49bad4056ebcfff68e926f93700d0bcf7f4dcd46"
+      "version": "10.0.0",
+      "sha256": "61a17cc1196079d1de6c562bcd6933c37c51299c1534fea9b796c54d1d30b516"
     },
     {
       "file": "chainsaw.json",

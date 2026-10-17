@@ -27,20 +27,20 @@
   },
   "builds": [
     {
-      "version": "9.4.0",
+      "version": "10.0.0",
       "platform": {
         "os": "windows",
         "arch": "x64"
       },
       "package": {
-        "url": "https://github.com/mandiant/capa/releases/download/v9.4.0/capa-v9.4.0-windows.zip",
-        "sha256": "670ab1a58b81f59cb57533bf4021ac1e7033fbe9b5d5cc180f796976081e3bb5",
-        "size": 35994071
+        "url": "https://github.com/mandiant/capa/releases/download/v10.0.0/capa-v10.0.0-windows.zip",
+        "sha256": "8712991044321dbb2a5b0d60f7a5327a50c9c30a295e7ddb5c1088cb17fb59df",
+        "size": 36108928
       },
       "install": {
         "strategy": "portable-zip",
         "strip_components": 0,
-        "extracted_size": 36616388,
+        "extracted_size": 36733204,
         "entries": 1,
         "entrypoints": [
           {
@@ -51,20 +51,20 @@
       }
     },
     {
-      "version": "9.4.0",
+      "version": "10.0.0",
       "platform": {
         "os": "linux",
         "arch": "x64"
       },
       "package": {
-        "url": "https://github.com/mandiant/capa/releases/download/v9.4.0/capa-v9.4.0-linux.zip",
-        "sha256": "07800a1d20a21eb18fc98716e2ae81b668e0c9a04defd588c8aa17ea3d3281e4",
-        "size": 47477971
+        "url": "https://github.com/mandiant/capa/releases/download/v10.0.0/capa-v10.0.0-linux.zip",
+        "sha256": "96cb5115f495024a478b0e9f9f77f9027058155589235fbd4c50e7382055fcca",
+        "size": 47594454
       },
       "install": {
         "strategy": "portable-zip",
         "strip_components": 0,
-        "extracted_size": 47976360,
+        "extracted_size": 48099736,
         "entries": 1,
         "entrypoints": [
           {
@@ -75,20 +75,20 @@
       }
     },
     {
-      "version": "9.4.0",
+      "version": "10.0.0",
       "platform": {
         "os": "linux",
         "arch": "arm64"
       },
       "package": {
-        "url": "https://github.com/mandiant/capa/releases/download/v9.4.0/capa-v9.4.0-linux-arm64.zip",
-        "sha256": "165df126f05e86736afee0f4c28b19c6037315a99afc3a92a426432cdd30d2c5",
-        "size": 45751028
+        "url": "https://github.com/mandiant/capa/releases/download/v10.0.0/capa-v10.0.0-linux-arm64.zip",
+        "sha256": "1da5512f75220c79e2f9f59609673af7329828f91b1d020ada60b859221d9793",
+        "size": 45791357
       },
       "install": {
         "strategy": "portable-zip",
         "strip_components": 0,
-        "extracted_size": 46243704,
+        "extracted_size": 46299624,
         "entries": 1,
         "entrypoints": [
           {
